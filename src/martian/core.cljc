@@ -3,13 +3,20 @@
             [clojure.string :as string]))
 
 (defn- ->tripod-route [url-pattern swagger-definition]
-  {:path (string/replace (name url-pattern) #"\{(.*)\}" (fn [[_ path-part]] (str ":" path-part)))
-   :path-parts (->> (:parameters swagger-definition)
-                    (filter #(= "path" (:in %)))
-                    (map :name)
-                    (into [""]))
-   ;; :path-constraints {:id "(\\d+)"},
-   :route-name (:operationId swagger-definition)})
+  (let [path-parts (->> (string/split (name url-pattern) #"/")
+                        (mapv (fn [part]
+                               (if-let [[_ token] (re-matches #"\{(.*)\}" part)]
+                                 (keyword token)
+                                 part)))
+                        (into [""]))]
+    {:path (string/join "/" (map str path-parts))
+     :path-parts path-parts
+     ;; :path-constraints {:id "(\\d+)"},
+     #_(->> (:parameters swagger-definition)
+            (filter #(= "path" (:in %)))
+            (map :name)
+            (into [""]))
+     :route-name (keyword (:operationId swagger-definition))}))
 
 (defn- swagger->tripod [swagger-json]
   (reduce-kv
