@@ -1,0 +1,328 @@
+{:swagger "2.0",
+ :info
+ {:title "Swagger Sample App",
+  :version "2.0",
+  :description "This is a sample Petstore server."},
+ :produces ["application/json"],
+ :consumes ["application/json"],
+ :paths
+ {:/pets
+  {:get
+   {:responses
+    {:400
+     {:description
+      "The request contains bad syntax or cannot be fulfilled."},
+     :500 {:description "There was an internal server error."},
+     :200
+     {:schema {:$ref "#/definitions/PetList"}, :description "OK"}},
+    :consumes
+    ["application/json"
+     "application/edn"
+     "application/transit+json"
+     "application/transit+msgpack"
+     "application/x-www-form-urlencoded"
+     "multipart/form-data"],
+    :tags ["pets"],
+    :summary "Get all pets in the store"},
+   :post
+   {:responses
+    {:400
+     {:description
+      "The request contains bad syntax or cannot be fulfilled."},
+     :500 {:description "There was an internal server error."},
+     :201
+     {:headers {:Location {:type "string"}},
+      :description
+      "The request has been fulfilled and resulted in a new resource being created."}},
+    :consumes
+    ["application/json"
+     "application/edn"
+     "application/transit+json"
+     "application/transit+msgpack"
+     "application/x-www-form-urlencoded"
+     "multipart/form-data"],
+    :tags ["pets"],
+    :summary "Add a new pet to the store",
+    :parameters
+    [{:in "body",
+      :name "Pet",
+      :description "",
+      :required true,
+      :schema {:$ref "#/definitions/Pet"}}]}},
+  :/pets/{id}
+  {:get
+   {:responses
+    {:400
+     {:description
+      "The request contains bad syntax or cannot be fulfilled."},
+     :500 {:description "There was an internal server error."},
+     :404
+     {:description
+      "The requested resource could not be found but may be available again in the future."},
+     :200 {:schema {:$ref "#/definitions/Pet"}, :description "OK"}},
+    :consumes
+    ["application/json"
+     "application/edn"
+     "application/transit+json"
+     "application/transit+msgpack"
+     "application/x-www-form-urlencoded"
+     "multipart/form-data"],
+    :tags ["pets"],
+    :description "Returns a pet based on ID",
+    :parameters
+    [{:in "path",
+      :name "id",
+      :description "",
+      :required true,
+      :type "integer",
+      :format "int64"}],
+    :summary "Find pet by ID"},
+   :put
+   {:responses
+    {:400
+     {:description
+      "The request contains bad syntax or cannot be fulfilled."},
+     :500 {:description "There was an internal server error."},
+     :404
+     {:description
+      "The requested resource could not be found but may be available again in the future."}},
+    :consumes
+    ["application/json"
+     "application/edn"
+     "application/transit+json"
+     "application/transit+msgpack"
+     "application/x-www-form-urlencoded"
+     "multipart/form-data"],
+    :tags ["pets"],
+    :description "Assumes a pet exists with given ID",
+    :parameters
+    [{:in "path",
+      :name "id",
+      :description "",
+      :required true,
+      :type "integer",
+      :format "int64"}
+     {:in "body",
+      :name "Pet",
+      :description "",
+      :required true,
+      :schema {:$ref "#/definitions/Pet"}}],
+    :summary "Update an existing pet"},
+   :patch
+   {:responses
+    {:400
+     {:description
+      "The request contains bad syntax or cannot be fulfilled."},
+     :500 {:description "There was an internal server error."},
+     :404
+     {:description
+      "The requested resource could not be found but may be available again in the future."}},
+    :consumes
+    ["application/json"
+     "application/edn"
+     "application/transit+json"
+     "application/transit+msgpack"
+     "application/x-www-form-urlencoded"
+     "multipart/form-data"],
+    :tags ["pets"],
+    :description "Assumes a pet exists with given ID",
+    :parameters
+    [{:in "path",
+      :name "id",
+      :description "",
+      :required true,
+      :type "integer",
+      :format "int64"}
+     {:in "formData",
+      :name "name",
+      :description "",
+      :required false,
+      :type "string"}
+     {:in "formData",
+      :name "status",
+      :description "",
+      :required false,
+      :type "string",
+      :enum ["sold" "pending" "available"]}],
+    :summary "Updates a pet in the store with form data"}},
+  :/users
+  {:post
+   {:responses
+    {:400
+     {:description
+      "The request contains bad syntax or cannot be fulfilled."},
+     :500 {:description "There was an internal server error."},
+     :201
+     {:headers {:Location {:type "string"}},
+      :description
+      "The request has been fulfilled and resulted in a new resource being created."}},
+    :consumes
+    ["application/json"
+     "application/edn"
+     "application/transit+json"
+     "application/transit+msgpack"
+     "application/x-www-form-urlencoded"
+     "multipart/form-data"],
+    :summary "Create user",
+    :parameters
+    [{:in "body",
+      :name "User",
+      :description "",
+      :required true,
+      :schema {:$ref "#/definitions/User"}}]}},
+  :/users/{username}
+  {:get
+   {:responses
+    {:400
+     {:description
+      "The request contains bad syntax or cannot be fulfilled."},
+     :500 {:description "There was an internal server error."},
+     :200 {:schema {:$ref "#/definitions/User"}, :description "OK"},
+     :404
+     {:description
+      "The requested resource could not be found but may be available again in the future."}},
+    :consumes
+    ["application/json"
+     "application/edn"
+     "application/transit+json"
+     "application/transit+msgpack"
+     "application/x-www-form-urlencoded"
+     "multipart/form-data"],
+    :summary "Get user by name",
+    :parameters
+    [{:in "path",
+      :name "username",
+      :description "",
+      :required true,
+      :type "string"}]}},
+  :/orders
+  {:post
+   {:responses
+    {:400
+     {:description
+      "The request contains bad syntax or cannot be fulfilled."},
+     :500 {:description "There was an internal server error."},
+     :201
+     {:headers {:Location {:type "string"}},
+      :description
+      "The request has been fulfilled and resulted in a new resource being created."}},
+    :consumes
+    ["application/json"
+     "application/edn"
+     "application/transit+json"
+     "application/transit+msgpack"
+     "application/x-www-form-urlencoded"
+     "multipart/form-data"],
+    :tags ["orders"],
+    :summary "Create order",
+    :parameters
+    [{:in "body",
+      :name "NewOrder",
+      :description "",
+      :required true,
+      :schema {:$ref "#/definitions/NewOrder"}}]}},
+  :/orders/{id}
+  {:get
+   {:responses
+    {:400
+     {:description
+      "The request contains bad syntax or cannot be fulfilled."},
+     :500 {:description "There was an internal server error."},
+     :404
+     {:description
+      "The requested resource could not be found but may be available again in the future."},
+     :200 {:schema {:$ref "#/definitions/Order"}, :description "OK"}},
+    :consumes
+    ["application/json"
+     "application/edn"
+     "application/transit+json"
+     "application/transit+msgpack"
+     "application/x-www-form-urlencoded"
+     "multipart/form-data"],
+    :tags ["orders"],
+    :description "Assumes an order exists with given ID",
+    :parameters
+    [{:in "path",
+      :name "id",
+      :description "",
+      :required true,
+      :type "integer",
+      :format "int64"}],
+    :summary "Get user by name"}},
+  :/secure
+  {:delete
+   {:responses
+    {:400
+     {:description
+      "The request contains bad syntax or cannot be fulfilled."},
+     :500 {:description "There was an internal server error."},
+     :401
+     {:description
+      "Authentication is possible but has failed or not yet been provided."}},
+    :consumes
+    ["application/json"
+     "application/edn"
+     "application/transit+json"
+     "application/transit+msgpack"
+     "application/x-www-form-urlencoded"
+     "multipart/form-data"],
+    :description "Check basic auth credentials",
+    :summary "Delete db"}}},
+ :tags
+ [{:name "pets",
+   :description "Everything about your Pets",
+   :externalDocs
+   {:description "Find out more", :url "http://swagger.io"}}
+  {:name "orders", :description "Operations about orders"}],
+ :definitions
+ {:Category
+  {:type "object",
+   :properties
+   {:id {:type "integer", :format "int64"}, :name {:type "string"}},
+   :required ["id" "name"]},
+  :NewOrder
+  {:type "object",
+   :properties
+   {:pet-id {:type "integer", :format "int64"},
+    :user-id {:type "integer", :format "int64"},
+    :notes {:type "string"}},
+   :required ["pet-id" "user-id"]},
+  :Order
+  {:type "object",
+   :properties
+   {:pet-id {:type "integer", :format "int64"},
+    :user-id {:type "integer", :format "int64"},
+    :notes {:type "string"},
+    :id {:type "integer", :format "int64"},
+    :status {:type "string"},
+    :ship-date {:type "string", :format "date-time"}},
+   :required ["pet-id" "user-id" "id" "status" "ship-date"]},
+  :Pet
+  {:type "object",
+   :properties
+   {:id {:type "integer", :format "int64"},
+    :name {:type "string"},
+    :category {:$ref "#/definitions/Category"},
+    :tags {:type "array", :items {:$ref "#/definitions/Tag"}},
+    :status {:type "string", :enum ["sold" "pending" "available"]}},
+   :required ["id" "name"]},
+  :PetList
+  {:type "object",
+   :properties
+   {:total {:type "integer", :format "int64"},
+    :pets {:type "array", :items {:$ref "#/definitions/Pet"}}},
+   :required ["total" "pets"]},
+  :Tag
+  {:type "object",
+   :properties
+   {:id {:type "integer", :format "int64"}, :name {:type "string"}},
+   :required ["id" "name"]},
+  :User
+  {:type "object",
+   :properties
+   {:username {:type "string"},
+    :password {:type "string"},
+    :first-name {:type "string"},
+    :last-name {:type "string"},
+    :status {:type "string", :enum ["closed" "registered" "active"]}},
+   :required ["username" "password"]}}}
