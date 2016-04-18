@@ -11,11 +11,9 @@
                         (into [""]))]
     {:path (string/join "/" (map str path-parts))
      :path-parts path-parts
+     ;; todo path constraints
      ;; :path-constraints {:id "(\\d+)"},
-     #_(->> (:parameters swagger-definition)
-            (filter #(= "path" (:in %)))
-            (map :name)
-            (into [""]))
+     ;; {:in "path", :name "id", :description "", :required true, :type "string", :format "uuid"
      :route-name (keyword (:operationId swagger-definition))}))
 
 (defn- swagger->tripod [swagger-json]
