@@ -2,10 +2,19 @@
   (:require [tripod.path :as t]
             [clojure.string :as string]))
 
+(defn- sanitise [x]
+  (if (string? x)
+    (string/replace-first x "/" "")
+    ;; consistent across clj and cljs
+    (-> (str x)
+        (string/replace-first ":" "")
+        (string/replace-first "/" ""))))
+
 (defn- ->tripod-route [url-pattern swagger-definition]
-  (let [trailing-slash? (re-find #"/$" (name url-pattern))
+  (let [url-pattern (sanitise url-pattern)
+        trailing-slash? (re-find #"/$" url-pattern)
         path-parts (as->
-                       (string/split (name url-pattern) #"/") pp
+                       (string/split url-pattern #"/") pp
                      (mapv (fn [part]
                              (if-let [[_ token] (re-matches #"\{(.*)\}" part)]
                                (keyword token)
@@ -17,14 +26,14 @@
      ;; todo path constraints - required?
      ;; :path-constraints {:id "(\\d+)"},
      ;; {:in "path", :name "id", :description "", :required true, :type "string", :format "uuid"
-     :route-name (keyword (:operationId swagger-definition))}))
+     :route-name (keyword (some swagger-definition [:operationId "operationId"]))}))
 
 (defn- swagger->tripod [swagger-json]
   (reduce-kv
    (fn [tripod-routes url-pattern swagger-definition]
      (into tripod-routes (map (partial ->tripod-route url-pattern) (vals swagger-definition))))
    []
-   (:paths swagger-json)))
+   (some swagger-json [:paths "paths"])))
 
 (defn bootstrap
   "Creates a routing function which should be supplied with an api-root and a swagger spec
