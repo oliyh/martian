@@ -20,7 +20,7 @@ like that provided by [pedestal-api](https://github.com/oliyh/pedestal-api):
 
 ## Caveats
 - You need `:operationId` in the Swagger spec to name routes
-  - pedestal-api automatically generates these from the interceptor name
+  - [pedestal-api](https://github.com/oliyh/pedestal-api) automatically generates these from the interceptor name
 
 ## Development
 Step in to the Clojurescript REPL as follows:
@@ -30,3 +30,4 @@ Step in to the Clojurescript REPL as follows:
 
 ## Acknowledgements
 martian uses [tripod](https://github.com/frankiesardo/tripod) for routing.
+See also [kekkonen](https://github.com/metosin/kekkonen) for ideas integrating server and client beyond Swagger.
