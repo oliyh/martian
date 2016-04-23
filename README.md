@@ -1,11 +1,11 @@
 # martian
-Build routes on your Clojure/Clojurescript client to a Swagger API
+Build routes on your Clojure/Clojurescript/Java client to a Swagger API and avoid hard coded routes
 
 ## Example
 Given a [Swagger API definition](https://pedestal-api.herokuapp.com/swagger.json)
 like that provided by [pedestal-api](https://github.com/oliyh/pedestal-api):
 
-### Clojure
+### Clojure / ClojureScript
 ```clojure
 (require '[martian.core :as martian]
          '[clj-http.client :as http])
@@ -13,9 +13,25 @@ like that provided by [pedestal-api](https://github.com/oliyh/pedestal-api):
 (let [api-root "https://pedestal-api.herokuapp.com"
       swagger-spec (:body (http/get (str api-root "/swagger.json") {:as :json}))
       url-for (martian/bootstrap api-root swagger-spec)]
+
   (url-for :get-pet {:id 123}))
 
 ;; => https://pedestal-api.herokuapp.com/pets/123
+```
+
+## Java
+
+```java
+import martian.Martian;
+import java.util.Map;
+import java.util.HashMap;
+
+Map<String, Object> swaggerSpec = { ... };
+Martian martian = new Martian("https://pedestal-api.herokuapp.com", swaggerSpec);
+
+martian.urlFor("get-pet", new HashMap<String, Object> {{ put("id", 123); }});
+
+// => https://pedestal-api.herokuapp.com/pets/123
 ```
 
 ## Caveats

@@ -1,6 +1,7 @@
 (ns martian.core
   (:require [tripod.path :as t]
-            [clojure.string :as string]))
+            [clojure.string :as string]
+            [clojure.walk :refer [keywordize-keys]]))
 
 (defn- sanitise [x]
   (if (string? x)
@@ -43,5 +44,6 @@
 
    ;; => https://api.org/pets/123"
   [api-root swagger-json]
-  (comp (partial str api-root)
-        (t/path-for-routes (swagger->tripod swagger-json))))
+  (let [path-for (t/path-for-routes (swagger->tripod swagger-json))]
+    (fn [route-name & [params]]
+      (str api-root (apply path-for (keyword route-name) [(keywordize-keys params)])))))
