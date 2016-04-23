@@ -23,6 +23,8 @@ like that provided by [pedestal-api](https://github.com/oliyh/pedestal-api):
   - [pedestal-api](https://github.com/oliyh/pedestal-api) automatically generates these from the interceptor name
 
 ## Development
+[![Circle CI](https://circleci.com/gh/oliyh/martian.svg?style=svg)](https://circleci.com/gh/oliyh/martian)
+
 Step in to the Clojurescript REPL as follows:
 ```clojure
 (cemerick.piggieback/cljs-repl (cljs.repl.rhino/repl-env))
