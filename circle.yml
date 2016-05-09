@@ -2,3 +2,7 @@ machine:
   java:
     version:
       oraclejdk8
+
+test:
+  override:
+    - lein test
