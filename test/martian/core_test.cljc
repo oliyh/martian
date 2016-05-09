@@ -47,15 +47,15 @@
        (is (= "https://api.org/pets/" (.urlFor m "create-pet")))
        (is (= "https://api.org/users/123/orders/456" (.urlFor m "order" {"user-id" 123 "order-id" 456}))))))
 
-#_(deftest request-for-test
+(deftest request-for-test
   (let [swagger-definition
         {:paths {(keyword "/pets/{id}")                         {:get {:operationId "load-pet"}}
                  (keyword "/pets/")                             {:get {:operationId "all-pets"}
                                                                  :post {:operationId "create-pet"}}
                  (keyword "/users/{user-id}/orders/{order-id}") {:get {:operationId "order"}}}}
-        url-for (martian/bootstrap "https://api.org" swagger-definition)]
+        m (martian/bootstrap "https://api.org" swagger-definition)
+        request-for (partial request-for m)]
 
-    (is (= "https://api.org/pets/123" (url-for :load-pet {:id 123})))
-    (is (= "https://api.org/pets/" (url-for :all-pets)))
-    (is (= "https://api.org/pets/" (url-for :create-pet)))
-    (is (= "https://api.org/users/123/orders/456" (url-for :order {:user-id 123 :order-id 456})))))
+    (is (= {:method :get
+            :uri "https://api.org/pets/123"}
+         (request-for :load-pet {:id 123})))))

@@ -5,10 +5,13 @@
             [clojure.walk :refer [keywordize-keys]]
             [martian.protocols :refer [Martian url-for request-for]]))
 
-(defn- make-interceptors [method swagger-definition]
+(defn- make-interceptors [uri method swagger-definition]
   [{:name ::method
     :leave (fn [{:keys [response] :as ctx}]
-             (assoc response :method method))}])
+             (update ctx :response assoc :method method))}
+   {:name ::uri
+    :leave (fn [{:keys [request response path-for handler] :as ctx}]
+             (update ctx :response assoc :uri (path-for (:route-name handler) (:params request))))}])
 
 (defn- sanitise [x]
   (if (string? x)
@@ -28,10 +31,11 @@
                                (keyword token)
                                part)) pp)
                      (into [""] pp)
-                     (concat pp (when trailing-slash? [""])))]
-    {:path (string/join "/" (map str path-parts))
+                     (concat pp (when trailing-slash? [""])))
+        uri (string/join "/" (map str path-parts))]
+    {:path uri
      :path-parts path-parts
-     :interceptors (make-interceptors method swagger-definition)
+     :interceptors (make-interceptors uri method swagger-definition)
      ;; todo path constraints - required?
      ;; :path-constraints {:id "(\\d+)"},
      ;; {:in "path", :name "id", :description "", :required true, :type "string", :format "uuid"
@@ -55,7 +59,12 @@
       (request-for [this route-name] (request-for this route-name {}))
       (request-for [this route-name params]
         (when-let [handler (first (filter #(= route-name (:route-name %)) tripod))]
-          (tc/execute (tc/enqueue* {:request {:params params}} (:interceptors handler))))))))
+          (let [ctx (tc/enqueue* {} (:interceptors handler))]
+            (:response (tc/execute
+                        (assoc ctx
+                               :path-for (comp (partial str api-root) path-for)
+                               :request {:params params}
+                               :handler handler)))))))))
 
 (defn bootstrap
   "Creates a routing function which should be supplied with an api-root and a swagger spec
