@@ -14,17 +14,17 @@ public class Martian {
       BOOTSTRAP = Clojure.var("martian.core", "bootstrap");
    }
 
-   private final IFn urlFor;
+   private final martian.protocols.Martian m;
 
    public Martian(String apiRoot, Map<String, Object> swaggerJson) {
-      this.urlFor = (IFn) BOOTSTRAP.invoke(apiRoot, swaggerJson);
+      this.m = (martian.protocols.Martian) BOOTSTRAP.invoke(apiRoot, swaggerJson);
    }
 
    public String urlFor (String routeName) {
-      return (String) urlFor.invoke(routeName);
+      return (String) m.url_for(routeName);
    }
 
    public String urlFor (String routeName, Map<String, Object> args) {
-      return (String) urlFor.invoke(routeName, args);
+      return (String) m.url_for(routeName, args);
    }
 }

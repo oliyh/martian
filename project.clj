@@ -6,7 +6,7 @@
   :dependencies [[frankiesardo/tripod "0.2.0"]]
   :plugins [[lein-cljsbuild "1.1.1"]
             [lein-doo "0.1.6"]]
-  :prep-tasks ["javac" "compile"]
+  :prep-tasks [["compile" "martian.protocols"] "javac" "compile"]
   :java-source-paths ["src"]
   :javac-options ["-target" "1.8" "-source" "1.8"]
   :profiles {:dev {:exclusions [[org.clojure/tools.reader]]

@@ -1,7 +1,14 @@
 (ns martian.core
-  (:require [tripod.path :as t]
+  (:require [tripod.path :as tp]
+            [tripod.context :as tc]
             [clojure.string :as string]
-            [clojure.walk :refer [keywordize-keys]]))
+            [clojure.walk :refer [keywordize-keys]]
+            [martian.protocols :refer [Martian url-for request-for]]))
+
+(defn- make-interceptors [method swagger-definition]
+  [{:name ::method
+    :leave (fn [{:keys [response] :as ctx}]
+             (assoc response :method method))}])
 
 (defn- sanitise [x]
   (if (string? x)
@@ -11,7 +18,7 @@
         (string/replace-first ":" "")
         (string/replace-first "/" ""))))
 
-(defn- ->tripod-route [url-pattern swagger-definition]
+(defn- ->tripod-route [url-pattern [method swagger-definition]]
   (let [url-pattern (sanitise url-pattern)
         trailing-slash? (re-find #"/$" url-pattern)
         path-parts (as->
@@ -24,6 +31,7 @@
                      (concat pp (when trailing-slash? [""])))]
     {:path (string/join "/" (map str path-parts))
      :path-parts path-parts
+     :interceptors (make-interceptors method swagger-definition)
      ;; todo path constraints - required?
      ;; :path-constraints {:id "(\\d+)"},
      ;; {:in "path", :name "id", :description "", :required true, :type "string", :format "uuid"
@@ -31,10 +39,23 @@
 
 (defn- swagger->tripod [swagger-json]
   (reduce-kv
-   (fn [tripod-routes url-pattern swagger-definition]
-     (into tripod-routes (map (partial ->tripod-route url-pattern) (vals swagger-definition))))
+   (fn [tripod-routes url-pattern swagger-handlers]
+     (into tripod-routes (map (partial ->tripod-route url-pattern) swagger-handlers)))
    []
    (some swagger-json [:paths "paths"])))
+
+(defn- build-instance [api-root swagger-json]
+  (let [tripod (swagger->tripod swagger-json)
+        path-for (tp/path-for-routes tripod)]
+    (reify Martian
+      (url-for [this route-name] (url-for this route-name {}))
+      (url-for [this route-name params]
+        (str api-root (apply path-for (keyword route-name) [(keywordize-keys params)])))
+
+      (request-for [this route-name] (request-for this route-name {}))
+      (request-for [this route-name params]
+        (when-let [handler (first (filter #(= route-name (:route-name %)) tripod))]
+          (tc/execute (tc/enqueue* {:request {:params params}} (:interceptors handler))))))))
 
 (defn bootstrap
   "Creates a routing function which should be supplied with an api-root and a swagger spec
@@ -44,6 +65,4 @@
 
    ;; => https://api.org/pets/123"
   [api-root swagger-json]
-  (let [path-for (t/path-for-routes (swagger->tripod swagger-json))]
-    (fn [route-name & [params]]
-      (str api-root (apply path-for (keyword route-name) [(keywordize-keys params)])))))
+  (build-instance api-root swagger-json))
