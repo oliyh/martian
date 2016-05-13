@@ -12,7 +12,7 @@
 
    {:name ::uri
     :leave (fn [{:keys [request response path-for handler] :as ctx}]
-             (let [path-params (:path-parts handler)]
+             (let [path-params (:path-params handler)]
                (update ctx :response
                        assoc :uri (path-for (:route-name handler)
                                             (select-keys (:params request) path-params)))))}
@@ -32,9 +32,13 @@
         (string/replace-first ":" "")
         (string/replace-first "/" ""))))
 
-(defn- body-params [swagger-params]
-  (if-let [body-param (first (filter #(= "body" (:in %)) swagger-params))]
+(defn- body-param [swagger-params]
+  (when-let [body-param (first (filter #(= "body" (:in %)) swagger-params))]
     (keyword (string/lower-case (:name body-param)))))
+
+(defn- path-params [swagger-params]
+  (when-let [path-params (not-empty (filter #(= "path" (:in %)) swagger-params))]
+    (mapv #(keyword (string/lower-case (:name %))) path-params)))
 
 (defn- ->tripod-route [url-pattern [method swagger-definition]]
   (let [url-pattern (sanitise url-pattern)
@@ -51,7 +55,8 @@
     {:path uri
      :path-parts path-parts
      :interceptors (make-interceptors uri method swagger-definition)
-     :body-param (body-params (:parameters swagger-definition))
+     :path-params (path-params (:parameters swagger-definition))
+     :body-param (body-param (:parameters swagger-definition))
      ;; todo path constraints - required?
      ;; :path-constraints {:id "(\\d+)"},
      ;; {:in "path", :name "id", :description "", :required true, :type "string", :format "uuid"
