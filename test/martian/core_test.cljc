@@ -51,11 +51,22 @@
   (let [swagger-definition
         {:paths {(keyword "/pets/{id}")                         {:get {:operationId "load-pet"}}
                  (keyword "/pets/")                             {:get {:operationId "all-pets"}
-                                                                 :post {:operationId "create-pet"}}
-                 (keyword "/users/{user-id}/orders/{order-id}") {:get {:operationId "order"}}}}
+                                                                 :post {:operationId "create-pet"
+                                                                        :parameters [{:in "body"
+                                                                                      :name "Pet"
+                                                                                      :schema {:$ref "#/definitions/Pet"}}]}}
+                 (keyword "/users/{user-id}/orders/{order-id}") {:get {:operationId "order"}}}
+         :definitions {:Pet {:type "object"
+                             :properties {:id {:type "integer"}
+                                          :name {:type "string"}}}}}
         m (martian/bootstrap "https://api.org" swagger-definition)
         request-for (partial request-for m)]
 
     (is (= {:method :get
             :uri "https://api.org/pets/123"}
-         (request-for :load-pet {:id 123})))))
+           (request-for :load-pet {:id 123})))
+
+    (is (= {:method :post
+            :uri "https://api.org/pets/"
+            :body {:id 123 :name "charlie"}}
+           (request-for :create-pet {:pet {:id 123 :name "charlie"}})))))

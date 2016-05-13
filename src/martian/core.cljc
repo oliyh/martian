@@ -9,9 +9,20 @@
   [{:name ::method
     :leave (fn [{:keys [response] :as ctx}]
              (update ctx :response assoc :method method))}
+
    {:name ::uri
     :leave (fn [{:keys [request response path-for handler] :as ctx}]
-             (update ctx :response assoc :uri (path-for (:route-name handler) (:params request))))}])
+             (let [path-params (:path-parts handler)]
+               (update ctx :response
+                       assoc :uri (path-for (:route-name handler)
+                                            (select-keys (:params request) path-params)))))}
+
+   {:name ::body-params
+    :leave (fn [{:keys [request response handler] :as ctx}]
+             (if-let [body-param (:body-param handler)]
+               (update ctx :response
+                       assoc :body (get (:params request) body-param))
+               ctx))}])
 
 (defn- sanitise [x]
   (if (string? x)
@@ -20,6 +31,10 @@
     (-> (str x)
         (string/replace-first ":" "")
         (string/replace-first "/" ""))))
+
+(defn- body-params [swagger-params]
+  (if-let [body-param (first (filter #(= "body" (:in %)) swagger-params))]
+    (keyword (string/lower-case (:name body-param)))))
 
 (defn- ->tripod-route [url-pattern [method swagger-definition]]
   (let [url-pattern (sanitise url-pattern)
@@ -36,6 +51,7 @@
     {:path uri
      :path-parts path-parts
      :interceptors (make-interceptors uri method swagger-definition)
+     :body-param (body-params (:parameters swagger-definition))
      ;; todo path constraints - required?
      ;; :path-constraints {:id "(\\d+)"},
      ;; {:in "path", :name "id", :description "", :required true, :type "string", :format "uuid"
