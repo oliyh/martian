@@ -17,11 +17,16 @@
                        assoc :uri (path-for (:route-name handler)
                                             (select-keys (:params request) path-params)))))}
 
+   {:name ::query-params
+    :leave (fn [{:keys [request response handler] :as ctx}]
+             (if-let [query-params (not-empty (select-keys (:params request) (:query-params handler)))]
+               (update ctx :response assoc :query-params query-params)
+               ctx))}
+
    {:name ::body-params
     :leave (fn [{:keys [request response handler] :as ctx}]
-             (if-let [body-param (:body-param handler)]
-               (update ctx :response
-                       assoc :body (get (:params request) body-param))
+             (if-let [body-param (get (:params request) (:body-param handler))]
+               (update ctx :response assoc :body body-param)
                ctx))}])
 
 (defn- sanitise [x]
@@ -40,6 +45,10 @@
   (when-let [path-params (not-empty (filter #(= "path" (:in %)) swagger-params))]
     (mapv #(keyword (string/lower-case (:name %))) path-params)))
 
+(defn- query-params [swagger-params]
+  (when-let [query-params (not-empty (filter #(= "query" (:in %)) swagger-params))]
+    (mapv #(keyword (string/lower-case (:name %))) query-params)))
+
 (defn- ->tripod-route [url-pattern [method swagger-definition]]
   (let [url-pattern (sanitise url-pattern)
         trailing-slash? (re-find #"/$" url-pattern)
@@ -56,6 +65,7 @@
      :path-parts path-parts
      :interceptors (make-interceptors uri method swagger-definition)
      :path-params (path-params (:parameters swagger-definition))
+     :query-params (query-params (:parameters swagger-definition))
      :body-param (body-param (:parameters swagger-definition))
      ;; todo path constraints - required?
      ;; :path-constraints {:id "(\\d+)"},

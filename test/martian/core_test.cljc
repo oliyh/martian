@@ -9,7 +9,9 @@
   {:paths {(keyword "/pets/{id}")                         {:get {:operationId "load-pet"
                                                                  :parameters [{:in "path"
                                                                                :name "id"}]}}
-           (keyword "/pets/")                             {:get {:operationId "all-pets"}
+           (keyword "/pets/")                             {:get {:operationId "all-pets"
+                                                                 :parameters [{:in "query"
+                                                                               :name "sort"}]}
                                                            :post {:operationId "create-pet"
                                                                   :parameters [{:in "body"
                                                                                 :name "Pet"
@@ -69,6 +71,15 @@
     (is (= {:method :get
             :uri "https://api.org/pets/123"}
            (request-for :load-pet {:id 123})))
+
+    (is (= {:method :get
+            :uri "https://api.org/pets/"}
+           (request-for :all-pets {})))
+
+    (is (= {:method :get
+            :uri "https://api.org/pets/"
+            :query-params {:sort "asc"}}
+           (request-for :all-pets {:sort "asc"})))
 
     (is (= {:method :get
             :uri "https://api.org/users/123/orders/234"}
