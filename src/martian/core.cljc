@@ -3,6 +3,7 @@
             [tripod.context :as tc]
             [clojure.string :as string]
             [clojure.walk :refer [keywordize-keys]]
+            [schema.core :as s]
             [martian.protocols :refer [Martian url-for request-for]]))
 
 (defn- make-interceptors [uri method swagger-definition]
@@ -19,9 +20,26 @@
 
    {:name ::query-params
     :leave (fn [{:keys [request response handler] :as ctx}]
-             (if-let [query-params (not-empty (select-keys (:params request) (:query-params handler)))]
-               (update ctx :response assoc :query-params query-params)
-               ctx))}
+             (let [query-params (:query-params handler)
+                   coerced-params (->> (for [[k {:keys [schema required?]}] query-params
+                                             :let [value (get (:params request) k)]]
+                                         [k (cond
+                                              (and required? (nil? value))
+                                              (throw (Exception. (str "Value required for " k)))
+
+                                              (nil? value)
+                                              nil
+
+                                              schema
+                                              (s/validate schema value)
+
+                                              :else
+                                              value)])
+                                       (remove (comp nil? second))
+                                       (into {}))]
+               (if (not-empty coerced-params)
+                 (update ctx :response assoc :query-params coerced-params)
+                 ctx)))}
 
    {:name ::body-params
     :leave (fn [{:keys [request response handler] :as ctx}]
@@ -45,9 +63,23 @@
   (when-let [path-params (not-empty (filter #(= "path" (:in %)) swagger-params))]
     (mapv #(keyword (string/lower-case (:name %))) path-params)))
 
+(defn- make-schema [swagger-param]
+  (cond
+    (:enum swagger-param)
+    (apply s/enum (:enum swagger-param))
+
+    :default
+    nil))
+
 (defn- query-params [swagger-params]
   (when-let [query-params (not-empty (filter #(= "query" (:in %)) swagger-params))]
-    (mapv #(keyword (string/lower-case (:name %))) query-params)))
+    (reduce (fn [qps param]
+              (assoc qps
+                     (keyword (string/lower-case (:name param)))
+                     {:required? (:required param)
+                      :schema (make-schema param)}))
+            {}
+            query-params)))
 
 (defn- ->tripod-route [url-pattern [method swagger-definition]]
   (let [url-pattern (sanitise url-pattern)

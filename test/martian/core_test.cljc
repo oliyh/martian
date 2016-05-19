@@ -11,10 +11,13 @@
                                                                                :name "id"}]}}
            (keyword "/pets/")                             {:get {:operationId "all-pets"
                                                                  :parameters [{:in "query"
-                                                                               :name "sort"}]}
+                                                                               :name "sort"
+                                                                               :enum ["desc","asc"]
+                                                                               :required false}]}
                                                            :post {:operationId "create-pet"
                                                                   :parameters [{:in "body"
                                                                                 :name "Pet"
+                                                                                :required true
                                                                                 :schema {:$ref "#/definitions/Pet"}}]}}
            (keyword "/users/{user-id}/orders/{order-id}") {:get {:operationId "order"
                                                                  :parameters [{:in "path"
@@ -80,6 +83,8 @@
             :uri "https://api.org/pets/"
             :query-params {:sort "asc"}}
            (request-for :all-pets {:sort "asc"})))
+
+    (is (thrown? Exception (request-for :all-pets {:sort "baa"})))
 
     (is (= {:method :get
             :uri "https://api.org/users/123/orders/234"}
