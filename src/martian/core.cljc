@@ -26,8 +26,8 @@
                                          [k (cond
                                               (and required? (nil? value))
                                               (let [message (str "Value required for " k)]
-                                                #?(:clj (throw (Exception. msg))
-                                                   :cljs (throw (js/Error. (str "Value required for " k)))))
+                                                #?(:clj (throw (Exception. message))
+                                                   :cljs (throw (js/Error. message))))
 
                                               (nil? value)
                                               nil
@@ -69,6 +69,12 @@
   (cond
     (:enum swagger-param)
     (apply s/enum (:enum swagger-param))
+
+    (= "string" (:type swagger-param))
+    s/Str
+
+    (= "integer" (:type swagger-param))
+    s/Int
 
     :default
     nil))

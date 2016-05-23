@@ -5,6 +5,9 @@
                :cljs [cljs.test :refer-macros [deftest testing is run-tests]]))
   #?(:clj (:import [martian Martian])))
 
+#?(:cljs
+   (def Throwable js/Error))
+
 (def swagger-definition
   {:paths {(keyword "/pets/{id}")                         {:get {:operationId "load-pet"
                                                                  :parameters [{:in "path"
@@ -84,10 +87,6 @@
             :query-params {:sort "asc"}}
            (request-for :all-pets {:sort "asc"})))
 
-    (is (thrown? #?(:clj Exception
-                    :cljs js/Error)
-                 (request-for :all-pets {:sort "baa"})))
-
     (is (= {:method :get
             :uri "https://api.org/users/123/orders/234"}
            (request-for :order {:user-id 123 :order-id 234})))
@@ -95,4 +94,9 @@
     (is (= {:method :post
             :uri "https://api.org/pets/"
             :body {:id 123 :name "charlie"}}
-           (request-for :create-pet {:pet {:id 123 :name "charlie"}})))))
+           (request-for :create-pet {:pet {:id 123 :name "charlie"}})))
+
+    (testing "exceptions"
+      (is (thrown-with-msg? Throwable
+                            #"Value does not match schema"
+                   (request-for :all-pets {:sort "baa"}))))))
