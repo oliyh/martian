@@ -84,7 +84,9 @@
             :query-params {:sort "asc"}}
            (request-for :all-pets {:sort "asc"})))
 
-    (is (thrown? Exception (request-for :all-pets {:sort "baa"})))
+    (is (thrown? #?(:clj Exception
+                    :cljs js/Error)
+                 (request-for :all-pets {:sort "baa"})))
 
     (is (= {:method :get
             :uri "https://api.org/users/123/orders/234"}

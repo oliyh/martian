@@ -25,7 +25,9 @@
                                              :let [value (get (:params request) k)]]
                                          [k (cond
                                               (and required? (nil? value))
-                                              (throw (Exception. (str "Value required for " k)))
+                                              (let [message (str "Value required for " k)]
+                                                #?(:clj (throw (Exception. msg))
+                                                   :cljs (throw (js/Error. (str "Value required for " k)))))
 
                                               (nil? value)
                                               nil
