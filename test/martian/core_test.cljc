@@ -102,4 +102,4 @@
                             (request-for :all-pets {:sort "baa"})))
 
       (is (thrown-with-msg? Throwable #"Value does not match schema"
-                   (request-for :load-pet {:id "one"}))))))
+                            (request-for :load-pet {:id "one"}))))))
