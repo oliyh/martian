@@ -11,7 +11,8 @@
 (def swagger-definition
   {:paths {(keyword "/pets/{id}")                         {:get {:operationId "load-pet"
                                                                  :parameters [{:in "path"
-                                                                               :name "id"}]}}
+                                                                               :name "id"
+                                                                               :type "integer"}]}}
            (keyword "/pets/")                             {:get {:operationId "all-pets"
                                                                  :parameters [{:in "query"
                                                                                :name "sort"
@@ -97,6 +98,8 @@
            (request-for :create-pet {:pet {:id 123 :name "charlie"}})))
 
     (testing "exceptions"
-      (is (thrown-with-msg? Throwable
-                            #"Value does not match schema"
-                   (request-for :all-pets {:sort "baa"}))))))
+      (is (thrown-with-msg? Throwable #"Value does not match schema"
+                            (request-for :all-pets {:sort "baa"})))
+
+      (is (thrown-with-msg? Throwable #"Value does not match schema"
+                   (request-for :load-pet {:id "one"}))))))

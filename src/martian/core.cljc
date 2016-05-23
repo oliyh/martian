@@ -6,6 +6,26 @@
             [schema.core :as s]
             [martian.protocols :refer [Martian url-for request-for]]))
 
+(defn- coerce-params [params data]
+  (->> (for [[k {:keys [schema required?]}] params
+             :let [value (get data k)]]
+         [k (cond
+              (and required? (nil? value))
+              (let [message (str "Value required for " k)]
+                #?(:clj (throw (Exception. message))
+                   :cljs (throw (js/Error. message))))
+
+              (nil? value)
+              nil
+
+              schema
+              (s/validate schema value)
+
+              :else
+              value)])
+       (remove (comp nil? second))
+       (into {})))
+
 (defn- make-interceptors [uri method swagger-definition]
   [{:name ::method
     :leave (fn [{:keys [response] :as ctx}]
@@ -16,29 +36,12 @@
              (let [path-params (:path-params handler)]
                (update ctx :response
                        assoc :uri (path-for (:route-name handler)
-                                            (select-keys (:params request) path-params)))))}
+                                            (coerce-params path-params (:params request))))))}
 
    {:name ::query-params
     :leave (fn [{:keys [request response handler] :as ctx}]
              (let [query-params (:query-params handler)
-                   coerced-params (->> (for [[k {:keys [schema required?]}] query-params
-                                             :let [value (get (:params request) k)]]
-                                         [k (cond
-                                              (and required? (nil? value))
-                                              (let [message (str "Value required for " k)]
-                                                #?(:clj (throw (Exception. message))
-                                                   :cljs (throw (js/Error. message))))
-
-                                              (nil? value)
-                                              nil
-
-                                              schema
-                                              (s/validate schema value)
-
-                                              :else
-                                              value)])
-                                       (remove (comp nil? second))
-                                       (into {}))]
+                   coerced-params (coerce-params query-params (:params request))]
                (if (not-empty coerced-params)
                  (update ctx :response assoc :query-params coerced-params)
                  ctx)))}
@@ -57,14 +60,6 @@
         (string/replace-first ":" "")
         (string/replace-first "/" ""))))
 
-(defn- body-param [swagger-params]
-  (when-let [body-param (first (filter #(= "body" (:in %)) swagger-params))]
-    (keyword (string/lower-case (:name body-param)))))
-
-(defn- path-params [swagger-params]
-  (when-let [path-params (not-empty (filter #(= "path" (:in %)) swagger-params))]
-    (mapv #(keyword (string/lower-case (:name %))) path-params)))
-
 (defn- make-schema [swagger-param]
   (cond
     (:enum swagger-param)
@@ -78,6 +73,20 @@
 
     :default
     nil))
+
+(defn- body-param [swagger-params]
+  (when-let [body-param (first (filter #(= "body" (:in %)) swagger-params))]
+    (keyword (string/lower-case (:name body-param)))))
+
+(defn- path-params [swagger-params]
+  (when-let [path-params (not-empty (filter #(= "path" (:in %)) swagger-params))]
+    (reduce (fn [pps param]
+              (assoc pps
+                     (keyword (string/lower-case (:name param)))
+                     {:required? (:required param)
+                      :schema (make-schema param)}))
+            {}
+            path-params)))
 
 (defn- query-params [swagger-params]
   (when-let [query-params (not-empty (filter #(= "query" (:in %)) swagger-params))]
