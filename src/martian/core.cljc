@@ -3,33 +3,25 @@
             [tripod.context :as tc]
             [clojure.string :as string]
             [clojure.walk :refer [keywordize-keys]]
-            [camel-snake-kebab.core :refer [->kebab-case-keyword]]
-            [schema.core :as s]
-            [schema.coerce :as sc]
+            [martian.schema :as schema]
             [martian.protocols :refer [Martian url-for request-for]]))
 
-(defn- coerce-data [schema data]
-  (some->> (keys schema)
-           (map s/explicit-schema-key)
-           (select-keys data)
-           ((sc/coercer! schema sc/string-coercion-matcher))))
-
-(defn- make-interceptors [uri method swagger-definition]
+(defn- make-interceptors []
   [{:name ::method
-    :leave (fn [{:keys [response] :as ctx}]
-             (update ctx :response assoc :method method))}
+    :leave (fn [{:keys [response handler] :as ctx}]
+             (update ctx :response assoc :method (:method handler)))}
 
    {:name ::uri
     :leave (fn [{:keys [request response path-for handler] :as ctx}]
              (let [path-schema (:path-schema handler)]
                (update ctx :response
                        assoc :uri (path-for (:route-name handler)
-                                            (coerce-data path-schema (:params request))))))}
+                                            (schema/coerce-data path-schema (:params request))))))}
 
    {:name ::query-params
     :leave (fn [{:keys [request response handler] :as ctx}]
              (let [query-schema (:query-schema handler)
-                   coerced-params (coerce-data query-schema (:params request))]
+                   coerced-params (schema/coerce-data query-schema (:params request))]
                (if (not-empty coerced-params)
                  (update ctx :response assoc :query-params coerced-params)
                  ctx)))}
@@ -37,10 +29,22 @@
    {:name ::body-params
     :leave (fn [{:keys [request response handler] :as ctx}]
              (let [body-schema (:body-schema handler)
-                   coerced-params (coerce-data body-schema (:params request))]
+                   coerced-params (schema/coerce-data body-schema (:params request))]
                (if (not-empty coerced-params)
                  (update ctx :response assoc :body (first (vals coerced-params)))
                  ctx)))}])
+
+(defn- body-schema [definitions swagger-params]
+  (when-let [body-params (filter #(= "body" (:in %)) swagger-params)]
+    (schema/schemas-for-parameters definitions body-params)))
+
+(defn- path-schema [definitions swagger-params]
+  (when-let [path-params (not-empty (filter #(= "path" (:in %)) swagger-params))]
+    (schema/schemas-for-parameters definitions path-params)))
+
+(defn- query-schema [definitions swagger-params]
+  (when-let [query-params (not-empty (filter #(= "query" (:in %)) swagger-params))]
+    (schema/schemas-for-parameters definitions query-params)))
 
 (defn- sanitise [x]
   (if (string? x)
@@ -50,66 +54,29 @@
         (string/replace-first ":" "")
         (string/replace-first "/" ""))))
 
-(declare make-schema)
-
-(defn schemas-for-parameters [definitions parameters]
-  (->> (for [{:keys [name required] :as parameter} parameters
-             :let [name (->kebab-case-keyword name)
-                   schema (make-schema definitions parameter)]]
-         [(if required name (s/optional-key name))
-          (if required schema (s/maybe schema))])
-       (into {})))
-
-(defn make-schema [definitions {:keys [name required type enum schema properties]}]
-  (cond
-    enum (apply s/enum enum)
-    (= "string" type) s/Str
-    (= "integer" type) s/Int
-
-    (:$ref schema)
-    (make-schema definitions
-                 (some->> (:$ref schema)
-                          (re-find #"#/definitions/(.*)")
-                          second
-                          keyword
-                          definitions))
-
-    (= "object" type)
-    (schemas-for-parameters definitions (map (fn [[name p]]
-                                               (assoc p :name name)) properties))
-
-    :default s/Any))
-
-(defn- body-schema [definitions swagger-params]
-  (when-let [body-params (filter #(= "body" (:in %)) swagger-params)]
-    (schemas-for-parameters definitions body-params)))
-
-(defn- path-schema [definitions swagger-params]
-  (when-let [path-params (not-empty (filter #(= "path" (:in %)) swagger-params))]
-    (schemas-for-parameters definitions path-params)))
-
-(defn- query-schema [definitions swagger-params]
-  (when-let [query-params (not-empty (filter #(= "query" (:in %)) swagger-params))]
-    (schemas-for-parameters definitions query-params)))
+(defn- tokenise-path [url-pattern]
+  (let [url-pattern (sanitise url-pattern)
+        trailing-slash? (re-find #"/$" url-pattern)]
+    (as->
+        (string/split url-pattern #"/") pp
+      (mapv (fn [part]
+              (if-let [[_ token] (re-matches #"\{(.*)\}" part)]
+                (keyword token)
+                part)) pp)
+      (into [""] pp)
+      (concat pp (when trailing-slash? [""])))))
 
 (defn- ->tripod-route [definitions url-pattern [method swagger-definition]]
-  (let [url-pattern (sanitise url-pattern)
-        trailing-slash? (re-find #"/$" url-pattern)
-        path-parts (as->
-                       (string/split url-pattern #"/") pp
-                     (mapv (fn [part]
-                             (if-let [[_ token] (re-matches #"\{(.*)\}" part)]
-                               (keyword token)
-                               part)) pp)
-                     (into [""] pp)
-                     (concat pp (when trailing-slash? [""])))
-        uri (string/join "/" (map str path-parts))]
+  (let [path-parts (tokenise-path url-pattern)
+        uri (string/join "/" (map str path-parts))
+        parameters (:parameters swagger-definition)]
     {:path uri
      :path-parts path-parts
-     :interceptors (make-interceptors uri method swagger-definition)
-     :path-schema (path-schema definitions (:parameters swagger-definition))
-     :query-schema (query-schema definitions (:parameters swagger-definition))
-     :body-schema (body-schema definitions (:parameters swagger-definition))
+     :interceptors (make-interceptors)
+     :method method
+     :path-schema (path-schema definitions parameters)
+     :query-schema (query-schema definitions parameters)
+     :body-schema (body-schema definitions parameters)
      ;; todo path constraints - required?
      ;; :path-constraints {:id "(\\d+)"},
      ;; {:in "path", :name "id", :description "", :required true, :type "string", :format "uuid"
