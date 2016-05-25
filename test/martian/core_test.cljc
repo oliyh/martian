@@ -96,7 +96,8 @@
     (is (= {:method :post
             :uri "https://api.org/pets/"
             :body {:id 123 :name "charlie"}}
-           (request-for :create-pet {:pet {:id 123 :name "charlie"}})))
+           (request-for :create-pet {:pet {:id 123 :name "charlie"}})
+           (request-for :create-pet {:pet {:id "123" :name "charlie"}})))
 
     (testing "exceptions"
       (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema"

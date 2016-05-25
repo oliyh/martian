@@ -36,8 +36,8 @@
 
    {:name ::body-params
     :leave (fn [{:keys [request response handler] :as ctx}]
-             (let [body-param (:body-param handler)
-                   coerced-params (coerce-params body-param (:params request))]
+             (let [{:keys [parameter-name schema]} (:body-param handler)
+                   coerced-params (coerce-params schema (get-in request [:params parameter-name]))]
                (if (not-empty coerced-params)
                  (update ctx :response assoc :body coerced-params)
                  ctx)))}])
@@ -50,50 +50,51 @@
         (string/replace-first ":" "")
         (string/replace-first "/" ""))))
 
-(defn make-schema [definitions swagger-params]
-  (->> (for [{:keys [name required type enum schema properties] :as p} swagger-params
-             :let [_ (println p)
-                   name (->kebab-case-keyword name)]]
+(declare make-schema)
+
+(defn schemas-for-parameters [definitions parameters]
+  (->> (for [{:keys [name required] :as parameter} parameters
+             :let [_ (println parameter)
+                   name (->kebab-case-keyword name)
+                   schema (make-schema definitions parameter)]]
          [(if required name (s/optional-key name))
-          (cond
-            enum
-            (apply s/enum enum)
-
-            (= "string" type)
-            s/Str
-
-            (= "integer" type)
-            s/Int
-
-            (:$ref schema)
-            (first (vals (make-schema definitions
-                                      (some->> (:$ref schema)
-                                               (re-find #"#/definitions/(.*)")
-                                               second
-                                               keyword
-                                               definitions
-                                               (merge {:name name})
-                                               (vector)))))
-
-            (= "object" type)
-            (make-schema definitions (map (fn [[name p]]
-                                            (assoc p :name name)) properties))
-
-            :default
-            s/Any)])
+          (if required schema (s/maybe schema))])
        (into {})))
+
+(defn make-schema [definitions {:keys [name required type enum schema properties]}]
+  (cond
+    enum (apply s/enum enum)
+
+    (= "string" type) s/Str
+
+    (= "integer" type) s/Int
+
+    (:$ref schema)
+    (make-schema definitions
+                 (some->> (:$ref schema)
+                          (re-find #"#/definitions/(.*)")
+                          second
+                          keyword
+                          definitions))
+
+    (= "object" type)
+    (schemas-for-parameters definitions (map (fn [[name p]]
+                                               (assoc p :name name)) properties))
+
+    :default s/Any))
 
 (defn- body-param [definitions swagger-params]
   (when-let [body-param (first (filter #(= "body" (:in %)) swagger-params))]
-    (make-schema definitions [body-param])))
+    {:parameter-name (->kebab-case-keyword (:name body-param))
+     :schema (make-schema definitions body-param)}))
 
 (defn- path-params [definitions swagger-params]
   (when-let [path-params (not-empty (filter #(= "path" (:in %)) swagger-params))]
-    (make-schema definitions path-params)))
+    (schemas-for-parameters definitions path-params)))
 
 (defn- query-params [definitions swagger-params]
   (when-let [query-params (not-empty (filter #(= "query" (:in %)) swagger-params))]
-    (make-schema definitions query-params)))
+    (schemas-for-parameters definitions query-params)))
 
 (defn- ->tripod-route [definitions url-pattern [method swagger-definition]]
   (let [url-pattern (sanitise url-pattern)
