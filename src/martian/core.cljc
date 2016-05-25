@@ -3,28 +3,16 @@
             [tripod.context :as tc]
             [clojure.string :as string]
             [clojure.walk :refer [keywordize-keys]]
+            [camel-snake-kebab.core :refer [->kebab-case-keyword]]
             [schema.core :as s]
+            [schema.coerce :as sc]
             [martian.protocols :refer [Martian url-for request-for]]))
 
 (defn- coerce-params [params data]
-  (->> (for [[k {:keys [schema required?]}] params
-             :let [value (get data k)]]
-         [k (cond
-              (and required? (nil? value))
-              (let [message (str "Value required for " k)]
-                #?(:clj (throw (Exception. message))
-                   :cljs (throw (js/Error. message))))
-
-              (nil? value)
-              nil
-
-              schema
-              (s/validate schema value)
-
-              :else
-              value)])
-       (remove (comp nil? second))
-       (into {})))
+  (some->> (keys params)
+           (map s/explicit-schema-key)
+           (select-keys data)
+           (s/validate params)))
 
 (defn- make-interceptors [uri method swagger-definition]
   [{:name ::method
@@ -60,19 +48,26 @@
         (string/replace-first ":" "")
         (string/replace-first "/" ""))))
 
-(defn- make-schema [swagger-param]
-  (cond
-    (:enum swagger-param)
-    (apply s/enum (:enum swagger-param))
+(defn- make-schema [swagger-params]
+  (->> (for [{:keys [name required type enum]} swagger-params
+             :let [name (->kebab-case-keyword name)]]
+         [(if required name (s/optional-key name))
+          (cond
+            enum
+            (apply s/enum enum)
 
-    (= "string" (:type swagger-param))
-    s/Str
+            (= "string" type)
+            s/Str
 
-    (= "integer" (:type swagger-param))
-    s/Int
+            (= "integer" type)
+            s/Int
 
-    :default
-    nil))
+            (= "object" type)
+            {s/Any s/Any}
+
+            :default
+            s/Any)])
+       (into {})))
 
 (defn- body-param [swagger-params]
   (when-let [body-param (first (filter #(= "body" (:in %)) swagger-params))]
@@ -80,23 +75,11 @@
 
 (defn- path-params [swagger-params]
   (when-let [path-params (not-empty (filter #(= "path" (:in %)) swagger-params))]
-    (reduce (fn [pps param]
-              (assoc pps
-                     (keyword (string/lower-case (:name param)))
-                     {:required? (:required param)
-                      :schema (make-schema param)}))
-            {}
-            path-params)))
+    (make-schema path-params)))
 
 (defn- query-params [swagger-params]
   (when-let [query-params (not-empty (filter #(= "query" (:in %)) swagger-params))]
-    (reduce (fn [qps param]
-              (assoc qps
-                     (keyword (string/lower-case (:name param)))
-                     {:required? (:required param)
-                      :schema (make-schema param)}))
-            {}
-            query-params)))
+    (make-schema query-params)))
 
 (defn- ->tripod-route [url-pattern [method swagger-definition]]
   (let [url-pattern (sanitise url-pattern)

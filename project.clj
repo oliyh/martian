@@ -4,7 +4,8 @@
   :license {:name "The MIT License"
             :url "http://opensource.org/licenses/MIT"}
   :dependencies [[frankiesardo/tripod "0.2.0"]
-                 [prismatic/schema "1.0.4"]]
+                 [prismatic/schema "1.0.4"]
+                 [camel-snake-kebab "0.4.0"]]
   :plugins [[lein-cljsbuild "1.1.1"]
             [lein-doo "0.1.6"]]
   :prep-tasks [["compile" "martian.protocols"] "javac" "compile"]
