@@ -108,4 +108,7 @@
 
       (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema"
                             (request-for :create-pet {:pet {:id "one"
-                                                            :name 1}}))))))
+                                                            :name 1}})))
+
+      (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema: \{:pet missing-required-key\}"
+                            (request-for :create-pet))))))

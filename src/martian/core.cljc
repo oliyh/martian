@@ -21,25 +21,25 @@
 
    {:name ::uri
     :leave (fn [{:keys [request response path-for handler] :as ctx}]
-             (let [path-params (:path-params handler)]
+             (let [path-schema (:path-schema handler)]
                (update ctx :response
                        assoc :uri (path-for (:route-name handler)
-                                            (coerce-data path-params (:params request))))))}
+                                            (coerce-data path-schema (:params request))))))}
 
    {:name ::query-params
     :leave (fn [{:keys [request response handler] :as ctx}]
-             (let [query-params (:query-params handler)
-                   coerced-params (coerce-data query-params (:params request))]
+             (let [query-schema (:query-schema handler)
+                   coerced-params (coerce-data query-schema (:params request))]
                (if (not-empty coerced-params)
                  (update ctx :response assoc :query-params coerced-params)
                  ctx)))}
 
    {:name ::body-params
     :leave (fn [{:keys [request response handler] :as ctx}]
-             (let [{:keys [parameter-name schema]} (:body-param handler)
-                   coerced-params (coerce-data schema (get-in request [:params parameter-name]))]
+             (let [body-schema (:body-schema handler)
+                   coerced-params (coerce-data body-schema (:params request))]
                (if (not-empty coerced-params)
-                 (update ctx :response assoc :body coerced-params)
+                 (update ctx :response assoc :body (first (vals coerced-params)))
                  ctx)))}])
 
 (defn- sanitise [x]
@@ -80,16 +80,15 @@
 
     :default s/Any))
 
-(defn- body-param [definitions swagger-params]
-  (when-let [body-param (first (filter #(= "body" (:in %)) swagger-params))]
-    {:parameter-name (->kebab-case-keyword (:name body-param))
-     :schema (make-schema definitions body-param)}))
+(defn- body-schema [definitions swagger-params]
+  (when-let [body-params (filter #(= "body" (:in %)) swagger-params)]
+    (schemas-for-parameters definitions body-params)))
 
-(defn- path-params [definitions swagger-params]
+(defn- path-schema [definitions swagger-params]
   (when-let [path-params (not-empty (filter #(= "path" (:in %)) swagger-params))]
     (schemas-for-parameters definitions path-params)))
 
-(defn- query-params [definitions swagger-params]
+(defn- query-schema [definitions swagger-params]
   (when-let [query-params (not-empty (filter #(= "query" (:in %)) swagger-params))]
     (schemas-for-parameters definitions query-params)))
 
@@ -108,9 +107,9 @@
     {:path uri
      :path-parts path-parts
      :interceptors (make-interceptors uri method swagger-definition)
-     :path-params (path-params definitions (:parameters swagger-definition))
-     :query-params (query-params definitions (:parameters swagger-definition))
-     :body-param (body-param definitions (:parameters swagger-definition))
+     :path-schema (path-schema definitions (:parameters swagger-definition))
+     :query-schema (query-schema definitions (:parameters swagger-definition))
+     :body-schema (body-schema definitions (:parameters swagger-definition))
      ;; todo path constraints - required?
      ;; :path-constraints {:id "(\\d+)"},
      ;; {:in "path", :name "id", :description "", :required true, :type "string", :format "uuid"
