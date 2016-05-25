@@ -102,14 +102,15 @@
      ;; todo path constraints - required?
      ;; :path-constraints {:id "(\\d+)"},
      ;; {:in "path", :name "id", :description "", :required true, :type "string", :format "uuid"
-     :route-name (keyword (some swagger-definition [:operationId "operationId"]))}))
+     :route-name (->kebab-case-keyword (:operationId swagger-definition))}))
 
 (defn- swagger->tripod [swagger-json]
-  (reduce-kv
-   (fn [tripod-routes url-pattern swagger-handlers]
-     (into tripod-routes (map (partial ->tripod-route url-pattern) swagger-handlers)))
-   []
-   (some swagger-json [:paths "paths"])))
+  (let [swagger-json (keywordize-keys swagger-json)]
+    (reduce-kv
+     (fn [tripod-routes url-pattern swagger-handlers]
+       (into tripod-routes (map (partial ->tripod-route url-pattern) swagger-handlers)))
+     []
+     (:paths swagger-json))))
 
 (defn- build-instance [api-root swagger-json]
   (let [tripod (swagger->tripod swagger-json)
