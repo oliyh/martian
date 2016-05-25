@@ -8,11 +8,11 @@
             [schema.coerce :as sc]
             [martian.protocols :refer [Martian url-for request-for]]))
 
-(defn- coerce-params [params data]
-  (some->> (keys params)
+(defn- coerce-data [schema data]
+  (some->> (keys schema)
            (map s/explicit-schema-key)
            (select-keys data)
-           ((sc/coercer! params sc/string-coercion-matcher))))
+           ((sc/coercer! schema sc/string-coercion-matcher))))
 
 (defn- make-interceptors [uri method swagger-definition]
   [{:name ::method
@@ -24,12 +24,12 @@
              (let [path-params (:path-params handler)]
                (update ctx :response
                        assoc :uri (path-for (:route-name handler)
-                                            (coerce-params path-params (:params request))))))}
+                                            (coerce-data path-params (:params request))))))}
 
    {:name ::query-params
     :leave (fn [{:keys [request response handler] :as ctx}]
              (let [query-params (:query-params handler)
-                   coerced-params (coerce-params query-params (:params request))]
+                   coerced-params (coerce-data query-params (:params request))]
                (if (not-empty coerced-params)
                  (update ctx :response assoc :query-params coerced-params)
                  ctx)))}
@@ -37,7 +37,7 @@
    {:name ::body-params
     :leave (fn [{:keys [request response handler] :as ctx}]
              (let [{:keys [parameter-name schema]} (:body-param handler)
-                   coerced-params (coerce-params schema (get-in request [:params parameter-name]))]
+                   coerced-params (coerce-data schema (get-in request [:params parameter-name]))]
                (if (not-empty coerced-params)
                  (update ctx :response assoc :body coerced-params)
                  ctx)))}])
@@ -54,8 +54,7 @@
 
 (defn schemas-for-parameters [definitions parameters]
   (->> (for [{:keys [name required] :as parameter} parameters
-             :let [_ (println parameter)
-                   name (->kebab-case-keyword name)
+             :let [name (->kebab-case-keyword name)
                    schema (make-schema definitions parameter)]]
          [(if required name (s/optional-key name))
           (if required schema (s/maybe schema))])
@@ -64,9 +63,7 @@
 (defn make-schema [definitions {:keys [name required type enum schema properties]}]
   (cond
     enum (apply s/enum enum)
-
     (= "string" type) s/Str
-
     (= "integer" type) s/Int
 
     (:$ref schema)
