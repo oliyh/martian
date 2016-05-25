@@ -6,7 +6,7 @@
             [martian.schema :as schema]
             [martian.protocols :refer [Martian url-for request-for]]))
 
-(defn- make-interceptors []
+(def default-interceptors
   [{:name ::method
     :leave (fn [{:keys [response handler] :as ctx}]
              (update ctx :response assoc :method (:method handler)))}
@@ -72,7 +72,6 @@
         parameters (:parameters swagger-definition)]
     {:path uri
      :path-parts path-parts
-     :interceptors (make-interceptors)
      :method method
      :path-schema (path-schema definitions parameters)
      :query-schema (query-schema definitions parameters)
@@ -104,7 +103,7 @@
       (request-for [this route-name] (request-for this route-name {}))
       (request-for [this route-name params]
         (when-let [handler (first (filter #(= route-name (:route-name %)) tripod))]
-          (let [ctx (tc/enqueue* {} (:interceptors handler))]
+          (let [ctx (tc/enqueue* {} default-interceptors)]
             (:response (tc/execute
                         (assoc ctx
                                :path-for (comp (partial str api-root) path-for)
