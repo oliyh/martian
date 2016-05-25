@@ -105,6 +105,6 @@
       (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema"
                             (request-for :load-pet {:id "one"})))
 
-      #_(is (thrown-with-msg? Throwable #"Value does not match schema"
+      (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema"
                             (request-for :create-pet {:pet {:id "one"
                                                             :name 1}}))))))

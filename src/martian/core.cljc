@@ -36,9 +36,11 @@
 
    {:name ::body-params
     :leave (fn [{:keys [request response handler] :as ctx}]
-             (if-let [body-param (get (:params request) (:body-param handler))]
-               (update ctx :response assoc :body body-param)
-               ctx))}])
+             (let [body-param (:body-param handler)
+                   coerced-params (coerce-params body-param (:params request))]
+               (if (not-empty coerced-params)
+                 (update ctx :response assoc :body coerced-params)
+                 ctx)))}])
 
 (defn- sanitise [x]
   (if (string? x)
@@ -48,9 +50,10 @@
         (string/replace-first ":" "")
         (string/replace-first "/" ""))))
 
-(defn- make-schema [swagger-params]
-  (->> (for [{:keys [name required type enum]} swagger-params
-             :let [name (->kebab-case-keyword name)]]
+(defn make-schema [definitions swagger-params]
+  (->> (for [{:keys [name required type enum schema properties] :as p} swagger-params
+             :let [_ (println p)
+                   name (->kebab-case-keyword name)]]
          [(if required name (s/optional-key name))
           (cond
             enum
@@ -62,26 +65,37 @@
             (= "integer" type)
             s/Int
 
+            (:$ref schema)
+            (first (vals (make-schema definitions
+                                      (some->> (:$ref schema)
+                                               (re-find #"#/definitions/(.*)")
+                                               second
+                                               keyword
+                                               definitions
+                                               (merge {:name name})
+                                               (vector)))))
+
             (= "object" type)
-            {s/Any s/Any}
+            (make-schema definitions (map (fn [[name p]]
+                                            (assoc p :name name)) properties))
 
             :default
             s/Any)])
        (into {})))
 
-(defn- body-param [swagger-params]
+(defn- body-param [definitions swagger-params]
   (when-let [body-param (first (filter #(= "body" (:in %)) swagger-params))]
-    (keyword (string/lower-case (:name body-param)))))
+    (make-schema definitions [body-param])))
 
-(defn- path-params [swagger-params]
+(defn- path-params [definitions swagger-params]
   (when-let [path-params (not-empty (filter #(= "path" (:in %)) swagger-params))]
-    (make-schema path-params)))
+    (make-schema definitions path-params)))
 
-(defn- query-params [swagger-params]
+(defn- query-params [definitions swagger-params]
   (when-let [query-params (not-empty (filter #(= "query" (:in %)) swagger-params))]
-    (make-schema query-params)))
+    (make-schema definitions query-params)))
 
-(defn- ->tripod-route [url-pattern [method swagger-definition]]
+(defn- ->tripod-route [definitions url-pattern [method swagger-definition]]
   (let [url-pattern (sanitise url-pattern)
         trailing-slash? (re-find #"/$" url-pattern)
         path-parts (as->
@@ -96,9 +110,9 @@
     {:path uri
      :path-parts path-parts
      :interceptors (make-interceptors uri method swagger-definition)
-     :path-params (path-params (:parameters swagger-definition))
-     :query-params (query-params (:parameters swagger-definition))
-     :body-param (body-param (:parameters swagger-definition))
+     :path-params (path-params definitions (:parameters swagger-definition))
+     :query-params (query-params definitions (:parameters swagger-definition))
+     :body-param (body-param definitions (:parameters swagger-definition))
      ;; todo path constraints - required?
      ;; :path-constraints {:id "(\\d+)"},
      ;; {:in "path", :name "id", :description "", :required true, :type "string", :format "uuid"
@@ -108,7 +122,10 @@
   (let [swagger-json (keywordize-keys swagger-json)]
     (reduce-kv
      (fn [tripod-routes url-pattern swagger-handlers]
-       (into tripod-routes (map (partial ->tripod-route url-pattern) swagger-handlers)))
+       (into tripod-routes (map (partial ->tripod-route
+                                         (:definitions swagger-json)
+                                         url-pattern)
+                                swagger-handlers)))
      []
      (:paths swagger-json))))
 
