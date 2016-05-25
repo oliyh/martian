@@ -12,7 +12,7 @@
   (some->> (keys params)
            (map s/explicit-schema-key)
            (select-keys data)
-           (s/validate params)))
+           ((sc/coercer! params sc/string-coercion-matcher))))
 
 (defn- make-interceptors [uri method swagger-definition]
   [{:name ::method
