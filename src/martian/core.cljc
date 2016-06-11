@@ -35,7 +35,7 @@
                  ctx)))}])
 
 (defn- body-schema [definitions swagger-params]
-  (when-let [body-params (filter #(= "body" (:in %)) swagger-params)]
+  (when-let [body-params (not-empty (filter #(= "body" (:in %)) swagger-params))]
     (schema/schemas-for-parameters definitions body-params)))
 
 (defn- path-schema [definitions swagger-params]
