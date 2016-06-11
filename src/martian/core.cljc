@@ -1,6 +1,7 @@
 (ns martian.core
   (:require [tripod.path :as tp]
             [tripod.context :as tc]
+            [camel-snake-kebab.core :refer [->kebab-case-keyword]]
             [clojure.string :as string]
             [clojure.walk :refer [keywordize-keys]]
             [martian.schema :as schema]
