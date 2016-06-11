@@ -110,7 +110,7 @@
                                :request {:params params}
                                :handler handler)))))))))
 
-(defn bootstrap
+(defn bootstrap-swagger
   "Creates a routing function which should be supplied with an api-root and a swagger spec
 
    (let [url-for (bootstrap \"https://api.org\" swagger-spec)]

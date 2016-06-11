@@ -33,7 +33,7 @@
                                     :name {:type "string"}}}}})
 
 (deftest url-for-test
-  (let [m (martian/bootstrap "https://api.org" swagger-definition)
+  (let [m (martian/bootstrap-swagger "https://api.org" swagger-definition)
         url-for (partial url-for m)]
 
     (is (= "https://api.org/pets/123" (url-for :load-pet {:id 123})))
@@ -49,7 +49,7 @@
                   "/pets/"                             {"get" {"operationId" "all-pets"}
                                                         "post" {"operationId" "create-pet"}}
                   "/users/{user-id}/orders/{order-id}" {"get" {"operationId" "order"}}}}
-        m (martian/bootstrap "https://api.org" swagger-definition)
+        m (martian/bootstrap-swagger "https://api.org" swagger-definition)
         url-for (partial url-for m)]
 
     (is (= "https://api.org/pets/123" (url-for :load-pet {:id 123})))
@@ -72,7 +72,7 @@
        (is (= "https://api.org/users/123/orders/456" (.urlFor m "order" {"user-id" 123 "order-id" 456}))))))
 
 (deftest request-for-test
-  (let [m (martian/bootstrap "https://api.org" swagger-definition)
+  (let [m (martian/bootstrap-swagger "https://api.org" swagger-definition)
         request-for (partial request-for m)]
 
     (is (= {:method :get
