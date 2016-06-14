@@ -23,6 +23,7 @@
                                                                                 :name "Pet"
                                                                                 :required true
                                                                                 :schema {:$ref "#/definitions/Pet"}}]}}
+           (keyword "/{colour}-{animal}/list")            {:get {:operationId "pet-search"}}
            (keyword "/users/{user-id}/orders/{order-id}") {:get {:operationId "order"
                                                                  :parameters [{:in "path"
                                                                                :name "user-id"}
