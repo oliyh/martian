@@ -17,7 +17,7 @@
   "Given a collection of swagger parameters returns a schema map"
   [definitions parameters]
   (->> (for [{:keys [name required] :as parameter} parameters
-             :let [name (->kebab-case-keyword name)
+             :let [name (keyword name)
                    schema (make-schema definitions parameter)]]
          [(if required name (s/optional-key name))
           (if required schema (s/maybe schema))])
