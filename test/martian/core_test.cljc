@@ -29,8 +29,10 @@
                                                                               {:in "path"
                                                                                :name "order-id"}]}}}
    :definitions {:Pet {:type "object"
-                       :properties {:id {:type "integer"}
-                                    :name {:type "string"}}}}})
+                       :properties {:id {:type "integer"
+                                         :required true}
+                                    :name {:type "string"
+                                           :required true}}}}})
 
 (deftest url-for-test
   (let [m (martian/bootstrap-swagger "https://api.org" swagger-definition)
@@ -96,8 +98,8 @@
     (is (= {:method :post
             :uri "https://api.org/pets/"
             :body {:id 123 :name "charlie"}}
-           (request-for :create-pet {:pet {:id 123 :name "charlie"}})
-           (request-for :create-pet {:pet {:id "123" :name "charlie"}})))
+           (request-for :create-pet {:id 123 :name "charlie"})
+           (request-for :create-pet {:id "123" :name "charlie"})))
 
     (testing "exceptions"
       (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema"
@@ -110,5 +112,5 @@
                             (request-for :create-pet {:pet {:id "one"
                                                             :name 1}})))
 
-      (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema: \{:pet missing-required-key\}"
+      (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema: \{:id missing-required-key, :name missing-required-key\}"
                             (request-for :create-pet))))))

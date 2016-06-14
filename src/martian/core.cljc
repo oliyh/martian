@@ -32,12 +32,12 @@
              (let [body-schema (:body-schema handler)
                    coerced-params (schema/coerce-data body-schema (:params request))]
                (if (not-empty coerced-params)
-                 (update ctx :response assoc :body (first (vals coerced-params)))
+                 (update ctx :response assoc :body coerced-params)
                  ctx)))}])
 
 (defn- body-schema [definitions swagger-params]
-  (when-let [body-params (not-empty (filter #(= "body" (:in %)) swagger-params))]
-    (schema/schemas-for-parameters definitions body-params)))
+  (when-let [body-param (first (not-empty (filter #(= "body" (:in %)) swagger-params)))]
+    (schema/make-schema definitions body-param)))
 
 (defn- path-schema [definitions swagger-params]
   (when-let [path-params (not-empty (filter #(= "path" (:in %)) swagger-params))]
