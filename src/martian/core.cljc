@@ -16,7 +16,7 @@
     :leave (fn [{:keys [request response path-for handler] :as ctx}]
              (let [path-schema (:path-schema handler)]
                (update ctx :response
-                       assoc :uri (path-for (:route-name handler)
+                       assoc :uri (path-for (:path-parts handler)
                                             (schema/coerce-data path-schema (:params request))))))}
 
    {:name ::query-params
@@ -49,27 +49,21 @@
 
 (defn- sanitise [x]
   (if (string? x)
-    (string/replace-first x "/" "")
+    x
     ;; consistent across clj and cljs
     (-> (str x)
-        (string/replace-first ":" "")
-        (string/replace-first "/" ""))))
+        (string/replace-first ":" ""))))
 
 (defn- tokenise-path [url-pattern]
   (let [url-pattern (sanitise url-pattern)
-        trailing-slash? (re-find #"/$" url-pattern)]
-    (as->
-        (string/split url-pattern #"/") pp
-      (mapv (fn [part]
-              (if-let [[_ token] (re-matches #"\{(.*)\}" part)]
-                (keyword token)
-                part)) pp)
-      (into [""] pp)
-      (concat pp (when trailing-slash? [""])))))
+        parts (map first (re-seq #"([^{}]+|\{.+?\})" url-pattern))]
+    (map #(if-let [param-name (second (re-matches #"^\{(.*)\}" %))]
+            (keyword param-name)
+            %) parts)))
 
 (defn- ->tripod-route [definitions url-pattern [method swagger-definition]]
   (let [path-parts (tokenise-path url-pattern)
-        uri (string/join "/" (map str path-parts))
+        uri (string/join (map str path-parts))
         parameters (:parameters swagger-definition)]
     {:path uri
      :path-parts path-parts
@@ -93,17 +87,21 @@
      []
      (:paths swagger-json))))
 
+(defn- path-for [path-parts params]
+  (let [path-params (filter keyword? path-parts)]
+    (string/join (map #(get params % %) path-parts))))
+
 (defn- build-instance [api-root swagger-json]
-  (let [tripod (swagger->tripod swagger-json)
-        path-for (tp/path-for-routes tripod)]
+  (let [tripod (swagger->tripod swagger-json)]
     (reify Martian
       (url-for [this route-name] (url-for this route-name {}))
       (url-for [this route-name params]
-        (str api-root (apply path-for (keyword route-name) [(keywordize-keys params)])))
+        (when-let [handler (first (filter #(= (keyword route-name) (:route-name %)) tripod))]
+          (str api-root (path-for (:path-parts handler) (keywordize-keys params)))))
 
       (request-for [this route-name] (request-for this route-name {}))
       (request-for [this route-name params]
-        (when-let [handler (first (filter #(= route-name (:route-name %)) tripod))]
+        (when-let [handler (first (filter #(= (keyword route-name) (:route-name %)) tripod))]
           (let [ctx (tc/enqueue* {} default-interceptors)]
             (:response (tc/execute
                         (assoc ctx

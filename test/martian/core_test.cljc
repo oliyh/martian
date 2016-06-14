@@ -23,6 +23,7 @@
                                                                                 :name "Pet"
                                                                                 :required true
                                                                                 :schema {:$ref "#/definitions/Pet"}}]}}
+           (keyword "/{colour}-{animal}/list")            {:get {:operationId "pet-search"}}
            (keyword "/users/{user-id}/orders/{order-id}") {:get {:operationId "order"
                                                                  :parameters [{:in "path"
                                                                                :name "user-id"}
@@ -41,7 +42,8 @@
     (is (= "https://api.org/pets/123" (url-for :load-pet {:id 123})))
     (is (= "https://api.org/pets/" (url-for :all-pets)))
     (is (= "https://api.org/pets/" (url-for :create-pet)))
-    (is (= "https://api.org/users/123/orders/456" (url-for :order {:user-id 123 :order-id 456})))))
+    (is (= "https://api.org/users/123/orders/456" (url-for :order {:user-id 123 :order-id 456})))
+    (is (= "https://api.org/yellow-canaries/list" (url-for :pet-search {:colour "yellow" :animal "canaries"})))))
 
 (deftest string-keys-test
   (let [swagger-definition
