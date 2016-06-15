@@ -1,6 +1,5 @@
 (ns martian.core
-  (:require [tripod.path :as tp]
-            [tripod.context :as tc]
+  (:require [tripod.context :as tc]
             [camel-snake-kebab.core :refer [->kebab-case-keyword]]
             [clojure.string :as string]
             [clojure.walk :refer [keywordize-keys]]
@@ -61,7 +60,7 @@
             (keyword param-name)
             %) parts)))
 
-(defn- ->tripod-route [definitions url-pattern [method swagger-definition]]
+(defn- ->handler [definitions url-pattern [method swagger-definition]]
   (let [path-parts (tokenise-path url-pattern)
         uri (string/join (map str path-parts))
         parameters (:parameters swagger-definition)]
@@ -76,14 +75,14 @@
      ;; {:in "path", :name "id", :description "", :required true, :type "string", :format "uuid"
      :route-name (->kebab-case-keyword (:operationId swagger-definition))}))
 
-(defn- swagger->tripod [swagger-json]
+(defn- swagger->handlers [swagger-json]
   (let [swagger-json (keywordize-keys swagger-json)]
     (reduce-kv
-     (fn [tripod-routes url-pattern swagger-handlers]
-       (into tripod-routes (map (partial ->tripod-route
-                                         (:definitions swagger-json)
-                                         url-pattern)
-                                swagger-handlers)))
+     (fn [handlers url-pattern swagger-handlers]
+       (into handlers (map (partial ->handler
+                                    (:definitions swagger-json)
+                                    url-pattern)
+                           swagger-handlers)))
      []
      (:paths swagger-json))))
 
@@ -91,17 +90,20 @@
   (let [path-params (filter keyword? path-parts)]
     (string/join (map #(get params % %) path-parts))))
 
+(defn- find-handler [handlers route-name]
+  (first (filter #(= (keyword route-name) (:route-name %)) handlers)))
+
 (defn- build-instance [api-root swagger-json]
-  (let [tripod (swagger->tripod swagger-json)]
+  (let [handlers (swagger->handlers swagger-json)]
     (reify Martian
       (url-for [this route-name] (url-for this route-name {}))
       (url-for [this route-name params]
-        (when-let [handler (first (filter #(= (keyword route-name) (:route-name %)) tripod))]
+        (when-let [handler (find-handler handlers route-name)]
           (str api-root (path-for (:path-parts handler) (keywordize-keys params)))))
 
       (request-for [this route-name] (request-for this route-name {}))
       (request-for [this route-name params]
-        (when-let [handler (first (filter #(= (keyword route-name) (:route-name %)) tripod))]
+        (when-let [handler (find-handler handlers route-name)]
           (let [ctx (tc/enqueue* {} default-interceptors)]
             (:response (tc/execute
                         (assoc ctx
