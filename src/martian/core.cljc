@@ -49,22 +49,21 @@
 
 (defn- sanitise [x]
   (if (string? x)
-    (string/replace-first x "/" "")
+    x
     ;; consistent across clj and cljs
     (-> (str x)
-        (string/replace-first ":" "")
-        (string/replace-first "/" ""))))
+        (string/replace-first ":" ""))))
 
 (defn- tokenise-path [url-pattern]
-  (let [parts (map first (re-seq #"([^{}]+|\{.+?\})" url-pattern))]
-    (println parts)
+  (let [url-pattern (sanitise url-pattern)
+        parts (map first (re-seq #"([^{}]+|\{.+?\})" url-pattern))]
     (map #(if-let [param-name (second (re-matches #"^\{(.*)\}" %))]
             (keyword param-name)
             %) parts)))
 
 (defn- ->tripod-route [definitions url-pattern [method swagger-definition]]
   (let [path-parts (tokenise-path url-pattern)
-        uri (string/join "/" (map str path-parts))
+        uri (string/join (map str path-parts))
         parameters (:parameters swagger-definition)]
     {:path uri
      :path-parts path-parts
@@ -89,8 +88,6 @@
      (:paths swagger-json))))
 
 (defn- path-for [path-parts params]
-  (println path-parts)
-  (println params)
   (let [path-params (filter keyword? path-parts)]
     (string/join (map #(get params % %) path-parts))))
 
