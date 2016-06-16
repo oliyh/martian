@@ -40,6 +40,14 @@
                  (update ctx :request assoc :body coerced-params)
                  ctx)))}
 
+   {:name ::form-params
+    :enter (fn [{:keys [request handler] :as ctx}]
+             (let [form-schema (:form-schema handler)
+                   coerced-params (schema/coerce-data form-schema (:params request))]
+               (if (not-empty coerced-params)
+                 (update ctx :request assoc :form-params coerced-params)
+                 ctx)))}
+
    {:name ::header-params
     :enter (fn [{:keys [request handler] :as ctx}]
              (let [headers-schema (:headers-schema handler)
@@ -51,6 +59,10 @@
 (defn- body-schema [definitions swagger-params]
   (when-let [body-param (first (not-empty (filter #(= "body" (:in %)) swagger-params)))]
     (schema/make-schema definitions body-param)))
+
+(defn- form-schema [definitions swagger-params]
+  (when-let [form-params (not-empty (filter #(= "formData" (:in %)) swagger-params))]
+    (schema/schemas-for-parameters definitions form-params)))
 
 (defn- path-schema [definitions swagger-params]
   (when-let [path-params (not-empty (filter #(= "path" (:in %)) swagger-params))]
@@ -88,6 +100,7 @@
      :path-schema (path-schema definitions parameters)
      :query-schema (query-schema definitions parameters)
      :body-schema (body-schema definitions parameters)
+     :form-schema (form-schema definitions parameters)
      :headers-schema (headers-schema definitions parameters)
      ;; todo path constraints - required?
      ;; :path-constraints {:id "(\\d+)"},

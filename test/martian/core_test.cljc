@@ -22,7 +22,14 @@
                                                                   :parameters [{:in "body"
                                                                                 :name "Pet"
                                                                                 :required true
-                                                                                :schema {:$ref "#/definitions/Pet"}}]}}
+                                                                                :schema {:$ref "#/definitions/Pet"}}]}
+                                                           :put {:operationId "update-pet"
+                                                                  :parameters [{:in "formData"
+                                                                                :name "id"
+                                                                                :required true}
+                                                                               {:in "formData"
+                                                                                :name "name"
+                                                                                :required true}]}}
            (keyword "/{colour}-{animal}/list")            {:get {:operationId "pet-search"}}
            (keyword "/users/{user-id}/orders/{order-id}") {:get {:operationId "order"
                                                                  :parameters [{:in "path"
@@ -105,6 +112,11 @@
             :body {:id 123 :name "charlie"}}
            (request-for :create-pet {:id 123 :name "charlie"})
            (request-for :create-pet {:id "123" :name "charlie"})))
+
+    (is (= {:method :put
+            :uri "https://api.org/pets/"
+            :form-params {:id 123 :name "nigel"}}
+           (request-for :update-pet {:id 123 :name "nigel"})))
 
     (testing "exceptions"
       (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema"
