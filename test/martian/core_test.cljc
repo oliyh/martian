@@ -116,3 +116,15 @@
 
       (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema: \{:id missing-required-key, :name missing-required-key\}"
                             (request-for :create-pet))))))
+
+(deftest with-interceptors-test
+  (let [auth-headers-interceptor {:name ::auth-headers
+                                  :enter (fn [ctx]
+                                           (update-in ctx [:request :headers] merge {"auth-token" "1234-secret"}))}
+        m (martian/bootstrap-swagger "https://api.org" swagger-definition {:interceptors [auth-headers-interceptor]})
+        request-for (partial request-for m)]
+
+    (is (= {:method :get
+            :uri "https://api.org/pets/123"
+            :headers {"auth-token" "1234-secret"}}
+           (request-for :load-pet {:id 123})))))

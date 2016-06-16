@@ -20,6 +20,10 @@ public class Martian {
       this.m = (martian.protocols.Martian) BOOTSTRAP_SWAGGER.invoke(apiRoot, swaggerJson);
    }
 
+   public Martian(String apiRoot, Map<String, Object> swaggerJson, Map<String, Object> opts) {
+      this.m = (martian.protocols.Martian) BOOTSTRAP_SWAGGER.invoke(apiRoot, swaggerJson, opts);
+   }
+
    public String urlFor (String routeName) {
       return (String) m.url_for(routeName);
    }

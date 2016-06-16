@@ -7,31 +7,37 @@
             [martian.protocols :refer [Martian url-for request-for]]))
 
 (def default-interceptors
-  [{:name ::method
-    :leave (fn [{:keys [response handler] :as ctx}]
-             (update ctx :response assoc :method (:method handler)))}
+  [{:name ::request-building-handler
+    :leave (fn [{:keys [request response] :as ctx}]
+             (if (nil? response)
+               (assoc ctx :response (dissoc request :params))
+               ctx))}
+
+   {:name ::method
+    :enter (fn [{:keys [requestB handler] :as ctx}]
+             (update ctx :request assoc :method (:method handler)))}
 
    {:name ::uri
-    :leave (fn [{:keys [request response path-for handler] :as ctx}]
+    :enter (fn [{:keys [request path-for handler] :as ctx}]
              (let [path-schema (:path-schema handler)]
-               (update ctx :response
+               (update ctx :request
                        assoc :uri (path-for (:path-parts handler)
                                             (schema/coerce-data path-schema (:params request))))))}
 
    {:name ::query-params
-    :leave (fn [{:keys [request response handler] :as ctx}]
+    :enter (fn [{:keys [request handler] :as ctx}]
              (let [query-schema (:query-schema handler)
                    coerced-params (schema/coerce-data query-schema (:params request))]
                (if (not-empty coerced-params)
-                 (update ctx :response assoc :query-params coerced-params)
+                 (update ctx :request assoc :query-params coerced-params)
                  ctx)))}
 
    {:name ::body-params
-    :leave (fn [{:keys [request response handler] :as ctx}]
+    :enter (fn [{:keys [request handler] :as ctx}]
              (let [body-schema (:body-schema handler)
                    coerced-params (schema/coerce-data body-schema (:params request))]
                (if (not-empty coerced-params)
-                 (update ctx :response assoc :body coerced-params)
+                 (update ctx :request assoc :body coerced-params)
                  ctx)))}])
 
 (defn- body-schema [definitions swagger-params]
@@ -76,15 +82,14 @@
      :route-name (->kebab-case-keyword (:operationId swagger-definition))}))
 
 (defn- swagger->handlers [swagger-json]
-  (let [swagger-json (keywordize-keys swagger-json)]
-    (reduce-kv
-     (fn [handlers url-pattern swagger-handlers]
-       (into handlers (map (partial ->handler
-                                    (:definitions swagger-json)
-                                    url-pattern)
-                           swagger-handlers)))
-     []
-     (:paths swagger-json))))
+  (reduce-kv
+   (fn [handlers url-pattern swagger-handlers]
+     (into handlers (map (partial ->handler
+                                  (:definitions swagger-json)
+                                  url-pattern)
+                         swagger-handlers)))
+   []
+   (:paths swagger-json)))
 
 (defn- path-for [path-parts params]
   (let [path-params (filter keyword? path-parts)]
@@ -93,7 +98,7 @@
 (defn- find-handler [handlers route-name]
   (first (filter #(= (keyword route-name) (:route-name %)) handlers)))
 
-(defn- build-instance [api-root swagger-json]
+(defn- build-instance [api-root swagger-json {:keys [interceptors]}]
   (let [handlers (swagger->handlers swagger-json)]
     (reify Martian
       (url-for [this route-name] (url-for this route-name {}))
@@ -104,7 +109,8 @@
       (request-for [this route-name] (request-for this route-name {}))
       (request-for [this route-name params]
         (when-let [handler (find-handler handlers route-name)]
-          (let [ctx (tc/enqueue* {} default-interceptors)]
+          (let [params (keywordize-keys params)
+                ctx (tc/enqueue* {} (concat default-interceptors interceptors))]
             (:response (tc/execute
                         (assoc ctx
                                :path-for (comp (partial str api-root) path-for)
@@ -118,5 +124,5 @@
      (url-for :load-pet {:id 123}))
 
    ;; => https://api.org/pets/123"
-  [api-root swagger-json]
-  (build-instance api-root swagger-json))
+  [api-root swagger-json & [opts]]
+  (build-instance api-root (keywordize-keys swagger-json) (keywordize-keys opts)))
