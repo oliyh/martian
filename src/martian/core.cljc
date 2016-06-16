@@ -2,7 +2,7 @@
   (:require [tripod.context :as tc]
             [camel-snake-kebab.core :refer [->kebab-case-keyword]]
             [clojure.string :as string]
-            [clojure.walk :refer [keywordize-keys]]
+            [clojure.walk :refer [keywordize-keys stringify-keys]]
             [martian.schema :as schema]
             [martian.protocols :refer [Martian url-for request-for]]))
 
@@ -38,6 +38,14 @@
                    coerced-params (schema/coerce-data body-schema (:params request))]
                (if (not-empty coerced-params)
                  (update ctx :request assoc :body coerced-params)
+                 ctx)))}
+
+   {:name ::header-params
+    :enter (fn [{:keys [request handler] :as ctx}]
+             (let [headers-schema (:headers-schema handler)
+                   coerced-params (schema/coerce-data headers-schema (:params request))]
+               (if (not-empty coerced-params)
+                 (update ctx :request assoc :headers (stringify-keys coerced-params))
                  ctx)))}])
 
 (defn- body-schema [definitions swagger-params]
@@ -50,6 +58,10 @@
 
 (defn- query-schema [definitions swagger-params]
   (when-let [query-params (not-empty (filter #(= "query" (:in %)) swagger-params))]
+    (schema/schemas-for-parameters definitions query-params)))
+
+(defn- headers-schema [definitions swagger-params]
+  (when-let [query-params (not-empty (filter #(= "header" (:in %)) swagger-params))]
     (schema/schemas-for-parameters definitions query-params)))
 
 (defn- sanitise [x]
@@ -76,6 +88,7 @@
      :path-schema (path-schema definitions parameters)
      :query-schema (query-schema definitions parameters)
      :body-schema (body-schema definitions parameters)
+     :headers-schema (headers-schema definitions parameters)
      ;; todo path constraints - required?
      ;; :path-constraints {:id "(\\d+)"},
      ;; {:in "path", :name "id", :description "", :required true, :type "string", :format "uuid"

@@ -28,7 +28,9 @@
                                                                  :parameters [{:in "path"
                                                                                :name "user-id"}
                                                                               {:in "path"
-                                                                               :name "order-id"}]}}}
+                                                                               :name "order-id"}
+                                                                              {:in "header"
+                                                                               :name "auth-token"}]}}}
    :definitions {:Pet {:type "object"
                        :properties {:id {:type "integer"
                                          :required true}
@@ -94,8 +96,9 @@
            (request-for :all-pets {:sort "asc"})))
 
     (is (= {:method :get
-            :uri "https://api.org/users/123/orders/234"}
-           (request-for :order {:user-id 123 :order-id 234})))
+            :uri "https://api.org/users/123/orders/234"
+            :headers {"auth-token" "abc-1234"}}
+           (request-for :order {:user-id 123 :order-id 234 :auth-token "abc-1234"})))
 
     (is (= {:method :post
             :uri "https://api.org/pets/"
