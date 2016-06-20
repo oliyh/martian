@@ -89,32 +89,32 @@
         request-for (partial request-for m)]
 
     (is (= {:method :get
-            :uri "https://api.org/pets/123"}
+            :url "https://api.org/pets/123"}
            (request-for :load-pet {:id 123})
            (request-for :load-pet {:id "123"})))
 
     (is (= {:method :get
-            :uri "https://api.org/pets/"}
+            :url "https://api.org/pets/"}
            (request-for :all-pets {})))
 
     (is (= {:method :get
-            :uri "https://api.org/pets/"
+            :url "https://api.org/pets/"
             :query-params {:sort "asc"}}
            (request-for :all-pets {:sort "asc"})))
 
     (is (= {:method :get
-            :uri "https://api.org/users/123/orders/234"
+            :url "https://api.org/users/123/orders/234"
             :headers {"auth-token" "abc-1234"}}
            (request-for :order {:user-id 123 :order-id 234 :auth-token "abc-1234"})))
 
     (is (= {:method :post
-            :uri "https://api.org/pets/"
+            :url "https://api.org/pets/"
             :body {:id 123 :name "charlie"}}
            (request-for :create-pet {:id 123 :name "charlie"})
            (request-for :create-pet {:id "123" :name "charlie"})))
 
     (is (= {:method :put
-            :uri "https://api.org/pets/"
+            :url "https://api.org/pets/"
             :form-params {:id 123 :name "nigel"}}
            (request-for :update-pet {:id 123 :name "nigel"})))
 
@@ -140,6 +140,6 @@
         request-for (partial request-for m)]
 
     (is (= {:method :get
-            :uri "https://api.org/pets/123"
+            :url "https://api.org/pets/123"
             :headers {"auth-token" "1234-secret"}}
            (request-for :load-pet {:id 123})))))

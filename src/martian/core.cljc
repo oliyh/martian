@@ -14,14 +14,14 @@
                ctx))}
 
    {:name ::method
-    :enter (fn [{:keys [requestB handler] :as ctx}]
+    :enter (fn [{:keys [handler] :as ctx}]
              (update ctx :request assoc :method (:method handler)))}
 
-   {:name ::uri
+   {:name ::url
     :enter (fn [{:keys [request path-for handler] :as ctx}]
              (let [path-schema (:path-schema handler)]
                (update ctx :request
-                       assoc :uri (path-for (:path-parts handler)
+                       assoc :url (path-for (:path-parts handler)
                                             (schema/coerce-data path-schema (:params request))))))}
 
    {:name ::query-params
