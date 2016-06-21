@@ -1,5 +1,14 @@
 # martian
-Build routes on your Clojure/Clojurescript/Java client to a Swagger API and avoid hard coded routes
+Build and execute requests on your Clojure/Clojurescript/Java client to a Swagger API without the minutiae
+of HTTP verbs, route parameters, query parameters and the like.
+
+Martian allows you to abstract yourself from the fine details of a Swagger implementation and simply call
+operations with parameters.
+
+## Latest version
+[![Clojars Project](https://img.shields.io/clojars/v/martian.svg)](https://clojars.org/martian)
+[![Clojars Project](https://img.shields.io/clojars/v/martian-clj-http.svg)](https://clojars.org/martian-clj-http)
+[![Clojars Project](https://img.shields.io/clojars/v/martian-httpkit.svg)](https://clojars.org/martian-httpkit)
 
 ## Example
 Given a [Swagger API definition](https://pedestal-api.herokuapp.com/swagger.json)
