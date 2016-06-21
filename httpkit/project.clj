@@ -3,7 +3,8 @@
   :url "https://github.com/oliyh/martian"
   :license {:name "The MIT License"
             :url "http://opensource.org/licenses/MIT"}
-  :dependencies [[martian "0.1.0-SNAPSHOT"]
+  :plugins [[lein-modules "0.3.11"]]
+  :dependencies [[martian :version]
                  [http-kit "2.1.19"]
                  [cheshire "5.6.2"]]
   :java-source-paths ["src"]
