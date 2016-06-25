@@ -7,8 +7,13 @@ operations with parameters.
 
 ## Latest version
 [![Clojars Project](https://img.shields.io/clojars/v/martian.svg)](https://clojars.org/martian)
+
 [![Clojars Project](https://img.shields.io/clojars/v/martian-clj-http.svg)](https://clojars.org/martian-clj-http)
+
 [![Clojars Project](https://img.shields.io/clojars/v/martian-httpkit.svg)](https://clojars.org/martian-httpkit)
+
+[![Clojars Project](https://img.shields.io/clojars/v/martian-test.svg)](https://clojars.org/martian-test)
+
 
 ## Example
 Given a [Swagger API definition](https://pedestal-api.herokuapp.com/swagger.json)
