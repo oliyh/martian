@@ -4,7 +4,8 @@
             [clojure.string :as string]
             [clojure.walk :refer [keywordize-keys stringify-keys]]
             [martian.schema :as schema]
-            [martian.protocols :refer [Martian url-for request-for]]))
+            [martian.protocols :refer [Martian url-for request-for]]
+            [schema.core :as s]))
 
 (def default-interceptors
   [{:name ::request-building-handler
@@ -76,6 +77,11 @@
   (when-let [query-params (not-empty (filter #(= "header" (:in %)) swagger-params))]
     (schema/schemas-for-parameters definitions query-params)))
 
+(defn- response-schemas [definitions swagger-responses]
+  (for [[status response] swagger-responses]
+    {:status (s/eq status)
+     :body (schema/make-schema definitions response)}))
+
 (defn- sanitise [x]
   (if (string? x)
     x
@@ -102,6 +108,7 @@
      :body-schema (body-schema definitions parameters)
      :form-schema (form-schema definitions parameters)
      :headers-schema (headers-schema definitions parameters)
+     :response-schemas (response-schemas definitions (:responses swagger-definition))
      ;; todo path constraints - required?
      ;; :path-constraints {:id "(\\d+)"},
      ;; {:in "path", :name "id", :description "", :required true, :type "string", :format "uuid"
