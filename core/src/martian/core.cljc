@@ -109,6 +109,7 @@
      :form-schema (form-schema definitions parameters)
      :headers-schema (headers-schema definitions parameters)
      :response-schemas (response-schemas definitions (:responses swagger-definition))
+     :swagger-definition swagger-definition
      ;; todo path constraints - required?
      ;; :path-constraints {:id "(\\d+)"},
      ;; {:in "path", :name "id", :description "", :required true, :type "string", :format "uuid"
