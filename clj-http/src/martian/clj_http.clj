@@ -1,6 +1,6 @@
 (ns martian.clj-http
-  (require [clj-http.client :as http]
-           [martian.core :as martian]))
+  (:require [clj-http.client :as http]
+            [martian.core :as martian]))
 
 (def perform-request
   {:name ::perform-request
