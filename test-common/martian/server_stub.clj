@@ -52,15 +52,17 @@
        ["/swagger.json" {:get api/swagger-json}]]]]))
 
 (def service
-  {:env                      :dev
-   ::bootstrap/routes        #(deref #'routes)
+  {:env                        :dev
+   ::bootstrap/routes          #(deref #'routes)
    ;; linear-search, and declaring the swagger-ui handler last in the routes,
    ;; is important to avoid the splat param for the UI matching API routes
-   ::bootstrap/router        :linear-search
-   ::bootstrap/resource-path "/public"
-   ::bootstrap/type          :jetty
-   ::bootstrap/port          8888
-   ::bootstrap/join?         false})
+   ::bootstrap/router          :linear-search
+   ::bootstrap/resource-path   "/public"
+   ::bootstrap/type            :jetty
+   ::bootstrap/port            8888
+   ::bootstrap/join?           false
+   ::bootstrap/allowed-origins {:creds true
+                                :allowed-origins (constantly true)}})
 
 (def swagger-url (format "http://localhost:%s/swagger.json" (::bootstrap/port service)))
 

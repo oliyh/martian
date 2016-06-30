@@ -6,3 +6,13 @@ machine:
 test:
   override:
     - lein test
+
+dependencies:
+  pre:
+    - phantomjs -v
+    - wget https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-1.9.8-linux-x86_64.tar.bz2
+    - sudo tar xvjf phantomjs-1.9.8-linux-x86_64.tar.bz2
+    - sudo mv phantomjs-1.9.8-linux-x86_64 /home/ubuntu/bin/
+    - sudo chmod a+x /home/ubuntu/bin/phantomjs-1.9.8-linux-x86_64
+    - sudo ln -s --force /home/ubuntu/bin/phantomjs-1.9.8-linux-x86_64/bin/phantomjs /usr/local/bin/phantomjs
+    - phantomjs -v
