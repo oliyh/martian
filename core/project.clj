@@ -18,11 +18,9 @@
                    :dependencies [[org.clojure/clojure "1.8.0"]
                                   [org.clojure/clojurescript "1.9.36"]
                                   [org.clojure/tools.reader "0.10.0"]
-                                  [com.cemerick/piggieback "0.2.1"]
-                                  [org.mozilla/rhino "1.7.7.1"]]
+                                  [com.cemerick/piggieback "0.2.1"]]
                    :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}}}
-  :aliases {"test" ["do" ["clean"] ["test"] ["doo" "rhino" "test" "once"]]}
-  :doo {:paths {:rhino "lein run -m org.mozilla.javascript.tools.shell.Main"}}
+  :aliases {"test" ["do" ["clean"] ["test"] ["doo" "nashorn" "test" "once"]]}
   :cljsbuild {:builds [{:id "test"
                         :source-paths ["src" "test"]
                         :compiler {:output-to "target/unit-test.js"
