@@ -7,8 +7,11 @@
   :dependencies [[martian :version]
                  [http-kit "2.1.19"]
                  [cheshire "5.6.2"]]
-  :java-source-paths ["src"]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.8.0"]]}
-             :dev {:exclusions [[org.clojure/tools.reader]]
+             :dev {:source-paths ["../test-common"]
+                   :exclusions [[org.clojure/tools.reader]]
                    :dependencies [[org.clojure/clojure "1.8.0"]
-                                  [org.clojure/tools.reader "0.10.0"]]}})
+                                  [org.clojure/tools.reader "0.10.0"]
+                                  [pedestal-api "0.3.0-SNAPSHOT"]
+                                  [io.pedestal/pedestal.service "0.5.0"]
+                                  [io.pedestal/pedestal.jetty "0.5.0"]]}})

@@ -14,7 +14,6 @@
                     (when (pos? port) port))}))
 
 (defn- json? [content-type]
-  (println content-type)
   (boolean (re-find #"application/json" content-type)))
 
 (def coerce-json
@@ -26,6 +25,15 @@
                                       json?)
                             (update @response :body json/decode keyword)
                             @response))))})
+
+(def encode-body
+  {:name ::encode-body
+   :enter (fn [{:keys [request] :as ctx}]
+            (if (and (:body request) (not (get-in request [:headers "Content-Type"])))
+              (-> ctx
+                  (update-in [:request :body] json/encode)
+                  (assoc-in [:request :headers "Content-Type"] "application/json"))
+              ctx))})
 
 (def perform-request
   {:name ::perform-request
@@ -41,4 +49,4 @@
                                         (json/decode body keyword)))
         {:keys [scheme server-name server-port]} (parse-url url)
         base-url (format "%s://%s%s%s" (name scheme) server-name (if server-port (str ":" server-port) "") (get swagger-definition :basePath ""))]
-    (martian/bootstrap-swagger base-url swagger-definition {:interceptors [coerce-json perform-request]})))
+    (martian/bootstrap-swagger base-url swagger-definition {:interceptors [coerce-json encode-body perform-request]})))
