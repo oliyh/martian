@@ -14,14 +14,16 @@ ensuring that your response handling code is also correct.
 
 ## Latest versions
 [![Clojars Project](https://img.shields.io/clojars/v/martian.svg)](https://clojars.org/martian)
-
 [![Clojars Project](https://img.shields.io/clojars/v/martian-clj-http.svg)](https://clojars.org/martian-clj-http)
-
 [![Clojars Project](https://img.shields.io/clojars/v/martian-httpkit.svg)](https://clojars.org/martian-httpkit)
-
 [![Clojars Project](https://img.shields.io/clojars/v/martian-cljs-http.svg)](https://clojars.org/martian-cljs-http)
-
 [![Clojars Project](https://img.shields.io/clojars/v/martian-test.svg)](https://clojars.org/martian-test)
+
+## Features
+- Bootstraps itself from just a Swagger url
+- Negotiates the most efficient content-type and handles serialisation and deserialisation
+- Extensible via interceptor pattern
+- Support for integration testing without requiring external HTTP stubs
 
 ## Example
 Given a [Swagger API definition](https://pedestal-api.herokuapp.com/swagger.json)
