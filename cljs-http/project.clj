@@ -18,7 +18,9 @@
                                   [pedestal-api "0.3.0-SNAPSHOT"]
                                   [io.pedestal/pedestal.service "0.5.0"]
                                   [io.pedestal/pedestal.jetty "0.5.0"]
-                                  [lein-doo "0.1.6"]]}}
+                                  [lein-doo "0.1.6"]
+                                  [com.cemerick/piggieback "0.2.1"]]}}
+  :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
   :aliases {"test" ["do" ["clean"] ["cljsbuild" "once" "test"] ["run" "-m" "martian.runner"]]}
   :cljsbuild {:builds [{:id "test"
                         :source-paths ["src" "test"]
