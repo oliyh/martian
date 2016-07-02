@@ -6,7 +6,8 @@
   :plugins [[lein-modules "0.3.11"]]
   :dependencies [[martian :version]
                  [http-kit "2.1.19"]
-                 [cheshire "5.6.2"]]
+                 [cheshire "5.6.2"]
+                 [com.cognitect/transit-cljs "0.8.237"]]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.8.0"]]}
              :dev {:source-paths ["../test-common"]
                    :exclusions [[org.clojure/tools.reader]]
