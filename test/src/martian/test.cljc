@@ -1,7 +1,6 @@
 (ns martian.test
   (:require [martian.core :as martian]
             [schema-generators.generators :as g]
-            [martian.schema :as schema]
             [schema.core :as s]))
 
 (defn- status-range [from to]
@@ -25,7 +24,6 @@
 (def generate-response
   {:name ::generate-response
    :enter (fn [{:keys [handler] :as ctx}]
-            (def h handler)
             (assoc ctx :response (make-response :random (:response-schemas handler))))})
 
 (def generate-error-response

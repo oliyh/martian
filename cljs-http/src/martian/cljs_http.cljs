@@ -6,7 +6,7 @@
             [cljs.reader :refer [read-string]])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
-(def ^:private supported-encodings
+(def supported-encodings
   ["application/transit+json"
    "application/edn"
    "application/json"])
@@ -60,8 +60,11 @@
    :enter (fn [{:keys [request] :as ctx}]
             (assoc ctx :response (http/request (-> request (dissoc :params)))))})
 
-(defn bootstrap-swagger [url & [params]]
-  (go (let [swagger-definition (:body (<! (http/get url (merge params {:as :json}))))
+(defn bootstrap-swagger [url & [{:keys [interceptors] :as params}]]
+  (go (let [swagger-definition (:body (<! (http/get url {:as :json})))
             {:keys [scheme server-name server-port]} (http/parse-url url)
             base-url (str (name scheme) "://" server-name (if server-port (str ":" server-port) "") (get swagger-definition :basePath ""))]
-        (martian/bootstrap-swagger base-url swagger-definition {:interceptors [encode-body coerce-response perform-request]}))))
+        (martian/bootstrap-swagger
+         base-url
+         swagger-definition
+         {:interceptors (concat interceptors [encode-body coerce-response perform-request])}))))

@@ -26,7 +26,7 @@
     (transit/write writer body)
     (io/input-stream (.toByteArray out))))
 
-(def ^:private supported-encodings
+(def supported-encodings
   ["application/transit+msgpack"
    "application/transit+json"
    "application/edn"
@@ -84,10 +84,11 @@
    :enter (fn [{:keys [request] :as ctx}]
             (assoc ctx :response (http/request (-> request (dissoc :params)))))})
 
-(defn bootstrap-swagger [url & [params]]
-  (let [swagger-definition @(http/get url (merge params {:as :text})
-                                      (fn [{:keys [body]}]
-                                        (json/decode body keyword)))
+(defn bootstrap-swagger [url & [{:keys [interceptors] :as params}]]
+  (let [swagger-definition @(http/get url {:as :text} (fn [{:keys [body]}] (json/decode body keyword)))
         {:keys [scheme server-name server-port]} (parse-url url)
         base-url (format "%s://%s%s%s" (name scheme) server-name (if server-port (str ":" server-port) "") (get swagger-definition :basePath ""))]
-    (martian/bootstrap-swagger base-url swagger-definition {:interceptors [encode-body coerce-response perform-request]})))
+    (martian/bootstrap-swagger
+     base-url
+     swagger-definition
+     {:interceptors (concat interceptors [encode-body coerce-response perform-request])})))
