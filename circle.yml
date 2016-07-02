@@ -10,7 +10,7 @@ test:
 dependencies:
   pre:
     - phantomjs -v
-    - wget https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-1.9.8-linux-x86_64.tar.bz2
+    - wget https://github.com/Medium/phantomjs/releases/download/v1.9.19/phantomjs-1.9.8-linux-x86_64.tar.bz2
     - sudo tar xvjf phantomjs-1.9.8-linux-x86_64.tar.bz2
     - sudo mv phantomjs-1.9.8-linux-x86_64 /home/ubuntu/bin/
     - sudo chmod a+x /home/ubuntu/bin/phantomjs-1.9.8-linux-x86_64
