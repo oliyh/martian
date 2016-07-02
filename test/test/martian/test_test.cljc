@@ -10,7 +10,8 @@
   {:paths {(keyword "/pets/{id}") {:get {:operationId "load-pet"
                                          :parameters [{:in "path"
                                                        :name "id"
-                                                       :type "integer"}]
+                                                       :type "integer"
+                                                       :required true}]
                                          :responses {200 {:description "A pet"
                                                           :schema {:$ref "#/definitions/Pet"}}}}}}
    :definitions {:Pet {:type "object"
