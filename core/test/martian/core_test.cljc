@@ -1,6 +1,7 @@
 (ns martian.core-test
   (:require [martian.core :as martian]
-            [martian.protocols :refer [url-for request-for]]
+            [martian.protocols :refer [url-for request-for explore]]
+            [schema.core :as s]
             #?(:clj [clojure.test :refer :all]
                :cljs [cljs.test :refer-macros [deftest testing is run-tests]]))
   #?(:clj (:import [martian Martian])))
@@ -10,6 +11,7 @@
 
 (def swagger-definition
   {:paths {(keyword "/pets/{id}")                         {:get {:operationId "load-pet"
+                                                                 :summary "Loads a pet by id"
                                                                  :parameters [{:in "path"
                                                                                :name "id"
                                                                                :type "integer"}]}}
@@ -26,9 +28,11 @@
                                                            :put {:operationId "update-pet"
                                                                   :parameters [{:in "formData"
                                                                                 :name "id"
+                                                                                :type "integer"
                                                                                 :required true}
                                                                                {:in "formData"
                                                                                 :name "name"
+                                                                                :type "string"
                                                                                 :required true}]}}
            (keyword "/{colour}-{animal}/list")            {:get {:operationId "pet-search"}}
            (keyword "/users/{user-id}/orders/{order-id}") {:get {:operationId "order"
@@ -70,19 +74,21 @@
     (is (= "https://api.org/pets/" (url-for :create-pet)))
     (is (= "https://api.org/users/123/orders/456" (url-for :order {:user-id 123 :order-id 456})))))
 
-#?(:clj
-   (deftest java-api-test
-     (let [swagger-definition
-           {"paths" {"/pets/{id}"                         {"get" {"operationId" "load-pet"}}
-                     "/pets/"                             {"get" {"operationId" "all-pets"}
-                                                           "post" {"operationId" "create-pet"}}
-                     "/users/{user-id}/orders/{order-id}" {"get" {"operationId" "order"}}}}
-           m (Martian. "https://api.org" swagger-definition)]
+(deftest explore-test
+  (let [m (martian/bootstrap-swagger "https://api.org" swagger-definition)]
 
-       (is (= "https://api.org/pets/123" (.urlFor m "load-pet" {"id" 123})))
-       (is (= "https://api.org/pets/" (.urlFor m "all-pets")))
-       (is (= "https://api.org/pets/" (.urlFor m "create-pet")))
-       (is (= "https://api.org/users/123/orders/456" (.urlFor m "order" {"user-id" 123 "order-id" 456}))))))
+    (is (= [[:load-pet "Loads a pet by id"]
+            [:all-pets nil]
+            [:create-pet nil]
+            [:update-pet nil]
+            [:pet-search nil]
+            [:order nil]]
+           (explore m)))
+
+    (is (= {:summary nil
+            :parameters {:id s/Int
+                         :name s/Str}}
+           (explore m :update-pet)))))
 
 (deftest request-for-test
   (let [m (martian/bootstrap-swagger "https://api.org" swagger-definition)
@@ -143,3 +149,17 @@
             :url "https://api.org/pets/123"
             :headers {"auth-token" "1234-secret"}}
            (request-for :load-pet {:id 123})))))
+
+#?(:clj
+   (deftest java-api-test
+     (let [swagger-definition
+           {"paths" {"/pets/{id}"                         {"get" {"operationId" "load-pet"}}
+                     "/pets/"                             {"get" {"operationId" "all-pets"}
+                                                           "post" {"operationId" "create-pet"}}
+                     "/users/{user-id}/orders/{order-id}" {"get" {"operationId" "order"}}}}
+           m (Martian. "https://api.org" swagger-definition)]
+
+       (is (= "https://api.org/pets/123" (.urlFor m "load-pet" {"id" 123})))
+       (is (= "https://api.org/pets/" (.urlFor m "all-pets")))
+       (is (= "https://api.org/pets/" (.urlFor m "create-pet")))
+       (is (= "https://api.org/users/123/orders/456" (.urlFor m "order" {"user-id" 123 "order-id" 456}))))))

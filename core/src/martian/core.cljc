@@ -149,7 +149,13 @@
                         (assoc ctx
                                :path-for (comp (partial str api-root) path-for)
                                :request {:params params}
-                               :handler handler)))))))))
+                               :handler handler))))))
+
+      (explore [this] (mapv (juxt :route-name (comp :summary :swagger-definition)) handlers))
+      (explore [this route-name]
+        (when-let [handler (find-handler handlers route-name)]
+          {:summary (get-in handler [:swagger-definition :summary])
+           :parameters (apply merge (map handler [:path-schema :query-schema :body-schema :form-schema :headers-schema]))})))))
 
 (defn bootstrap-swagger
   "Creates a routing function which should be supplied with an api-root and a swagger spec

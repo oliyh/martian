@@ -7,4 +7,8 @@
 
   (request-for
     [this route-name]
-    [this route-name params]))
+    [this route-name params])
+
+  (explore
+    [this]
+    [this route-name]))
