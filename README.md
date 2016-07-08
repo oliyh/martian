@@ -1,16 +1,25 @@
-# martian
-Build and execute requests on your Clojure/Clojurescript/Java client to a Swagger API without fussing over
-HTTP verbs, route parameters, query parameters and the like. Martian allows you to abstract yourself from
-the fine details of a Swagger implementation and simply call operations with parameters.
+# Martian
+Calling HTTP endpoints can be complicated. You have to construct the right URL with the right route parameters, remember
+what the query parameters are, what method to use, how to encode the body and many other things that leak into your codebase.
 
+[Swagger](http://swagger.io/) lets servers describe all these details to clients. **Martian** is such a client,
+and provides a client interface to a Swagger API that abstracts you away from HTTP and lets you simply call operations with parameters.
+
+You can bootstrap it in one line:
 ```clojure
+(require '[martian.protocols :refer :all])
+(require '[martian.clj-http :as martian-http])
+
 (let [m (martian-http/bootstrap-swagger "https://pedestal-api.herokuapp.com/swagger.json")]
+  (request-for m :create-pet {:name "Doggy McDogFace" :type "Dog" :age 3})
+  ;; => {:status 201 :body {:id 123}}
+
   (request-for m :get-pet {:id 123}))
   ;; => {:status 200 :body {:name "Doggy McDogFace" :type "Dog" :age 3}}
 ```
 
 Implementations using `clj-http`, `httpkit` and `cljs-http` are supplied as modules,
-but any other HTTP library can be used due to the extensibility of martian's interceptor chain.
+but any other HTTP library can be used due to the extensibility of Martian's interceptor chain.
 It also allows custom behaviour to be injected in a uniform and powerful way.
 
 The `martian-test` library allows you to assert that your code constructs valid requests to remote servers without ever
@@ -25,21 +34,34 @@ ensuring that your response handling code is also correct. Examples are below.
 [![Clojars Project](https://img.shields.io/clojars/v/martian-test.svg)](https://clojars.org/martian-test)
 
 ## Features
-- Bootstraps itself from just a Swagger url
+- Bootstrap an instance from just a Swagger url
 - Modular with support for `clj-http` and `httpkit` (Clojure) and `cljs-http` (ClojureScript)
+- Explore an API from your REPL
 - Extensible via interceptor pattern
 - Negotiates the most efficient content-type and handles serialisation and deserialisation including `transit`, `edn` and `json`
 - Support for integration testing without requiring external HTTP stubs
+- Routes are named as idiomatic kebab-case keywords of the `operationId` of the endpoint in the Swagger definition
 
 ## Clojure / ClojureScript
 
 Given a [Swagger API definition](https://pedestal-api.herokuapp.com/swagger.json)
 like that provided by [pedestal-api](https://github.com/oliyh/pedestal-api):
 ```clojure
-(require '[martian.protocols :refer [url-for request-for]]
+(require '[martian.protocols :refer [url-for request-for explore]]
          '[martian.clj-http :as martian-http])
 
+;; bootstrap the martian instance by simply providing the url serving the swagger description
 (let [m (martian-http/bootstrap-swagger "https://pedestal-api.herokuapp.com/swagger.json")]
+
+  ;; explore the endpoints
+  (explore m)
+  => [[:get-pet "Loads a pet by id"]
+      [:create-pet "Creates a pet"]]
+
+  ;; explore the :get-pet endpoint
+  (explore m :get-pet)
+  => {:summary "Loads a pet by id"
+      :parameters {:id s/Int}}
 
   ;; generate the url for a request
   (url-for m :get-pet {:id 123})
@@ -60,12 +82,13 @@ like that provided by [pedestal-api](https://github.com/oliyh/pedestal-api):
 
 ## Testing with martian-test
 Testing code that calls external systems can be tricky - you either build often elaborate stubs which start
-to become as complex as the system you are calling, or else you ignore it all together.
+to become as complex as the system you are calling, or else you ignore it all together with `(constantly true)`.
 
 Martian will assert that you provide the right parameters to the call, and `martian-test` will return a response
 generated from the response schema of the remote application. This gives you more confidence that your integration is
 correct without maintenance of a stub.
 
+The following example shows how exceptions will be thrown by bad code and how responses can be generated:
 ```clojure
 (require '[martian.core :as martian]
          '[martian.protocols :refer [request-for]]
@@ -76,13 +99,13 @@ correct without maintenance of a stub.
           swagger-definition
           {:interceptors [martian-test/generate-response]})]
 
-  (request-for m :load-pet {})
+  (request-for m :get-pet {})
   ;; => ExceptionInfo Value cannot be coerced to match schema: {:id missing-required-key}
 
-  (request-for m :load-pet {:id "bad-id"})
+  (request-for m :get-pet {:id "bad-id"})
   ;; => ExceptionInfo Value cannot be coerced to match schema: {:id (not (integer? bad-id))}
 
-  (request-for m :load-pet {:id 123}))
+  (request-for m :get-pet {:id 123}))
   ;; => {:status 200, :body {:id -3, :name "EcLR"}}
 
 ```
@@ -97,6 +120,8 @@ which behave in the same way as pedestal interceptors.
 For example, if you wish to add an authentication header to each request:
 
 ```clojure
+(require '[martian.core :as martian])
+
 (def add-authentication-header
   {:name ::add-authentication-header
    :enter (fn [ctx]
