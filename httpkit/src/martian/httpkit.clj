@@ -4,7 +4,8 @@
             [cheshire.core :as json]
             [cognitect.transit :as transit]
             [clojure.edn :as edn]
-            [clojure.java.io :as io])
+            [clojure.java.io :as io]
+            [tripod.context :as tc])
   (:import [java.net URL]
            [java.io ByteArrayInputStream ByteArrayOutputStream]))
 
@@ -65,24 +66,30 @@
 
    :leave (fn [{:keys [request response handler] :as ctx}]
             (assoc ctx :response
-                   (delay
-                    (let [response @response]
-                      (if-let [content-type (and (:body response)
-                                                 (not= :auto (:as request))
-                                                 (not-empty (get-in response [:headers :content-type])))]
-                        (update response :body
-                                (condp re-find content-type
-                                  #"application/json" #(json/decode % keyword)
-                                  #"application/edn" edn/read-string
-                                  #"application/transit\+json" #(transit-decode (.getBytes %) :json)
-                                  #"application/transit\+msgpack" #(transit-decode % :msgpack)
-                                  identity))
-                        response)))))})
+                   (if-let [content-type (and (:body response)
+                                              (not= :auto (:as request))
+                                              (not-empty (get-in response [:headers :content-type])))]
+                     (update response :body
+                             (condp re-find content-type
+                               #"application/json" #(json/decode % keyword)
+                               #"application/edn" edn/read-string
+                               #"application/transit\+json" #(transit-decode (.getBytes %) :json)
+                               #"application/transit\+msgpack" #(transit-decode % :msgpack)
+                               identity))
+                     response)))})
+
+(defn- go-async [ctx]
+  (-> ctx tc/terminate (dissoc ::tc/stack)))
 
 (def perform-request
   {:name ::perform-request
    :enter (fn [{:keys [request] :as ctx}]
-            (assoc ctx :response (http/request (-> request (dissoc :params)))))})
+            (-> ctx
+                go-async
+                (assoc :response
+                       (http/request (-> request (dissoc :params))
+                                     (fn [response]
+                                       (:response (tc/execute (assoc ctx :response response))))))))})
 
 (defn bootstrap-swagger [url & [{:keys [interceptors] :as params}]]
   (let [swagger-definition @(http/get url {:as :text} (fn [{:keys [body]}] (json/decode body keyword)))
