@@ -26,14 +26,14 @@
                                                                                 :required true
                                                                                 :schema {:$ref "#/definitions/Pet"}}]}
                                                            :put {:operationId "update-pet"
-                                                                  :parameters [{:in "formData"
-                                                                                :name "id"
-                                                                                :type "integer"
-                                                                                :required true}
-                                                                               {:in "formData"
-                                                                                :name "name"
-                                                                                :type "string"
-                                                                                :required true}]}}
+                                                                 :parameters [{:in "formData"
+                                                                               :name "id"
+                                                                               :type "integer"
+                                                                               :required true}
+                                                                              {:in "formData"
+                                                                               :name "name"
+                                                                               :type "string"
+                                                                               :required true}]}}
            (keyword "/{colour}-{animal}/list")            {:get {:operationId "pet-search"}}
            (keyword "/users/{user-id}/orders/{order-id}") {:get {:operationId "order"
                                                                  :parameters [{:in "path"
