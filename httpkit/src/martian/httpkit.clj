@@ -83,7 +83,7 @@
 
 (def perform-request
   {:name ::perform-request
-   :enter (fn [{:keys [request] :as ctx}]
+   :leave (fn [{:keys [request] :as ctx}]
             (-> ctx
                 go-async
                 (assoc :response

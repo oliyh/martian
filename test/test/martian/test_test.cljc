@@ -1,6 +1,6 @@
 (ns martian.test-test
   (:require [martian.core :as martian]
-            [martian.protocols :refer [url-for request-for]]
+            [martian.protocols :refer [response-for]]
             [martian.test :as martian-test]
             [schema.core :as s]
             #?(:clj [clojure.test :refer :all]
@@ -27,4 +27,4 @@
     (is (nil? (s/check {:status (s/eq 200)
                         :body {:id s/Int
                                :name s/Str}}
-                       (request-for m :load-pet {:id 123}))))))
+                       (response-for m :load-pet {:id 123}))))))

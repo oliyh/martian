@@ -23,15 +23,15 @@
 
 (def generate-response
   {:name ::generate-response
-   :enter (fn [{:keys [handler] :as ctx}]
+   :leave (fn [{:keys [handler] :as ctx}]
             (assoc ctx :response (make-response :random (:response-schemas handler))))})
 
 (def generate-error-response
   {:name ::generate-error-response
-   :enter (fn [{:keys [handler] :as ctx}]
+   :leave (fn [{:keys [handler] :as ctx}]
             (assoc ctx :response (make-response :error (:response-schemas handler))))})
 
 (def generate-success-response
   {:name ::generate-success-response
-   :enter (fn [{:keys [handler] :as ctx}]
+   :leave (fn [{:keys [handler] :as ctx}]
             (assoc ctx :response (make-response :success (:response-schemas handler))))})

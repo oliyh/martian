@@ -5,16 +5,16 @@ what the query parameters are, what method to use, how to encode the body and ma
 [Swagger](http://swagger.io/) lets servers describe all these details to clients. **Martian** is such a client,
 and provides a client interface to a Swagger API that abstracts you away from HTTP and lets you simply call operations with parameters.
 
-You can bootstrap it in one line:
+You can bootstrap it in one line and start calling the server:
 ```clojure
-(require '[martian.protocols :refer :all])
-(require '[martian.clj-http :as martian-http])
+(require '[martian.protocols :refer :all]
+         '[martian.clj-http :as martian-http])
 
 (let [m (martian-http/bootstrap-swagger "https://pedestal-api.herokuapp.com/swagger.json")]
-  (request-for m :create-pet {:name "Doggy McDogFace" :type "Dog" :age 3})
+  (response-for m :create-pet {:name "Doggy McDogFace" :type "Dog" :age 3})
   ;; => {:status 201 :body {:id 123}}
 
-  (request-for m :get-pet {:id 123}))
+  (response-for m :get-pet {:id 123}))
   ;; => {:status 200 :body {:name "Doggy McDogFace" :type "Dog" :age 3}}
 ```
 
@@ -36,6 +36,7 @@ ensuring that your response handling code is also correct. Examples are below.
 ## Features
 - Bootstrap an instance from just a Swagger url
 - Modular with support for `clj-http` and `httpkit` (Clojure) and `cljs-http` (ClojureScript)
+- Build urls and request maps from code or generate and perform the request, returning the response
 - Explore an API from your REPL
 - Extensible via interceptor pattern
 - Negotiates the most efficient content-type and handles serialisation and deserialisation including `transit`, `edn` and `json`
@@ -47,7 +48,7 @@ ensuring that your response handling code is also correct. Examples are below.
 Given a [Swagger API definition](https://pedestal-api.herokuapp.com/swagger.json)
 like that provided by [pedestal-api](https://github.com/oliyh/pedestal-api):
 ```clojure
-(require '[martian.protocols :refer [url-for request-for explore]]
+(require '[martian.protocols :refer [url-for request-for response-for explore]]
          '[martian.clj-http :as martian-http])
 
 ;; bootstrap the martian instance by simply providing the url serving the swagger description
@@ -63,16 +64,23 @@ like that provided by [pedestal-api](https://github.com/oliyh/pedestal-api):
   => {:summary "Loads a pet by id"
       :parameters {:id s/Int}}
 
-  ;; generate the url for a request
+  ;; build the url for a request
   (url-for m :get-pet {:id 123})
   => https://pedestal-api.herokuapp.com/pets/123
 
-  ;; create a pet and read back the pet-id from the response
-  (let [pet-id (-> (request-for m :create-pet {:name "Doggy McDogFace" :type "Dog" :age 3})
+  ;; build the request map for a request
+  (request-for :get-pet {:id 123})
+  => {:method :get
+      :url "https://pedestal-api.herokuapp.com/pets/123"
+      :headers {"Accept" "application/transit+msgpack"
+      :as :byte-array}
+
+  ;; perform the request to create a pet and read back the pet-id from the response
+  (let [pet-id (-> (response-for m :create-pet {:name "Doggy McDogFace" :type "Dog" :age 3})
                    (get-in [:body :id]))]
 
     ;; load the pet using the id
-    (request-for m :get-pet {:id pet-id})))
+    (response-for m :get-pet {:id pet-id})))
 
     => {:status 200
         :body {:name "Doggy McDogFace"
@@ -91,7 +99,7 @@ correct without maintenance of a stub.
 The following example shows how exceptions will be thrown by bad code and how responses can be generated:
 ```clojure
 (require '[martian.core :as martian]
-         '[martian.protocols :refer [request-for]]
+         '[martian.protocols :refer [response-for]]
          '[martian.test :as martian-test])
 
 (let [m (martian/bootstrap-swagger
@@ -99,13 +107,13 @@ The following example shows how exceptions will be thrown by bad code and how re
           swagger-definition
           {:interceptors [martian-test/generate-response]})]
 
-  (request-for m :get-pet {})
+  (response-for m :get-pet {})
   ;; => ExceptionInfo Value cannot be coerced to match schema: {:id missing-required-key}
 
-  (request-for m :get-pet {:id "bad-id"})
+  (response-for m :get-pet {:id "bad-id"})
   ;; => ExceptionInfo Value cannot be coerced to match schema: {:id (not (integer? bad-id))}
 
-  (request-for m :get-pet {:id 123}))
+  (response-for m :get-pet {:id 123}))
   ;; => {:status 200, :body {:id -3, :name "EcLR"}}
 
 ```
@@ -120,7 +128,8 @@ which behave in the same way as pedestal interceptors.
 For example, if you wish to add an authentication header to each request:
 
 ```clojure
-(require '[martian.core :as martian])
+(require '[martian.core :as martian]
+         '[martian.clj-http :as martian-http])
 
 (def add-authentication-header
   {:name ::add-authentication-header
@@ -130,7 +139,7 @@ For example, if you wish to add an authentication header to each request:
 (let [m (martian/bootstrap-swagger
           "https://api.com"
           swagger-definition
-          {:interceptors (concat martian/default-interceptors [add-authentication-header martian.clj-http/perform-request])})]
+          {:interceptors (concat martian/default-interceptors [add-authentication-header martian-http/perform-request])})]
 
      ...)
 ```

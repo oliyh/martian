@@ -1,6 +1,6 @@
 (ns martian.clj-http-test
   (:require [martian.clj-http :as martian-http]
-            [martian.protocols :refer [request-for]]
+            [martian.protocols :refer [response-for]]
             [martian.server-stub :refer [with-server swagger-url]]
             [clojure.test :refer :all]))
 
@@ -8,15 +8,14 @@
 
 (deftest http-test
   (let [m (martian-http/bootstrap-swagger swagger-url)]
-
-    (let [response (request-for m :create-pet {:name "Doggy McDogFace"
-                                               :type "Dog"
-                                               :age 3})]
+    (let [response (response-for m :create-pet {:name "Doggy McDogFace"
+                                                :type "Dog"
+                                                :age 3})]
       (is (= {:status 201
               :body {:id 123}}
              (select-keys response [:status :body]))))
 
-    (let [response (request-for m :get-pet {:id 123})]
+    (let [response (response-for m :get-pet {:id 123})]
       (is (= {:name "Doggy McDogFace"
               :type "Dog"
               :age 3}

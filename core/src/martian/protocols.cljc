@@ -9,6 +9,10 @@
     [this route-name]
     [this route-name params])
 
+  (response-for
+    [this route-name]
+    [this route-name params])
+
   (explore
     [this]
     [this route-name]))

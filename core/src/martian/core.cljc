@@ -5,12 +5,11 @@
             [clojure.walk :refer [keywordize-keys]]
             [martian.interceptors :as interceptors]
             [martian.schema :as schema]
-            [martian.protocols :refer [Martian url-for request-for]]
+            [martian.protocols :refer [Martian url-for request-for response-for]]
             [schema.core :as s]))
 
 (def default-interceptors
-  [interceptors/request-building-handler
-   interceptors/set-method
+  [interceptors/set-method
    interceptors/set-url
    interceptors/set-query-params
    interceptors/set-body-params
@@ -105,11 +104,24 @@
       (request-for [this route-name params]
         (when-let [handler (find-handler handlers route-name)]
           (let [params (keywordize-keys params)
+                ctx (tc/enqueue* {} (-> (or interceptors default-interceptors) vec (conj interceptors/request-only-handler)))]
+            (:request (tc/execute
+                       (assoc ctx
+                              :params params
+                              :path-for (comp (partial str api-root) path-for)
+                              :request {}
+                              :handler handler))))))
+
+      (response-for [this route-name] (response-for this route-name {}))
+      (response-for [this route-name params]
+        (when-let [handler (find-handler handlers route-name)]
+          (let [params (keywordize-keys params)
                 ctx (tc/enqueue* {} (or interceptors default-interceptors))]
             (:response (tc/execute
                         (assoc ctx
+                               :params params
                                :path-for (comp (partial str api-root) path-for)
-                               :request {:params params}
+                               :request {}
                                :handler handler))))))
 
       (explore [this] (mapv (juxt :route-name (comp :summary :swagger-definition)) handlers))

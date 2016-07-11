@@ -56,7 +56,7 @@
 
 (def perform-request
   {:name ::perform-request
-   :enter (fn [{:keys [request] :as ctx}]
+   :leave (fn [{:keys [request] :as ctx}]
             (assoc ctx :response (http/request (dissoc request :params))))})
 
 (defn bootstrap-swagger [url & [{:keys [interceptors] :as params}]]
