@@ -2,60 +2,20 @@
   (:require [tripod.context :as tc]
             [camel-snake-kebab.core :refer [->kebab-case-keyword]]
             [clojure.string :as string]
-            [clojure.walk :refer [keywordize-keys stringify-keys]]
+            [clojure.walk :refer [keywordize-keys]]
+            [martian.interceptors :as interceptors]
             [martian.schema :as schema]
             [martian.protocols :refer [Martian url-for request-for]]
             [schema.core :as s]))
 
 (def default-interceptors
-  [{:name ::request-building-handler
-    :leave (fn [{:keys [request response] :as ctx}]
-             (if (nil? response)
-               (assoc ctx :response (dissoc request :params))
-               ctx))}
-
-   {:name ::method
-    :enter (fn [{:keys [handler] :as ctx}]
-             (update ctx :request assoc :method (:method handler)))}
-
-   {:name ::url
-    :enter (fn [{:keys [request path-for handler] :as ctx}]
-             (let [path-schema (:path-schema handler)]
-               (update ctx :request
-                       assoc :url (path-for (:path-parts handler)
-                                            (schema/coerce-data path-schema (:params request))))))}
-
-   {:name ::query-params
-    :enter (fn [{:keys [request handler] :as ctx}]
-             (let [query-schema (:query-schema handler)
-                   coerced-params (schema/coerce-data query-schema (:params request))]
-               (if (not-empty coerced-params)
-                 (update ctx :request assoc :query-params coerced-params)
-                 ctx)))}
-
-   {:name ::body-params
-    :enter (fn [{:keys [request handler] :as ctx}]
-             (let [body-schema (:body-schema handler)
-                   coerced-params (schema/coerce-data body-schema (:params request))]
-               (if (not-empty coerced-params)
-                 (update ctx :request assoc :body coerced-params)
-                 ctx)))}
-
-   {:name ::form-params
-    :enter (fn [{:keys [request handler] :as ctx}]
-             (let [form-schema (:form-schema handler)
-                   coerced-params (schema/coerce-data form-schema (:params request))]
-               (if (not-empty coerced-params)
-                 (update ctx :request assoc :form-params coerced-params)
-                 ctx)))}
-
-   {:name ::header-params
-    :enter (fn [{:keys [request handler] :as ctx}]
-             (let [headers-schema (:headers-schema handler)
-                   coerced-params (schema/coerce-data headers-schema (:params request))]
-               (if (not-empty coerced-params)
-                 (update ctx :request assoc :headers (stringify-keys coerced-params))
-                 ctx)))}])
+  [interceptors/request-building-handler
+   interceptors/set-method
+   interceptors/set-url
+   interceptors/set-query-params
+   interceptors/set-body-params
+   interceptors/set-form-params
+   interceptors/set-header-params])
 
 (defn- body-schema [definitions swagger-params]
   (when-let [body-param (first (not-empty (filter #(= "body" (:in %)) swagger-params)))]
@@ -144,7 +104,7 @@
       (request-for [this route-name params]
         (when-let [handler (find-handler handlers route-name)]
           (let [params (keywordize-keys params)
-                ctx (tc/enqueue* {} (concat default-interceptors interceptors))]
+                ctx (tc/enqueue* {} (or interceptors default-interceptors))]
             (:response (tc/execute
                         (assoc ctx
                                :path-for (comp (partial str api-root) path-for)

@@ -130,7 +130,7 @@ For example, if you wish to add an authentication header to each request:
 (let [m (martian/bootstrap-swagger
           "https://api.com"
           swagger-definition
-          {:interceptors [add-authentication-header martian.clj-http/perform-request]})]
+          {:interceptors (concat martian/default-interceptors [add-authentication-header martian.clj-http/perform-request])})]
 
      ...)
 ```

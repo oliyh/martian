@@ -91,4 +91,4 @@
     (martian/bootstrap-swagger
      base-url
      swagger-definition
-     {:interceptors (concat interceptors [encode-body coerce-response perform-request])})))
+     {:interceptors (or interceptors (concat martian/default-interceptors [encode-body coerce-response perform-request]))})))
