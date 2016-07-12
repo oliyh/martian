@@ -38,10 +38,11 @@ ensuring that your response handling code is also correct. Examples are below.
 - Modular with support for `clj-http` and `httpkit` (Clojure) and `cljs-http` (ClojureScript)
 - Build urls and request maps from code or generate and perform the request, returning the response
 - Explore an API from your REPL
-- Extensible via interceptor pattern
+- Extensible via interceptor pattern - inject your own interceptors anywhere in the chain
 - Negotiates the most efficient content-type and handles serialisation and deserialisation including `transit`, `edn` and `json`
 - Support for integration testing without requiring external HTTP stubs
 - Routes are named as idiomatic kebab-case keywords of the `operationId` of the endpoint in the Swagger definition
+- Simple, data driven behaviour with low coupling using libraries and patterns you already know
 
 ## Clojure / ClojureScript
 
@@ -180,4 +181,4 @@ Please feel free to raise issues on Github or send pull requests. There are more
 
 ## Acknowledgements
 Martian uses [tripod](https://github.com/frankiesardo/tripod) for routing, inspired by [pedestal](https://github.com/pedestal/pedestal).
-See also [kekkonen](https://github.com/metosin/kekkonen) for ideas integrating server and client beyond Swagger.
+See also [fintrospect](http://fintrospect.io/) and [kekkonen](https://github.com/metosin/kekkonen) for ideas integrating server and client beyond Swagger.
