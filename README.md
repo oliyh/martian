@@ -43,6 +43,7 @@ ensuring that your response handling code is also correct. Examples are below.
 - Support for integration testing without requiring external HTTP stubs
 - Routes are named as idiomatic kebab-case keywords of the `operationId` of the endpoint in the Swagger definition
 - Simple, data driven behaviour with low coupling using libraries and patterns you already know
+- Pure client code, no server code or modifications required
 
 ## Clojure / ClojureScript
 

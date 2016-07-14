@@ -35,9 +35,7 @@
    :enter (fn [{:keys [request handler] :as ctx}]
             (if-let [content-type (and (not (get-in request [:headers "Accept"]))
                                        (choose-content-type (get-in handler [:swagger-definition :produces])))]
-              (cond-> (assoc-in ctx [:request :headers "Accept"] content-type)
-                (= "application/transit+msgpack" content-type) (assoc-in [:request :as] :byte-array))
-
+              (assoc-in ctx [:request :headers "Accept"] content-type)
               (assoc-in ctx [:request :as] :auto)))
 
    :leave (fn [{:keys [request response handler] :as ctx}]
@@ -58,7 +56,7 @@
 (def perform-request
   {:name ::perform-request
    :leave (fn [{:keys [request] :as ctx}]
-            (assoc ctx :response (http/request (-> request (dissoc :params)))))})
+            (assoc ctx :response (http/request request)))})
 
 (defn bootstrap-swagger [url & [{:keys [interceptors] :as params}]]
   (go (let [swagger-definition (:body (<! (http/get url {:as :json})))

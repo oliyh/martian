@@ -53,30 +53,31 @@
                   (assoc-in [:request :headers "Content-Type"] content-type))
               ctx))})
 
-(def coerce-response
-  {:name ::coerce-response
-   :enter (fn [{:keys [request handler] :as ctx}]
-            (if-let [content-type (and (not (get-in request [:headers "Accept"]))
-                                       (choose-content-type (get-in handler [:swagger-definition :produces])))]
-              (cond-> (assoc-in ctx [:request :headers "Accept"] content-type)
-                :always (assoc-in [:request :as] :text)
-                (= "application/transit+msgpack" content-type) (assoc-in [:request :as] :byte-array))
+(defn coerce-response
+  ([] (coerce-response {}))
+  ([{:keys [key-fn] :or {key-fn keyword}}]
+   {:name ::coerce-response
+    :enter (fn [{:keys [request handler] :as ctx}]
+             (if-let [content-type (and (not (get-in request [:headers "Accept"]))
+                                        (choose-content-type (get-in handler [:swagger-definition :produces])))]
+               (cond-> (assoc-in ctx [:request :headers "Accept"] content-type)
+                 :always (assoc-in [:request :as] :text)
+                 (= "application/transit+msgpack" content-type) (assoc-in [:request :as] :byte-array))
 
-              (assoc-in ctx [:request :as] :auto)))
+               (assoc-in ctx [:request :as] :auto)))
 
-   :leave (fn [{:keys [request response handler] :as ctx}]
-            (assoc ctx :response
-                   (if-let [content-type (and (:body response)
-                                              (not= :auto (:as request))
-                                              (not-empty (get-in response [:headers :content-type])))]
-                     (update response :body
-                             (condp re-find content-type
-                               #"application/json" #(json/decode % keyword)
-                               #"application/edn" edn/read-string
-                               #"application/transit\+json" #(transit-decode (.getBytes %) :json)
-                               #"application/transit\+msgpack" #(transit-decode % :msgpack)
-                               identity))
-                     response)))})
+    :leave (fn [{:keys [request response handler] :as ctx}]
+             (assoc ctx :response
+                    (if-let [content-type (and (:body response)
+                                               (not-empty (get-in response [:headers :content-type])))]
+                      (update response :body
+                              (condp re-find content-type
+                                #"application/json" #(json/decode % key-fn)
+                                #"application/edn" edn/read-string
+                                #"application/transit\+json" #(transit-decode (.getBytes %) :json)
+                                #"application/transit\+msgpack" #(transit-decode % :msgpack)
+                                identity))
+                      response)))}))
 
 (defn- go-async [ctx]
   (-> ctx tc/terminate (dissoc ::tc/stack)))
@@ -87,7 +88,7 @@
             (-> ctx
                 go-async
                 (assoc :response
-                       (http/request (-> request (dissoc :params))
+                       (http/request request
                                      (fn [response]
                                        (:response (tc/execute (assoc ctx :response response))))))))})
 
@@ -98,4 +99,4 @@
     (martian/bootstrap-swagger
      base-url
      swagger-definition
-     {:interceptors (or interceptors (concat martian/default-interceptors [encode-body coerce-response perform-request]))})))
+     {:interceptors (or interceptors (concat martian/default-interceptors [encode-body (coerce-response) perform-request]))})))
