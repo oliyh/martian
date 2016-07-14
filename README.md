@@ -131,19 +131,34 @@ For example, if you wish to add an authentication header to each request:
 
 ```clojure
 (require '[martian.core :as martian]
-         '[martian.clj-http :as martian-http])
+         '[martian.clj-http :as martian-http]
+         '[martian.protocols :refer [response-for])
 
 (def add-authentication-header
   {:name ::add-authentication-header
    :enter (fn [ctx]
             (assoc-in ctx [:request :headers "Authorization"] "Token: 12456abc"))})
 
-(let [m (martian/bootstrap-swagger
-          "https://api.com"
-          swagger-definition
-          {:interceptors (concat martian/default-interceptors [add-authentication-header martian-http/perform-request])})]
+(def summarise-weather-forecast
+        {:name ::summarise-weather-forecast
+         :leave (fn [{:keys [response] :as ctx}]
+                  (let [forecasts (get-in response [:body :forecasts])
+                        temperatures (map :temperature forecasts)
+                        day-count (count forecasts)]
+                    {:average (/ (reduce + temperatures) day-count)
+                     :high (apply max temperatures)
+                     :low (apply min temperatures)}))})
 
-     ...)
+(let [m (martian/bootstrap-swagger
+               "https://api.com"
+               swagger-definition
+               {:interceptors (concat martian/default-interceptors
+                                      [add-authentication-header
+                                       summarise-weather-forecast
+                                       martian-http/perform-request])})]
+
+        (response-for m :get-weather-forecast {:days 7}))
+        => {:average 24 :high 28 :low 20}
 ```
 
 ## Java
