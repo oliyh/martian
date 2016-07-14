@@ -9,10 +9,11 @@
                   ["change" "version" "leiningen.release/bump-version" "release"]
                   ["modules" "change" "version" "leiningen.release/bump-version" "release"]
                   ["vcs" "commit"]
-                  ["vcs" "tag"]
-                  ["modules" "deploy"]
+                  ["vcs" "tag" "--no-sign"]
+                  ["modules" "deploy" "clojars"]
                   ["change" "version" "leiningen.release/bump-version"]
                   ["modules" "change" "version" "leiningen.release/bump-version"]
                   ["vcs" "commit"]
                   ["vcs" "push"]]
-  :aliases {"test" ["do" ["modules" ":checkouts"] ["modules" "test"]]})
+  :aliases {"test" ["do" ["modules" ":checkouts"] ["modules" "test"]]
+            "deploy" ["do" ["modules" "deploy" "clojars"]]})
