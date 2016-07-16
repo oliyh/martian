@@ -58,24 +58,24 @@ like that provided by [pedestal-api](https://github.com/oliyh/pedestal-api):
 
   ;; explore the endpoints
   (explore m)
-  => [[:get-pet "Loads a pet by id"]
-      [:create-pet "Creates a pet"]]
+  ;; => [[:get-pet "Loads a pet by id"]
+  ;;     [:create-pet "Creates a pet"]]
 
   ;; explore the :get-pet endpoint
   (explore m :get-pet)
-  => {:summary "Loads a pet by id"
-      :parameters {:id s/Int}}
+  ;; => {:summary "Loads a pet by id"
+  ;;     :parameters {:id s/Int}}
 
   ;; build the url for a request
   (url-for m :get-pet {:id 123})
-  => https://pedestal-api.herokuapp.com/pets/123
+  ;; => https://pedestal-api.herokuapp.com/pets/123
 
   ;; build the request map for a request
-  (request-for :get-pet {:id 123})
-  => {:method :get
-      :url "https://pedestal-api.herokuapp.com/pets/123"
-      :headers {"Accept" "application/transit+msgpack"
-      :as :byte-array}
+  (request-for m :get-pet {:id 123})
+  ;; => {:method :get
+  ;;     :url "https://pedestal-api.herokuapp.com/pets/123"
+  ;;     :headers {"Accept" "application/transit+msgpack"
+  ;;     :as :byte-array}
 
   ;; perform the request to create a pet and read back the pet-id from the response
   (let [pet-id (-> (response-for m :create-pet {:name "Doggy McDogFace" :type "Dog" :age 3})
@@ -84,10 +84,10 @@ like that provided by [pedestal-api](https://github.com/oliyh/pedestal-api):
     ;; load the pet using the id
     (response-for m :get-pet {:id pet-id})))
 
-    => {:status 200
-        :body {:name "Doggy McDogFace"
-               :type "Dog"
-               :age 3}}
+    ;; => {:status 200
+    ;;     :body {:name "Doggy McDogFace"
+    ;;            :type "Dog"
+    ;;            :age 3}}
 ```
 
 ## Testing with martian-test
@@ -105,7 +105,7 @@ The following example shows how exceptions will be thrown by bad code and how re
          '[martian.test :as martian-test])
 
 (let [m (martian/bootstrap-swagger
-          "https://api.com"
+          "https://pedestal-api.herokuapp.com/swagger.json"
           swagger-definition
           {:interceptors [martian-test/generate-response]})]
 
@@ -132,33 +132,36 @@ For example, if you wish to add an authentication header to each request:
 ```clojure
 (require '[martian.core :as martian]
          '[martian.clj-http :as martian-http]
-         '[martian.protocols :refer [response-for])
+         '[martian.protocols :refer [response-for]])
 
 (def add-authentication-header
   {:name ::add-authentication-header
    :enter (fn [ctx]
             (assoc-in ctx [:request :headers "Authorization"] "Token: 12456abc"))})
 
-(def summarise-weather-forecast
-        {:name ::summarise-weather-forecast
-         :leave (fn [{:keys [response] :as ctx}]
-                  (let [forecasts (get-in response [:body :forecasts])
-                        temperatures (map :temperature forecasts)
-                        day-count (count forecasts)]
-                    {:average (/ (reduce + temperatures) day-count)
-                     :high (apply max temperatures)
-                     :low (apply min temperatures)}))})
+(def request-timer
+  {:name ::request-timer
+   :enter (fn [ctx]
+            (assoc ctx ::start-time (System/currentTimeMillis)))
+   :leave (fn [ctx]
+            (->> ctx ::start-time
+                 (- (System/currentTimeMillis))
+                 (format "Request to %s took %sms" (get-in ctx [:handler :route-name]))
+                 (println))
+            ctx)})
 
-(let [m (martian/bootstrap-swagger
-               "https://api.com"
-               swagger-definition
+(let [m (martian-http/bootstrap-swagger
+               "https://pedestal-api.herokuapp.com/swagger.json"
                {:interceptors (concat martian/default-interceptors
                                       [add-authentication-header
-                                       summarise-weather-forecast
+                                       martian-http/encode-body
+                                       (martian-http/coerce-response)
+                                       request-timer
                                        martian-http/perform-request])})]
 
-        (response-for m :get-weather-forecast {:days 7}))
-        => {:average 24 :high 28 :low 20}
+        (response-for m :all-pets {:id 123}))
+        ;; Request to :all-pets took 38ms
+        ;; => {:status 200 :body {:pets []}}
 ```
 
 ## Java
