@@ -1,6 +1,5 @@
 (ns martian.core-test
   (:require [martian.core :as martian]
-            [martian.protocols :refer [url-for request-for explore]]
             [schema.core :as s]
             #?(:clj [clojure.test :refer :all]
                :cljs [cljs.test :refer-macros [deftest testing is run-tests]]))
@@ -12,36 +11,38 @@
 (def swagger-definition
   {:paths {(keyword "/pets/{id}")                         {:get {:operationId "load-pet"
                                                                  :summary "Loads a pet by id"
-                                                                 :parameters [{:in "path"
-                                                                               :name "id"
+                                                                 :parameters [{:name "id"
+                                                                               :in "path"
                                                                                :type "integer"}]}}
            (keyword "/pets/")                             {:get {:operationId "all-pets"
-                                                                 :parameters [{:in "query"
-                                                                               :name "sort"
+                                                                 :parameters [{:name "sort"
+                                                                               :in "query"
                                                                                :enum ["desc","asc"]
                                                                                :required false}]}
                                                            :post {:operationId "create-pet"
-                                                                  :parameters [{:in "body"
-                                                                                :name "Pet"
+                                                                  :parameters [{:name "Pet"
+                                                                                :in "body"
                                                                                 :required true
                                                                                 :schema {:$ref "#/definitions/Pet"}}]}
                                                            :put {:operationId "update-pet"
-                                                                 :parameters [{:in "formData"
-                                                                               :name "id"
+                                                                 :parameters [{:name "id"
+                                                                               :in "formData"
                                                                                :type "integer"
                                                                                :required true}
-                                                                              {:in "formData"
-                                                                               :name "name"
+                                                                              {:name "name"
+                                                                               :in "formData"
                                                                                :type "string"
                                                                                :required true}]}}
-           (keyword "/{colour}-{animal}/list")            {:get {:operationId "pet-search"}}
+           (keyword "/{colour}-{animal}/list")            {:get {:operationId "pet-search"
+                                                                 :parameters [{:name "colour" :in "path"}
+                                                                              {:name "animal" :in "path"}]}}
            (keyword "/users/{user-id}/orders/{order-id}") {:get {:operationId "order"
-                                                                 :parameters [{:in "path"
-                                                                               :name "user-id"}
-                                                                              {:in "path"
-                                                                               :name "order-id"}
-                                                                              {:in "header"
-                                                                               :name "auth-token"}]}}}
+                                                                 :parameters [{:name "user-id"
+                                                                               :in "path"}
+                                                                              {:name "order-id"
+                                                                               :in "path"}
+                                                                              {:name "auth-token"
+                                                                               :in "header"}]}}}
    :definitions {:Pet {:type "object"
                        :properties {:id {:type "integer"
                                          :required true}
@@ -50,7 +51,7 @@
 
 (deftest url-for-test
   (let [m (martian/bootstrap-swagger "https://api.org" swagger-definition)
-        url-for (partial url-for m)]
+        url-for (partial martian/url-for m)]
 
     (is (= "https://api.org/pets/123" (url-for :load-pet {:id 123})))
     (is (= "https://api.org/pets/" (url-for :all-pets)))
@@ -61,13 +62,14 @@
 (deftest string-keys-test
   (let [swagger-definition
         {"paths" {"/pets/{id}"                         {"get" {"operationId" "load-pet"
-                                                               "parameters" [{"in" "path"
-                                                                              "name" "id"}]}}
+                                                               "parameters" [{"name" "id" "in" "path"}]}}
                   "/pets/"                             {"get" {"operationId" "all-pets"}
                                                         "post" {"operationId" "create-pet"}}
-                  "/users/{user-id}/orders/{order-id}" {"get" {"operationId" "order"}}}}
+                  "/users/{user-id}/orders/{order-id}" {"get" {"operationId" "order"
+                                                               "parameters" [{"name" "user-id" "in" "path"}
+                                                                             {"name" "order-id" "in" "path"}]}}}}
         m (martian/bootstrap-swagger "https://api.org" swagger-definition)
-        url-for (partial url-for m)]
+        url-for (partial martian/url-for m)]
 
     (is (= "https://api.org/pets/123" (url-for :load-pet {:id 123})))
     (is (= "https://api.org/pets/" (url-for :all-pets)))
@@ -83,16 +85,16 @@
             [:update-pet nil]
             [:pet-search nil]
             [:order nil]]
-           (explore m)))
+           (martian/explore m)))
 
     (is (= {:summary nil
             :parameters {:id s/Int
                          :name s/Str}}
-           (explore m :update-pet)))))
+           (martian/explore m :update-pet)))))
 
 (deftest request-for-test
   (let [m (martian/bootstrap-swagger "https://api.org" swagger-definition)
-        request-for (partial request-for m)]
+        request-for (partial martian/request-for m)]
 
     (is (= {:method :get
             :url "https://api.org/pets/123"}
@@ -144,7 +146,7 @@
                                            (update-in ctx [:request :headers] merge {"auth-token" "1234-secret"}))}
         m (martian/bootstrap-swagger "https://api.org" swagger-definition
                                      {:interceptors (concat martian/default-interceptors [auth-headers-interceptor])})
-        request-for (partial request-for m)]
+        request-for (partial martian/request-for m)]
 
     (is (= {:method :get
             :url "https://api.org/pets/123"
@@ -154,10 +156,13 @@
 #?(:clj
    (deftest java-api-test
      (let [swagger-definition
-           {"paths" {"/pets/{id}"                         {"get" {"operationId" "load-pet"}}
+           {"paths" {"/pets/{id}"                         {"get" {"operationId" "load-pet"
+                                                                  "parameters" [{"name" "id" "in" "path"}]}}
                      "/pets/"                             {"get" {"operationId" "all-pets"}
                                                            "post" {"operationId" "create-pet"}}
-                     "/users/{user-id}/orders/{order-id}" {"get" {"operationId" "order"}}}}
+                     "/users/{user-id}/orders/{order-id}" {"get" {"operationId" "order"
+                                                                  "parameters" [{"name" "user-id" "in" "path"}
+                                                                                {"name" "order-id" "in" "path"}]}}}}
            m (Martian. "https://api.org" swagger-definition)]
 
        (is (= "https://api.org/pets/123" (.urlFor m "load-pet" {"id" 123})))

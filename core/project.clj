@@ -8,7 +8,6 @@
                  [camel-snake-kebab "0.4.0"]]
   :plugins [[lein-cljsbuild "1.1.1"]
             [lein-doo "0.1.6"]]
-  :prep-tasks [["compile" "martian.protocols"] "javac" "compile"]
   :java-source-paths ["src"]
   :javac-options ["-target" "1.8" "-source" "1.8"]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.8.0"]

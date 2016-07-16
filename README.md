@@ -7,14 +7,14 @@ and provides a client interface to a Swagger API that abstracts you away from HT
 
 You can bootstrap it in one line and start calling the server:
 ```clojure
-(require '[martian.protocols :refer :all]
+(require '[martian.core :as martian]
          '[martian.clj-http :as martian-http])
 
 (let [m (martian-http/bootstrap-swagger "https://pedestal-api.herokuapp.com/swagger.json")]
-  (response-for m :create-pet {:name "Doggy McDogFace" :type "Dog" :age 3})
+  (martian/response-for m :create-pet {:name "Doggy McDogFace" :type "Dog" :age 3})
   ;; => {:status 201 :body {:id 123}}
 
-  (response-for m :get-pet {:id 123}))
+  (martian/response-for m :get-pet {:id 123}))
   ;; => {:status 200 :body {:name "Doggy McDogFace" :type "Dog" :age 3}}
 ```
 
@@ -50,39 +50,39 @@ ensuring that your response handling code is also correct. Examples are below.
 Given a [Swagger API definition](https://pedestal-api.herokuapp.com/swagger.json)
 like that provided by [pedestal-api](https://github.com/oliyh/pedestal-api):
 ```clojure
-(require '[martian.protocols :refer [url-for request-for response-for explore]]
+(require '[martian.core :as martian]
          '[martian.clj-http :as martian-http])
 
 ;; bootstrap the martian instance by simply providing the url serving the swagger description
 (let [m (martian-http/bootstrap-swagger "https://pedestal-api.herokuapp.com/swagger.json")]
 
   ;; explore the endpoints
-  (explore m)
+  (martian/explore m)
   ;; => [[:get-pet "Loads a pet by id"]
   ;;     [:create-pet "Creates a pet"]]
 
   ;; explore the :get-pet endpoint
-  (explore m :get-pet)
+  (martian/explore m :get-pet)
   ;; => {:summary "Loads a pet by id"
   ;;     :parameters {:id s/Int}}
 
   ;; build the url for a request
-  (url-for m :get-pet {:id 123})
+  (martian/url-for m :get-pet {:id 123})
   ;; => https://pedestal-api.herokuapp.com/pets/123
 
   ;; build the request map for a request
-  (request-for m :get-pet {:id 123})
+  (martian/request-for m :get-pet {:id 123})
   ;; => {:method :get
   ;;     :url "https://pedestal-api.herokuapp.com/pets/123"
   ;;     :headers {"Accept" "application/transit+msgpack"
   ;;     :as :byte-array}
 
   ;; perform the request to create a pet and read back the pet-id from the response
-  (let [pet-id (-> (response-for m :create-pet {:name "Doggy McDogFace" :type "Dog" :age 3})
+  (let [pet-id (-> (martian/response-for m :create-pet {:name "Doggy McDogFace" :type "Dog" :age 3})
                    (get-in [:body :id]))]
 
     ;; load the pet using the id
-    (response-for m :get-pet {:id pet-id})))
+    (martian/response-for m :get-pet {:id pet-id})))
 
     ;; => {:status 200
     ;;     :body {:name "Doggy McDogFace"
@@ -101,7 +101,6 @@ correct without maintenance of a stub.
 The following example shows how exceptions will be thrown by bad code and how responses can be generated:
 ```clojure
 (require '[martian.core :as martian]
-         '[martian.protocols :refer [response-for]]
          '[martian.test :as martian-test])
 
 (let [m (martian/bootstrap-swagger
@@ -109,13 +108,13 @@ The following example shows how exceptions will be thrown by bad code and how re
           swagger-definition
           {:interceptors [martian-test/generate-response]})]
 
-  (response-for m :get-pet {})
+  (martian/response-for m :get-pet {})
   ;; => ExceptionInfo Value cannot be coerced to match schema: {:id missing-required-key}
 
-  (response-for m :get-pet {:id "bad-id"})
+  (martian/response-for m :get-pet {:id "bad-id"})
   ;; => ExceptionInfo Value cannot be coerced to match schema: {:id (not (integer? bad-id))}
 
-  (response-for m :get-pet {:id 123}))
+  (martian/response-for m :get-pet {:id 123}))
   ;; => {:status 200, :body {:id -3, :name "EcLR"}}
 
 ```
@@ -131,8 +130,7 @@ For example, if you wish to add an authentication header to each request:
 
 ```clojure
 (require '[martian.core :as martian]
-         '[martian.clj-http :as martian-http]
-         '[martian.protocols :refer [response-for]])
+         '[martian.clj-http :as martian-http])
 
 (def add-authentication-header
   {:name ::add-authentication-header
@@ -159,7 +157,7 @@ For example, if you wish to add an authentication header to each request:
                                        request-timer
                                        martian-http/perform-request])})]
 
-        (response-for m :all-pets {:id 123}))
+        (martian/response-for m :all-pets {:id 123}))
         ;; Request to :all-pets took 38ms
         ;; => {:status 200 :body {:pets []}}
 ```

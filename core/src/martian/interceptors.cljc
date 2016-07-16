@@ -1,6 +1,7 @@
 (ns martian.interceptors
   (:require [martian.schema :as schema]
             [clojure.walk :refer [stringify-keys]]
+            [clojure.string :as string]
             [tripod.context :as tc]))
 
 (def request-only-handler
@@ -15,11 +16,8 @@
 
 (def set-url
   {:name ::url
-   :enter (fn [{:keys [params path-for handler] :as ctx}]
-            (let [path-schema (:path-schema handler)]
-              (update ctx :request
-                      assoc :url (path-for (:path-parts handler)
-                                           (schema/coerce-data path-schema params)))))})
+   :enter (fn [{:keys [params url-for handler] :as ctx}]
+            (assoc-in ctx [:request :url] (url-for (:route-name handler) params)))})
 
 (def set-query-params
   {:name ::query-params
