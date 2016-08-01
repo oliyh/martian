@@ -15,5 +15,5 @@
                   ["modules" "change" "version" "leiningen.release/bump-version"]
                   ["vcs" "commit"]
                   ["vcs" "push"]]
-  :aliases {"test" ["do" ["modules" ":checkouts"] ["modules" "test"]]
+  :aliases {"test" ["modules" "do" "test," "install"]
             "deploy" ["do" ["modules" "deploy" "clojars"]]})
