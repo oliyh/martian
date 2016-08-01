@@ -3,13 +3,27 @@
             [schema.core :as s]
             [schema.coerce :as sc]))
 
+(defn- keyword->string [s]
+  (if (keyword? s) (name s) s))
+
+(defn- string-enum-matcher [schema]
+  (when (or (and (instance? schema.core.EnumSchema schema)
+                 (every? string? (.-vs ^schema.core.EnumSchema schema)))
+            (and (instance? schema.core.EqSchema schema)
+                 (string? (.-v ^schema.core.EqSchema schema))))
+    keyword->string))
+
+(defn coercion-matchers [schema]
+  (or (sc/string-coercion-matcher schema)
+      (string-enum-matcher schema)))
+
 (defn coerce-data
   "Extracts the data referred to by the schema's keys and coerces it"
   [schema data]
   (some->> (keys schema)
            (map s/explicit-schema-key)
            (select-keys data)
-           ((sc/coercer! schema sc/string-coercion-matcher))))
+           ((sc/coercer! schema coercion-matchers))))
 
 (declare make-schema)
 

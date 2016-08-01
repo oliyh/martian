@@ -108,7 +108,8 @@
     (is (= {:method :get
             :url "https://api.org/pets/"
             :query-params {:sort "asc"}}
-           (request-for :all-pets {:sort "asc"})))
+           (request-for :all-pets {:sort "asc"})
+           (request-for :all-pets {:sort :asc})))
 
     (is (= {:method :get
             :url "https://api.org/users/123/orders/234"
