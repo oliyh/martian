@@ -5,6 +5,9 @@
             #?(:clj [clojure.test :refer :all]
                :cljs [cljs.test :refer-macros [deftest testing is run-tests]])))
 
+#?(:cljs
+   (def Throwable js/Error))
+
 (def swagger-definition
   {:paths {(keyword "/pets/{id}") {:get {:operationId "load-pet"
                                          :parameters [{:in "path"
@@ -25,7 +28,7 @@
                                      {:interceptors (concat martian/default-interceptors
                                                             [martian-test/generate-response])})]
 
-    (is (thrown-with-msg? Exception #"Value cannot be coerced to match schema"
+    (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema"
                           (martian/response-for m :load-pet {:id "abc"})))
 
     (is (nil? (s/check (s/conditional
