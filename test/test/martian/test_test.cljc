@@ -21,7 +21,11 @@
 
 (deftest generate-response-test
   (let [m (martian/bootstrap-swagger "https://api.com" swagger-definition
-                                     {:interceptors [martian-test/generate-response]})]
+                                     {:interceptors (concat martian/default-interceptors
+                                                            [martian-test/generate-response])})]
+
+    (is (thrown-with-msg? Exception #"Value cannot be coerced to match schema"
+                          (martian/response-for m :load-pet {:id "abc"})))
 
     (is (nil? (s/check {:status (s/eq 200)
                         :body {:id s/Int
