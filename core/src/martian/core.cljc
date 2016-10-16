@@ -38,7 +38,7 @@
 (defn- response-schemas [definitions swagger-responses]
   (for [[status response] swagger-responses]
     {:status (s/eq status)
-     :body (schema/make-schema definitions response)}))
+     :body (schema/make-schema definitions (:schema response))}))
 
 (defn- sanitise [x]
   (if (string? x)

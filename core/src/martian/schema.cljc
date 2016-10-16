@@ -46,11 +46,14 @@
 
 (defn make-schema
   "Takes a swagger parameter and returns a schema"
-  [definitions {:keys [name required type enum schema properties]}]
+  [definitions {:keys [name required type enum schema properties $ref]}]
   (cond
     enum (apply s/enum enum)
     (= "string" type) s/Str
     (= "integer" type) s/Int
+
+    $ref
+    (make-schema definitions (resolve-ref definitions $ref))
 
     (:$ref schema)
     (make-schema definitions (resolve-ref definitions (:$ref schema)))
