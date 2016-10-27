@@ -64,7 +64,9 @@
 (defn bootstrap-swagger [url & [{:keys [interceptors] :as params}]]
   (go (let [swagger-definition (:body (<! (http/get url {:as :json})))
             {:keys [scheme server-name server-port]} (http/parse-url url)
-            base-url (str (name scheme) "://" server-name (if server-port (str ":" server-port) "") (get swagger-definition :basePath ""))]
+            base-url (str (when-not (re-find #"^/" url)
+                            (str (name scheme) "://" server-name (when server-port (str ":" server-port))))
+                          (get swagger-definition :basePath ""))]
         (martian/bootstrap-swagger
          base-url
          swagger-definition
