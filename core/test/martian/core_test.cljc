@@ -49,6 +49,18 @@
                                     :name {:type "string"
                                            :required true}}}}})
 
+(deftest bootstrap-test
+  (testing "bootstrap swagger"
+    (let [m (martian/bootstrap-swagger "https://api.org" swagger-definition)]
+      (is (= "https://api.org/pets/123" (martian/url-for m :load-pet {:id 123})))))
+
+  (testing "bootstrap data"
+    (let [m (martian/bootstrap "https://api.org" [{:path "/pets/:id"
+                                                   :method :get
+                                                   :path-schema {:id s/Int}
+                                                   :route-name :load-pet}])]
+      (is (= "https://api.org/pets/123" (martian/url-for m :load-pet {:id 123}))))))
+
 (deftest url-for-test
   (let [m (martian/bootstrap-swagger "https://api.org" swagger-definition)
         url-for (partial martian/url-for m)]

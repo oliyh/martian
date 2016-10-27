@@ -5,6 +5,7 @@
             [clojure.walk :refer [keywordize-keys]]
             [martian.interceptors :as interceptors]
             [martian.schema :as schema]
+            [martian.swagger :as swagger]
             [schema.core :as s]))
 
 (def default-interceptors
@@ -15,74 +16,17 @@
    interceptors/set-form-params
    interceptors/set-header-params])
 
-(defn- body-schema [definitions swagger-params]
-  (when-let [body-param (first (not-empty (filter #(= "body" (:in %)) swagger-params)))]
-    (schema/make-schema definitions body-param)))
-
-(defn- form-schema [definitions swagger-params]
-  (when-let [form-params (not-empty (filter #(= "formData" (:in %)) swagger-params))]
-    (schema/schemas-for-parameters definitions form-params)))
-
-(defn- path-schema [definitions swagger-params]
-  (when-let [path-params (not-empty (filter #(= "path" (:in %)) swagger-params))]
-    (schema/schemas-for-parameters definitions path-params)))
-
-(defn- query-schema [definitions swagger-params]
-  (when-let [query-params (not-empty (filter #(= "query" (:in %)) swagger-params))]
-    (schema/schemas-for-parameters definitions query-params)))
-
-(defn- headers-schema [definitions swagger-params]
-  (when-let [query-params (not-empty (filter #(= "header" (:in %)) swagger-params))]
-    (schema/schemas-for-parameters definitions query-params)))
-
-(defn- response-schemas [definitions swagger-responses]
-  (for [[status response] swagger-responses]
-    {:status (s/eq status)
-     :body (schema/make-schema definitions (:schema response))}))
-
-(defn- sanitise [x]
-  (if (string? x)
-    x
-    ;; consistent across clj and cljs
-    (-> (str x)
-        (string/replace-first ":" ""))))
-
 (defn- tokenise-path [url-pattern]
-  (let [url-pattern (sanitise url-pattern)
-        parts (map first (re-seq #"([^{}]+|\{.+?\})" url-pattern))]
-    (map #(if-let [param-name (second (re-matches #"^\{(.*)\}" %))]
+  (let [parts (map first (re-seq #"([^:]+|:[^/]+)" url-pattern))]
+    (map #(if-let [param-name (second (re-matches #"^:(.+)/?" %))]
             (keyword param-name)
-            %) parts)))
+            %)
+         parts)))
 
-(defn- ->handler [{:keys [definitions] :as swagger-map} url-pattern [method swagger-definition]]
-  (let [path-parts (tokenise-path url-pattern)
-        uri (string/join (map str path-parts))
-        parameters (:parameters swagger-definition)]
-    {:path uri
-     :path-parts path-parts
-     :method method
-     :path-schema (path-schema definitions parameters)
-     :query-schema (query-schema definitions parameters)
-     :body-schema (body-schema definitions parameters)
-     :form-schema (form-schema definitions parameters)
-     :headers-schema (headers-schema definitions parameters)
-     :response-schemas (response-schemas definitions (:responses swagger-definition))
-     :swagger-definition (merge (select-keys swagger-map [:produces :consumes])
-                                swagger-definition)
-     ;; todo path constraints - required?
-     ;; :path-constraints {:id "(\\d+)"},
-     ;; {:in "path", :name "id", :description "", :required true, :type "string", :format "uuid"
-     :route-name (->kebab-case-keyword (:operationId swagger-definition))}))
-
-(defn- swagger->handlers [swagger-json]
-  (reduce-kv
-   (fn [handlers url-pattern swagger-handlers]
-     (into handlers (map (partial ->handler
-                                  swagger-json
-                                  url-pattern)
-                         swagger-handlers)))
-   []
-   (:paths swagger-json)))
+(defn- concise->handlers [concise-handlers]
+  (map (fn [{:keys [path] :as handler}]
+         (assoc handler :path-parts (tokenise-path path)))
+       concise-handlers))
 
 (defn- find-handler [handlers route-name]
   (first (filter #(= (keyword route-name) (:route-name %)) handlers)))
@@ -129,15 +73,20 @@
      {:summary (get-in handler [:swagger-definition :summary])
       :parameters (apply merge (map handler [:path-schema :query-schema :body-schema :form-schema :headers-schema]))})))
 
-(defn- build-instance [api-root swagger-json {:keys [interceptors]}]
-  (->Martian api-root (swagger->handlers swagger-json) (or interceptors default-interceptors)))
+(defn- build-instance [api-root handlers {:keys [interceptors]}]
+  (->Martian api-root handlers (or interceptors default-interceptors)))
 
 (defn bootstrap-swagger
-  "Creates a routing function which should be supplied with an api-root and a swagger spec
+  "Creates a martian instance from a swagger spec
 
-   (let [url-for (bootstrap \"https://api.org\" swagger-spec)]
-     (url-for :load-pet {:id 123}))
+   (let [m (bootstrap-swagger \"https://api.org\" swagger-spec)]
+     (url-for m :load-pet {:id 123}))
 
    ;; => https://api.org/pets/123"
   [api-root swagger-json & [opts]]
-  (build-instance api-root (keywordize-keys swagger-json) (keywordize-keys opts)))
+  (build-instance api-root (swagger/swagger->handlers swagger-json) (keywordize-keys opts)))
+
+(defn bootstrap
+  "Creates a martian instance from a martian description"
+  [api-root concise-handlers & [opts]]
+  (build-instance api-root (concise->handlers concise-handlers) opts))
