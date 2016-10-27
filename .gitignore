@@ -11,4 +11,6 @@
 **/.lein-failures
 **/.nrepl-port
 **/.cljs_rhino_repl/
+**/.cljs_nashorn_repl/
+**/nashorn_code_cache/
 /**/out/
