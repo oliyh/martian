@@ -186,9 +186,14 @@ martian.urlFor("get-pet", new HashMap<String, Object> {{ put("id", 123); }});
 
 You need phantom 1.9.8 to run the tests for the `cljs-http` module.
 
-Step in to the Clojurescript REPL as follows:
+For cljs-http development step in to the Clojurescript REPL as follows:
 ```clojure
-(cemerick.piggieback/cljs-repl (cljs.repl.rhino/repl-env))
+user> (dev)
+;; => #namespace[dev]
+dev> (cljs-repl)
+To quit, type: :cljs/quit
+;; => nil
+cljs.user>
 ```
 
 ## Issues and features
