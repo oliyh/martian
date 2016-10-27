@@ -58,6 +58,9 @@
    :leave (fn [{:keys [request] :as ctx}]
             (assoc ctx :response (http/request request)))})
 
+(def default-interceptors
+  (concat martian/default-interceptors [encode-body coerce-response perform-request]))
+
 (defn bootstrap-swagger [url & [{:keys [interceptors] :as params}]]
   (go (let [swagger-definition (:body (<! (http/get url {:as :json})))
             {:keys [scheme server-name server-port]} (http/parse-url url)
@@ -65,4 +68,4 @@
         (martian/bootstrap-swagger
          base-url
          swagger-definition
-         {:interceptors (or interceptors (concat martian/default-interceptors [encode-body coerce-response perform-request]))}))))
+         {:interceptors (or interceptors default-interceptors)}))))
