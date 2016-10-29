@@ -16,7 +16,8 @@
                                   [org.clojure/clojurescript "1.9.36"]
                                   [prismatic/schema "1.1.2"]
                                   [org.clojure/tools.reader "0.10.0"]
-                                  [com.cemerick/piggieback "0.2.1"]]
+                                  [com.cemerick/piggieback "0.2.1"]
+                                  [org.clojure/test.check "0.9.0"]]
                    :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}}}
   :aliases {"test" ["do" ["clean"] ["test"] ["doo" "nashorn" "test" "once"]]}
   :cljsbuild {:builds [{:id "test"

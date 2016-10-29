@@ -35,3 +35,10 @@
   {:name ::generate-success-response
    :leave (fn [{:keys [handler] :as ctx}]
             (assoc ctx :response (make-response :success (:response-schemas handler))))})
+
+(defn constant-response [response]
+  {:name ::constant-response
+   :leave (fn [ctx] (assoc ctx :response response))})
+
+(defn constantly-respond [martian response]
+  (update martian :interceptors conj (constant-response response)))
