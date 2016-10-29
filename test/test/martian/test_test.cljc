@@ -28,9 +28,8 @@
                                            :required true}}}}})
 
 (deftest generate-response-test
-  (let [m (martian/bootstrap-swagger "https://api.com" swagger-definition
-                                     {:interceptors (concat martian/default-interceptors
-                                                            [martian-test/generate-response])})]
+  (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
+              (martian-test/respond-with :random))]
 
     (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema"
                           (martian/response-for m :load-pet {:id "abc"})))
@@ -44,9 +43,8 @@
                        (martian/response-for m :load-pet {:id 123}))))))
 
 (deftest generate-successful-response-test
-  (let [m (martian/bootstrap-swagger "https://api.com" swagger-definition
-                                     {:interceptors (concat martian/default-interceptors
-                                                            [martian-test/generate-success-response])})]
+  (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
+              (martian-test/respond-with :success))]
 
     (is (nil? (s/check {:status (s/eq 200)
                         :body {:id s/Int
@@ -54,42 +52,27 @@
                        (martian/response-for m :load-pet {:id 123}))))))
 
 (deftest generate-error-response-test
-  (let [m (martian/bootstrap-swagger "https://api.com" swagger-definition
-                                     {:interceptors (concat martian/default-interceptors
-                                                            [martian-test/generate-error-response])})]
+  (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
+              (martian-test/respond-with :error))]
 
     (is (nil? (s/check {:status (s/eq 404)
                         :body s/Str}
                        (martian/response-for m :load-pet {:id 123}))))))
 
-;; want to be able to take a real martian built with prod code and turn it into a test one?
-;; this would rely on the prod source of the mappings being available though, not guaranteed with the http/bootstrap-swagger
+(defn fn-to-test
+  "This is a production function which uses Martian and makes some decisions based on the response.
+   This would normally be hard to test, requiring a stub server or mocking"
+  [m]
+  (let [{:keys [status body]} (martian/response-for m :load-pet {:id 123})]
+    (when (= 200 status)
+      body)))
 
 (deftest test-check-test
-  ;; should be able to generate a response using a bootstrapped martian
-  ;; should be able to make martian return it on the next request
-  ;; should be able to assert that it has behaved as expected...
+  (let [m (martian/bootstrap-swagger "https://api.com" swagger-definition)
+        p (prop/for-all [response (martian-test/response-generator m :load-pet)]
+                        (let [output (fn-to-test (martian-test/constantly-respond m response))]
+                          (if (not= 200 (:status response))
+                            (nil? output)
+                            (not (nil? output)))))]
 
-  ;; will need a martian which returns generated responses for a particular route, i think
-  ;; set up the thing which generates the responses we want
-  ;; e.g. response (martian-gen/response-for m :load-pet)
-  ;; then need to be able to create a martian which will respond with that
-  ;; e.g. (martian-test/constantly-respond response) (yields a martian that constantly responds with response)
-
-  ;; then a function which is calling that endpoint, which will be some prod code function i want to test behaves properly
-  ;; then i pass in the constant responder martian
-  ;; then i assert that for all responses it either updates some atom or something with successful responses
-  ;; or ignores the failing responses
-
-  (let [martian (martian/bootstrap-swagger "https://api.com" swagger-definition)
-        my-fn (fn [m]
-                (let [{:keys [status body]} (martian/response-for m :load-pet {:id 123})]
-                  (if (= 200 status)
-                    body
-                    nil)))
-        p (prop/for-all [response (martian-test/response-for m :load-pet)]
-
-                        (
-                            (my-fn (martian-test/constantly-respond m response))))]
-
-    (tct/assert-check (tc/quick-check 10 p))))
+    (tct/assert-check (tc/quick-check 100 p))))

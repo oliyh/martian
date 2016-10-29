@@ -28,7 +28,7 @@
          (assoc handler :path-parts (tokenise-path path)))
        concise-handlers))
 
-(defn- find-handler [handlers route-name]
+(defn find-handler [handlers route-name]
   (first (filter #(= (keyword route-name) (:route-name %)) handlers)))
 
 (defrecord Martian [api-root handlers interceptors])
