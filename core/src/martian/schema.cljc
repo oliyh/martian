@@ -51,6 +51,7 @@
     enum (apply s/enum enum)
     (= "string" type) s/Str
     (= "integer" type) s/Int
+    (= "boolean" type) s/Bool
 
     $ref
     (make-schema definitions (resolve-ref definitions $ref))
