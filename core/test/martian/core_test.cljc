@@ -171,7 +171,7 @@
                                   :enter (fn [ctx]
                                            (update-in ctx [:request :headers] merge {"auth-token" "1234-secret"}))}
         m (martian/bootstrap-swagger "https://api.org" swagger-definition
-                                     {:interceptors (concat martian/default-interceptors [auth-headers-interceptor])})
+                                     {:interceptors (concat [auth-headers-interceptor] martian/default-interceptors)})
         request-for (partial martian/request-for m)]
 
     (is (= {:method :get

@@ -9,48 +9,43 @@
    :leave (fn [ctx]
             (-> ctx tc/terminate (dissoc ::tc/stack)))})
 
+(defn- create-only [m k v]
+  (if (get m k)
+    m
+    (assoc m k v)))
+
+(defn- insert-or-merge [m k v]
+  (cond
+    (get m k) (update m k #(merge v %))
+    (not-empty v) (assoc m k v)
+    :else m))
+
 (def set-method
   {:name ::method
    :enter (fn [{:keys [handler] :as ctx}]
-            (update ctx :request assoc :method (:method handler)))})
+            (update ctx :request create-only :method (:method handler)))})
 
 (def set-url
   {:name ::url
    :enter (fn [{:keys [params url-for handler] :as ctx}]
-            (assoc-in ctx [:request :url] (url-for (:route-name handler) params)))})
+            (update ctx :request create-only :url (url-for (:route-name handler) params)))})
 
 (def set-query-params
   {:name ::query-params
    :enter (fn [{:keys [params handler] :as ctx}]
-            (let [query-schema (:query-schema handler)
-                  coerced-params (schema/coerce-data query-schema params)]
-              (if (not-empty coerced-params)
-                (update ctx :request assoc :query-params coerced-params)
-                ctx)))})
+            (update ctx :request insert-or-merge :query-params (schema/coerce-data (:query-schema handler) params)))})
 
 (def set-body-params
   {:name ::body-params
    :enter (fn [{:keys [params handler] :as ctx}]
-            (let [body-schema (:body-schema handler)
-                  coerced-params (schema/coerce-data body-schema params)]
-              (if (not-empty coerced-params)
-                (update ctx :request assoc :body coerced-params)
-                ctx)))})
+            (update ctx :request insert-or-merge :body (schema/coerce-data (:body-schema handler) params)))})
 
 (def set-form-params
   {:name ::form-params
    :enter (fn [{:keys [params handler] :as ctx}]
-            (let [form-schema (:form-schema handler)
-                  coerced-params (schema/coerce-data form-schema params)]
-              (if (not-empty coerced-params)
-                (update ctx :request assoc :form-params coerced-params)
-                ctx)))})
+            (update ctx :request insert-or-merge :form-params (schema/coerce-data (:form-schema handler) params)))})
 
 (def set-header-params
   {:name ::header-params
    :enter (fn [{:keys [params handler] :as ctx}]
-            (let [headers-schema (:headers-schema handler)
-                  coerced-params (schema/coerce-data headers-schema params)]
-              (if (not-empty coerced-params)
-                (update ctx :request assoc :headers (stringify-keys coerced-params))
-                ctx)))})
+            (update ctx :request insert-or-merge :headers (stringify-keys (schema/coerce-data (:headers-schema handler) params))))})
