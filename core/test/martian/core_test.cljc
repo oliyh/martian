@@ -55,15 +55,22 @@
       (is (= "https://api.org/pets/123" (martian/url-for m :load-pet {:id 123})))))
 
   (testing "bootstrap data"
-    (let [m (martian/bootstrap "https://api.org" [{:route-name :load-pet
-                                                   :path "/pets/:id"
-                                                   :method :get
-                                                   :path-schema {:id s/Int}}
-                                                  {:route-name :create-pet
-                                                   :path "/pets/"
-                                                   :method :post
-                                                   :body-schema {:id s/Int
-                                                                 :name s/Str}}])]
+    (let [m (martian/bootstrap "https://api.org"
+                               [{:route-name :load-pet
+                                 :path "/pets/:id"
+                                 :method :get
+                                 :path-schema {:id s/Int}}
+
+                                {:route-name :create-pet
+                                 :produces ["application/xml"]
+                                 :consumes ["application/xml"]
+                                 :path "/pets/"
+                                 :method :post
+                                 :body-schema {:id s/Int
+                                               :name s/Str}}]
+                               {:produces ["application/json"]
+                                :consumes ["application/json"]})]
+
       (is (= "https://api.org/pets/123" (martian/url-for m :load-pet {:id 123})))
       (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema"
                             (martian/request-for m :load-pet {:id "one"})))
@@ -72,7 +79,10 @@
               :url "https://api.org/pets/"
               :body {:id 123
                      :name "Doge"}}
-             (martian/request-for m :create-pet {:id 123 :name "Doge"}))))))
+             (martian/request-for m :create-pet {:id 123 :name "Doge"})))
+
+      (is (= ["application/json"] (-> m :handlers first :produces)))
+      (is (= ["application/xml"] (-> m :handlers second :produces))))))
 
 (deftest url-for-test
   (let [m (martian/bootstrap-swagger "https://api.org" swagger-definition)

@@ -23,9 +23,12 @@
             %)
          parts)))
 
-(defn- concise->handlers [concise-handlers]
+(defn- concise->handlers [concise-handlers global-produces global-consumes]
   (map (fn [{:keys [path] :as handler}]
-         (assoc handler :path-parts (tokenise-path path)))
+         (-> handler
+             (assoc :path-parts (tokenise-path path))
+             (update :produces #(or % global-produces))
+             (update :consumes #(or % global-consumes))))
        concise-handlers))
 
 (defn find-handler [handlers route-name]
@@ -88,5 +91,5 @@
 
 (defn bootstrap
   "Creates a martian instance from a martian description"
-  [api-root concise-handlers & [opts]]
-  (build-instance api-root (concise->handlers concise-handlers) opts))
+  [api-root concise-handlers & [{:keys [produces consumes] :as opts}]]
+  (build-instance api-root (concise->handlers concise-handlers produces consumes) opts))

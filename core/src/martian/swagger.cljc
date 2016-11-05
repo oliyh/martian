@@ -57,8 +57,9 @@
      :form-schema (form-schema definitions parameters)
      :headers-schema (headers-schema definitions parameters)
      :response-schemas (response-schemas definitions (:responses swagger-definition))
-     :swagger-definition (merge (select-keys swagger-map [:produces :consumes])
-                                swagger-definition)
+     :produces (some :produces [swagger-definition swagger-map])
+     :consumes (some :produces [swagger-definition swagger-map])
+     :swagger-definition swagger-definition
      ;; todo path constraints - required?
      ;; :path-constraints {:id "(\\d+)"},
      ;; {:in "path", :name "id", :description "", :required true, :type "string", :format "uuid"

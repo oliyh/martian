@@ -19,7 +19,7 @@
    :enter (fn [{:keys [request handler] :as ctx}]
             (if-let [content-type (and (:body request)
                                        (not (get-in request [:headers "Content-Type"]))
-                                       (choose-content-type (get-in handler [:swagger-definition :consumes])))]
+                                       (choose-content-type (:consumes handler)))]
               (-> ctx
                   (update-in [:request :body]
                              (condp = content-type
@@ -37,7 +37,7 @@
    {:name ::coerce-response
     :enter (fn [{:keys [request handler] :as ctx}]
              (if-let [content-type (and (not (get-in request [:headers "Accept"]))
-                                        (choose-content-type (get-in handler [:swagger-definition :produces])))]
+                                        (choose-content-type (:produces handler)))]
                (cond-> (assoc-in ctx [:request :headers "Accept"] content-type)
                  (= "application/transit+msgpack" content-type) (assoc-in [:request :as] :byte-array))
 
