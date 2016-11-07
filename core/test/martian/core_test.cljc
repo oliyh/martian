@@ -162,6 +162,14 @@
             :form-params {:id 123 :name "nigel"}}
            (request-for :update-pet {:id 123 :name "nigel"})))
 
+    (testing "providing initial request map"
+      (is (= {:method :get
+              :url "https://api.org/pets/"
+              :form-params {:id 123 :name "nigel"}}
+             (request-for :update-pet {::martian/request {:method :get}
+                                       :id 123
+                                       :name "nigel"}))))
+
     (testing "exceptions"
       (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema"
                             (request-for :all-pets {:sort "baa"})))

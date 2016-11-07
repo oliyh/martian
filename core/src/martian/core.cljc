@@ -52,7 +52,7 @@
        (:request (tc/execute
                   (assoc ctx
                          :url-for (partial url-for martian)
-                         :request {}
+                         :request (or (::request params) {})
                          :handler handler
                          :params params)))))))
 
@@ -65,7 +65,7 @@
        (:response (tc/execute
                    (assoc ctx
                           :url-for (partial url-for martian)
-                          :request {}
+                          :request (or (::request params) {})
                           :handler handler
                           :params params)))))))
 
