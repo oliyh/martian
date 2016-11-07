@@ -56,13 +56,15 @@
                             identity))
                ctx))}))
 
+(def default-coerce-response (coerce-response))
+
 (def perform-request
   {:name ::perform-request
    :leave (fn [{:keys [request] :as ctx}]
             (assoc ctx :response (http/request request)))})
 
 (def default-interceptors
-  (concat martian/default-interceptors [encode-body (coerce-response) perform-request]))
+  (concat martian/default-interceptors [encode-body default-coerce-response perform-request]))
 
 (defn bootstrap-swagger [url & [{:keys [interceptors] :as params}]]
   (let [swagger-definition (:body (http/get url {:as :json}))
