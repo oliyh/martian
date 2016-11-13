@@ -41,6 +41,9 @@ Ideas
 - re-frame usage - simple, clean HTTP as a side effect
   - Describing a side effect using data makes testing much much easier
   - Martian's side effect data is clean and simple and has a wider tolerance for refactoring
+  - Talk about our use of it to make our client side code nice and simple
+
+- Talk about how we are using it with urania - small code example, talk about benefit of desriptive vs imperative with efficient fetching, batching etc
 
 - Explain the interceptors model
 
