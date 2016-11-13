@@ -1,7 +1,7 @@
 **/pom.xml
 **/pom.xml.asc
 **/*jar
-/**/lib/
+/lib/
 /**/classes/
 /**/target/
 /**/checkouts/
