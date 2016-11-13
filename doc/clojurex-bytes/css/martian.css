@@ -1,0 +1,32 @@
+.github img.logo, .github:hover img.logo {
+    vertical-align: middle;
+    border: 0;
+    background: none;
+    box-shadow: none;
+}
+
+a.github {
+    font-family: monospace;
+}
+
+img {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.col2:after {
+  content: '';
+  display: block;
+  clear: both;
+}
+
+.col2 > div{
+  width: 50%;
+  float: left;
+}
+
+.reveal img.no-border {
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
