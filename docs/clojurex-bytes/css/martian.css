@@ -1,3 +1,8 @@
+h1, h2 {
+    display: inline-block;
+    background-color: orangered;
+}
+
 .github img.logo, .github:hover img.logo {
     vertical-align: middle;
     border: 0;

@@ -45,12 +45,127 @@
         </section>
 
         <section>
-          <h2>HTTP in Clojure</h2>
-          <pre><code class="hljs" data-trim>
-              (http/get "https://api.com/foo/bar" {:as :json})
-          </code></pre>
+          <section>
+            <h2>HTTP in Clojure</h2>
+            <pre><code class="hljs" data-trim>
+(defn make-bar []
+  (http/post "https://api.com/foo/bar" {:as :json}))
+            </code></pre>
+            <aside class="notes">
+              Libraries like clj-http let you make HTTP calls with a sensible, ring-like API.
+              At this point you think: this is pretty sweet.
+            </aside>
+          </section>
+
+          <section>
+            <img class="stretch" src="img/sweet.jpg"/>
+          </section>
+
+          <section>
+            <h2>Route params</h2>
+            <pre><code class="hljs" data-trim>
+(defn make-bar [bar]
+  (http/post (format "https://api.com/foo/%s" bar) {:as :json}))
+            </code></pre>
+            <aside class="notes">
+              If you want to make a slightly different call to that API you would of course
+              reuse all that code you just wrote - you're not a barbarian.
+              But why are we formatting strings? What's going on?
+            </aside>
+          </section>
+
+          <section>
+            <img class="stretch" src="img/what.jpg"/>
+          </section>
+
+          <section>
+            <h2>query params</h2>
+            <pre><code class="hljs" data-trim>
+(defn make-bar [bar baz]
+  (http/post (format "https://api.com/foo/%s" bar)
+             {:as :json
+              :query-params {:baz baz}))
+            </code></pre>
+            <aside class="notes">
+              Now we have another parameter, but it goes somewhere else in the HTTP request.
+              This is starting to look bad.
+            </aside>
+          </section>
+
+          <section>
+            <img class="stretch" src="img/what-again.jpg"/>
+          </section>
+
+          <section>
+            <h2>body params</h2>
+            <pre><code class="hljs" data-trim>
+(defn make-bar [bar baz qux]
+  (http/post (format "https://api.com/foo/%s" bar)
+             {:as :json
+              :query-params {:baz baz}
+              :body (json/encode {:qux qux))
+              :headers {"Content-Type" "application/json"}}))
+            </code></pre>
+            <aside class="notes">
+              Body parameters are even more complicated because they have to be encoded.
+              Someone's getting angry.
+            </aside>
+          </section>
+
+          <section>
+            <img class="stretch" src="img/i-dare-you.jpg"/>
+          </section>
+
+          <section>
+            <h2>metrics, environments, authentication...</h2>
+            <pre><code class="hljs" data-trim>
+(defn make-bar [metrics host port creds bar baz qux]
+  (timing metrics "make-bar"
+    (http/post (format "https://%s:%s/foo/%s" host port bar)
+               {:as :json
+                :query-params {:baz baz}
+                :body (json/encode {:qux qux))
+                :headers {"Content-Type" "application/json"
+                          "Authorization" (str "Token" creds)}})))
+            </code></pre>
+            <aside class="notes">
+              Cross-cutting, non-functional features like metrics, API authentication
+              and environment variables quickly make the code unreadable.
+              We've run out of patience.
+            </aside>
+          </section>
+
+          <section>
+            <img class="stretch" src="img/i-double-dare-you.jpg"/>
+          </section>
 
         </section>
+
+        <section>
+          <h2>Signal to noise ratio</h2>
+            <pre style="background: #3f3f3f;">
+(defn make-bar [metrics host port creds bar baz qux]
+  (timing metrics "make-bar"
+    (http/post (format "https://%s:%s/<span style="color: yellow;">foo</span>/%s" host port <span style="color: yellow;">bar</span>)
+               {:as :json
+                :query-params {:baz <span style="color: yellow;">baz</span>}
+                :body (json/encode {:qux <span style="color: yellow;">qux</span>))
+                :headers {"Content-Type" "application/json"
+                          "Authorization" (str "Token" creds)}})))
+            </pre>
+            <aside class="notes">
+              Out of all this code, we only care about 3 parameters to drive functionality.
+              Functionality is the <strong>what</strong> that we are trying to achieve,
+              that adds value to our software, and is what humans are good at.
+
+              Everything else is the <strong>how</strong> and it doesn't really add any value,
+              is orthogonal to what we are trying to achieve and is the sort of thing that is
+              better left to computers. Why would you care if a parameter is in the route or query?
+
+              The signal to noise ratio is very low here, and that's something I wanted to improve.
+            </aside>
+        </section>
+
 			</div>
 		</div>
 
