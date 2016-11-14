@@ -48,7 +48,7 @@
           <section>
             <h2>HTTP in Clojure</h2>
             <pre><code class="hljs" data-trim>
-(defn make-bar []
+(defn make-foo []
   (http/post "https://api.com/foo/bar" {:as :json}))
             </code></pre>
             <aside class="notes">
@@ -64,7 +64,7 @@
           <section>
             <h2>Route params</h2>
             <pre><code class="hljs" data-trim>
-(defn make-bar [bar]
+(defn make-foo [bar]
   (http/post (format "https://api.com/foo/%s" bar) {:as :json}))
             </code></pre>
             <aside class="notes">
@@ -81,7 +81,7 @@
           <section>
             <h2>query params</h2>
             <pre><code class="hljs" data-trim>
-(defn make-bar [bar baz]
+(defn make-foo [bar baz]
   (http/post (format "https://api.com/foo/%s" bar)
              {:as :json
               :query-params {:baz baz}))
@@ -99,7 +99,7 @@
           <section>
             <h2>body params</h2>
             <pre><code class="hljs" data-trim>
-(defn make-bar [bar baz qux]
+(defn make-foo [bar baz qux]
   (http/post (format "https://api.com/foo/%s" bar)
              {:as :json
               :query-params {:baz baz}
@@ -119,8 +119,8 @@
           <section>
             <h2>metrics, environments, authentication...</h2>
             <pre><code class="hljs" data-trim>
-(defn make-bar [metrics host port creds bar baz qux]
-  (timing metrics "make-bar"
+(defn make-foo [metrics host port creds bar baz qux]
+  (timing metrics "make-foo"
     (http/post (format "https://%s:%s/foo/%s" host port bar)
                {:as :json
                 :query-params {:baz baz}
@@ -144,8 +144,8 @@
         <section>
           <h2>Signal to noise ratio</h2>
             <pre style="background: #3f3f3f;">
-(defn make-bar [metrics host port creds bar baz qux]
-  (timing metrics "make-bar"
+(defn make-foo [metrics host port creds bar baz qux]
+  (timing metrics "make-foo"
     (http/post (format "https://%s:%s/<span style="color: yellow;">foo</span>/%s" host port <span style="color: yellow;">bar</span>)
                {:as :json
                 :query-params {:baz <span style="color: yellow;">baz</span>}
@@ -154,17 +154,79 @@
                           "Authorization" (str "Token" creds)}})))
             </pre>
             <aside class="notes">
-              Out of all this code, we only care about 3 parameters to drive functionality.
+              Out of all this code, we only care about 4 things to drive functionality.
               Functionality is the <strong>what</strong> that we are trying to achieve,
               that adds value to our software, and is what humans are good at.
 
               Everything else is the <strong>how</strong> and it doesn't really add any value,
               is orthogonal to what we are trying to achieve and is the sort of thing that is
-              better left to computers. Why would you care if a parameter is in the route or query?
+              better left to computers.
 
               The signal to noise ratio is very low here, and that's something I wanted to improve.
             </aside>
         </section>
+
+        <section>
+          <h2>The grass is always greener on the server side?</h2>
+          <pre><code class="hljs" data-trim>
+(defn foo [request]
+  (let [bar (get-in request [:route-params :bar])
+        baz (Integer/valueOf (get-in request [:query-params :baz]))
+        qux (-> request
+                :body
+                (json/decode keyword)
+                :qux)]
+    (make-foo bar baz qux)))
+          </code></pre>
+          <aside class="notes">
+            It's actually not much better on the server. At least our routing is done separately.
+          </aside>
+        </section>
+
+        <section>
+          <h2>Stop</h2>
+          <pre><code class="hljs" data-trim>
+              make-foo :: bar -> baz -> qux
+          </code></pre>
+          <aside class="notes">
+            Functional programming is good because data goes in and data comes out.
+            The simplest signatures are the ones that look like this where we pass in only
+            what is needed to return the result, no more and no less, and as separately
+            named and even ideally typed values.
+          </aside>
+        </section>
+
+        <section>
+          <h2>Hammer time</h2>
+          <pre><code class="hljs" data-trim>
+(def make-foo
+  (handler
+   ::make-foo
+   {:summary     "Make a foo"
+    :parameters  {:route-params {:bar Bar}
+                  :query-params {:baz Baz}
+                  :body-params Qux}
+    :responses   {201 {:body Foo}}}
+   (fn [request]
+     ...)))
+          </code></pre>
+          <aside class="notes">
+            Solutions exist: compojure-api, pedestal-api, yada, fintrospect
+            Describe your inputs and outputs and get a lot of things for free.
+          </aside>
+        </section>
+
+
+        <section>
+          <h2></h2>
+          <pre><code class="hljs" data-trim>
+
+          </code></pre>
+          <aside class="notes">
+
+          </aside>
+        </section>
+
 
 			</div>
 		</div>
