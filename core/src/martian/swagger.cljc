@@ -58,7 +58,7 @@
      :headers-schema (headers-schema definitions parameters)
      :response-schemas (response-schemas definitions (:responses swagger-definition))
      :produces (some :produces [swagger-definition swagger-map])
-     :consumes (some :produces [swagger-definition swagger-map])
+     :consumes (some :consumes [swagger-definition swagger-map])
      :swagger-definition swagger-definition
      ;; todo path constraints - required?
      ;; :path-constraints {:id "(\\d+)"},
