@@ -9,7 +9,7 @@
 		<meta name="author" content="Oliver Hine">
 
 		<meta name="apple-mobile-web-app-capable" content="yes" />
-		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+		<meta name="apple-mobile-web-app-status-species-style" content="black-translucent" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
 
 		<link rel="stylesheet" href="css/reveal.css">
@@ -48,11 +48,12 @@
           <section>
             <h2>HTTP in Clojure</h2>
             <pre><code class="hljs" data-trim>
-(defn make-foo []
-  (http/post "https://api.com/foo/bar" {:as :json}))
+(defn create-pet []
+  (http/post "https://api.com/create-pet/dog" {:as :json}))
             </code></pre>
             <aside class="notes">
               Libraries like clj-http let you make HTTP calls with a sensible, ring-like API.
+              You're describing actions with data. Life is good.
               At this point you think: this is pretty sweet.
             </aside>
           </section>
@@ -64,12 +65,12 @@
           <section>
             <h2>Route params</h2>
             <pre><code class="hljs" data-trim>
-(defn make-foo [bar]
-  (http/post (format "https://api.com/foo/%s" bar) {:as :json}))
+(defn create-pet [species]
+  (http/post (format "https://api.com/create-pet/%s" species) {:as :json}))
             </code></pre>
             <aside class="notes">
               If you want to make a slightly different call to that API you would of course
-              reuse all that code you just wrote - you're not a barbarian.
+              reuse all that code you just wrote - you're not a monster.
               But why are we formatting strings? What's going on?
             </aside>
           </section>
@@ -81,10 +82,10 @@
           <section>
             <h2>query params</h2>
             <pre><code class="hljs" data-trim>
-(defn make-foo [bar baz]
-  (http/post (format "https://api.com/foo/%s" bar)
+(defn create-pet [species age]
+  (http/post (format "https://api.com/create-pet/%s" species)
              {:as :json
-              :query-params {:baz baz}))
+              :query-params {:age age}))
             </code></pre>
             <aside class="notes">
               Now we have another parameter, but it goes somewhere else in the HTTP request.
@@ -99,11 +100,11 @@
           <section>
             <h2>body params</h2>
             <pre><code class="hljs" data-trim>
-(defn make-foo [bar baz qux]
-  (http/post (format "https://api.com/foo/%s" bar)
+(defn create-pet [species name age]
+  (http/post (format "https://api.com/create-pet/%s" species)
              {:as :json
-              :query-params {:baz baz}
-              :body (json/encode {:qux qux))
+              :query-params {:age age}
+              :body (json/encode {:name name))
               :headers {"Content-Type" "application/json"}}))
             </code></pre>
             <aside class="notes">
@@ -119,19 +120,19 @@
           <section>
             <h2>metrics, environments, authentication...</h2>
             <pre><code class="hljs" data-trim>
-(defn make-foo [metrics host port creds bar baz qux]
-  (timing metrics "make-foo"
-    (http/post (format "https://%s:%s/foo/%s" host port bar)
+(defn create-pet [metrics host port creds species name age]
+  (timing metrics "create-pet"
+    (http/post (format "https://%s:%s/create-pet/%s" host port species)
                {:as :json
-                :query-params {:baz baz}
-                :body (json/encode {:qux qux))
+                :query-params {:age age}
+                :body (json/encode {:name name))
                 :headers {"Content-Type" "application/json"
                           "Authorization" (str "Token" creds)}})))
             </code></pre>
             <aside class="notes">
               Cross-cutting, non-functional features like metrics, API authentication
               and environment variables quickly make the code unreadable.
-              We've run out of patience.
+              It's all gotten a bit much.
             </aside>
           </section>
 
@@ -144,80 +145,122 @@
         <section>
           <h2>Signal to noise ratio</h2>
             <pre style="background: #3f3f3f;">
-(defn make-foo [metrics host port creds bar baz qux]
-  (timing metrics "make-foo"
-    (http/post (format "https://%s:%s/<span style="color: yellow;">foo</span>/%s" host port <span style="color: yellow;">bar</span>)
+(defn create-pet [metrics host port creds species name age]
+  (timing metrics "create-pet"
+    (http/post (format "https://%s:%s/<span style="color: yellow;">create-pet</span>/%s" host port <span style="color: yellow;">species</span>)
                {:as :json
-                :query-params {:baz <span style="color: yellow;">baz</span>}
-                :body (json/encode {:qux <span style="color: yellow;">qux</span>))
+                :query-params {:name <span style="color: yellow;">name</span>}
+                :body (json/encode {:age <span style="color: yellow;">age</span>))
                 :headers {"Content-Type" "application/json"
                           "Authorization" (str "Token" creds)}})))
             </pre>
             <aside class="notes">
-              Out of all this code, we only care about 4 things to drive functionality.
+              If we go back to that last request and pick out the bits we care about,
+              the bits that drive functionality, we find there are only four.
               Functionality is the <strong>what</strong> that we are trying to achieve,
-              that adds value to our software, and is what humans are good at.
+              that adds value to our software, and are domain level things that make sense to us.
 
-              Everything else is the <strong>how</strong> and it doesn't really add any value,
-              is orthogonal to what we are trying to achieve and is the sort of thing that is
+              Everything else is the <strong>how</strong> and it doesn't really add any value
+              to what we are trying to achieve and is the sort of thing that is
               better left to computers.
+
+              For example, encoding - I don't really care how my computer talks to another computer,
+              I want them to sort that out between them. I'm trying to solve problems in the business
+              domain and that's hard enough without having to make decisions all the time on encoding.
 
               The signal to noise ratio is very low here, and that's something I wanted to improve.
             </aside>
         </section>
 
         <section>
-          <h2>The grass is always greener on the server side?</h2>
+          <h2>The Server</h2>
           <pre><code class="hljs" data-trim>
-(defn foo [request]
-  (let [bar (get-in request [:route-params :bar])
-        baz (Integer/valueOf (get-in request [:query-params :baz]))
-        qux (-> request
-                :body
-                (json/decode keyword)
-                :qux)]
-    (make-foo bar baz qux)))
+(defn create-pet [request]
+  (let [species (get-in request [:route-params :species])
+        age (Integer/valueOf (get-in request [:query-params :age]))
+        name (-> request
+                 :body
+                 (json/decode keyword)
+                 :name)]
+    (create-pet species name age)))
           </code></pre>
           <aside class="notes">
-            It's actually not much better on the server. At least our routing is done separately.
+            Let's look at the corresponding code on the server.
+
+            A server and a client should have a symmetric understanding of both the request and the response of
+            any operation. In this case, they do - the operation takes the same parameters and does what we expect
+            it to do, but this is far from obvious by looking at the code.
+
+            In cases where they don't, and in unguarded code like this, you're going to get bad things happening -
+            strings that should be numbers, nils that shouldn't be nils and so on.
           </aside>
         </section>
 
         <section>
           <h2>Signatures</h2>
           <pre><code class="hljs" data-trim>
-              make-foo :: bar -> baz -> qux
+              (fn create-pet [species name age])
           </code></pre>
           <aside class="notes">
+            Let's take a step back and consider what a request to an API is. We're asking a computer to
+            perform operations on some data. Whether that API is remote or local, whether you talk to it with
+            one protocol or another doesn't change the fundamental nature of what it does - the only way they
+            differ is by how they do it.
+
             The simplest signatures are the ones that look like this where we pass in only
             what is needed to return the result, no more and no less, and as separately
-            named and even ideally typed values.
-
-            You can think of an HTTP call to a remote API as a function. The handler you invoke is the operation,
-            and the data you pass to it are parameters. All the other details - its asynchronicity, serialisation etc -
-            are artifacts of the HTTP layer and not directly relevent to what you are trying to do.
+            named and even typed values.
           </aside>
         </section>
 
         <section>
-          <h2>Signature descriptions</h2>
+          <h2>Data describing data</h2>
           <pre><code class="hljs" data-trim>
-{:route-params {:bar Bar}
- :query-params {:baz Baz}
- :body-params  Qux}
+{:route-params {:species Species}
+ :query-params {:age Age}
+ :body-params  {:name Name}
           </code></pre>
           <aside class="notes">
-            What if we described our signature as data? It would look like this, if we used prismatic schema.
+            What if we described our data using data? It would look like this, if we used prismatic schema.
             We could describe it using clojure.spec as well, which would look slightly different, but the important thing is
             that we now have a tangible description of the signature which we can use to conform data from one shape to
-            another.
+            another, and that lets us do many things.
           </aside>
         </section>
+
+        <section>
+          <h2>API descriptions</h2>
+
+          <pre><code class="hljs" data-trim>
+(defhandler create-pet
+  {:parameters {:path-params  {:species Species}
+                :query-params {:age Age}
+                :body-params  {:name Name}}
+   :responses {200 {:body {:id Id}}}}
+   ...)
+          </code></pre>
+
+          <div style="text-align: center; vertical-align: bottom; bottom: 0;">
+            <a style="color: white" class="github" target="_blank" href="https://github.com/oliyh/pedestal-api">
+              <img class="logo" src="img/github.png"/>
+              oliyh/pedestal-api
+            </a>
+          </div>
+
+          <aside class="notes">
+            Our server, which provides the API, could have descriptions for all its operations.
+            We could use generic middleware to validate incoming requests against those descriptions, rejecting those with incorrect data.
+            We could also coerce the data, so we don't have strings everywhere.
+            These libraries already exist for your chosen web framework: compojure-api, pedestal-api, yada;
+            they're easy to use. Furthermore, they can serve their own descriptions as json to clients to do interesting things with.
+          </aside>
+        </section>
+
 
         <section>
           <h2>Swagger UI</h2>
-
-          <h1 style="color: red">embed swagger petstore here</h1>
+          <br/>
+          <iframe class="stretch" style="background-color: white;" data-src="http://petstore.swagger.io/"></iframe>
 
           <aside class="notes">
             One thing we could generate is a Swagger description of the API.
@@ -227,112 +270,182 @@
         </section>
 
         <section>
-          <h2>Server-side solutions</h2>
-          <ul>
-            <li>Validation</li>
-            <li>Coercion</li>
-          </ul>
-
-          <h1 style="color: red">Ring, Pedestal, Yada, Fintrospect logos here</h1>
-
-          <aside class="notes">
-            Another thing we could do is have generic server code which could validate the incoming data, or return a 400.
-            It could coerce the data, so we don't have strings everywhere.
-            These libraries already exist for your chosen web framework: compojure-api, pedestal-api, yada, fintrospect;
-            they're easy to use so there's no excuse not to.
-          </aside>
-        </section>
-
-
-        <section>
-          <section>
-            <h2>Handler description</h2>
-            <pre><code class="hljs" data-trim>
-[{:operation-id ::make-foo
-  :method       :post
-  :path-parts   ["/foo/" :bar]
-  :route-params {:bar Bar}
-  :query-params {:baz Baz}
-  :body-params  {:qux Qux}}]
-            </code></pre>
-            <aside class="notes">
-              We want our client code to look like a normal function, so let's start a normalised description of
-              the handler and make it available on the client. It might look something like this. Note the operation-id
-              which identifies the operation.
-            </aside>
-          </section>
-
-          <section>
-            <h2>Query params example</h2>
-            <pre><code class="hljs" data-trim>
-(defn add-query-params [request handler params]
-  (assoc request :query-params (select-keys params (keys (:query-schema handler)))))
-
-(let [params {:bar "barrer"
-              :baz "bazzer"
-              :qux "quxxer"}]
-  (-> {}
-      (add-route-params handler params)
-      (add-query-params handler params)
-      (add-body-params handler params)))
-
- => {:url "/foo/barrer"
-     :query-params {:baz "bazzer"}
-     :body {:qux "quxxer"}}
-            </code></pre>
-            <aside class="notes">
-              When you have described your data like this, conforming it to the required shape is easy.
-              We know that query params has a key called baz, so we can look in the supplied parameters for the
-              baz key and assoc it into the query params of the request.
-
-              In the same way we can continue to build the request map up with urls, methods, bodies and everything else
-              we had in the first few slides until we have the same request map but it's all driven by a description
-              rather than imperative style code.
-            </aside>
-          </section>
-
-          <section>
-            <h2>Signature achieved!</h2>
-            <pre><code class="hljs" data-trim>
-(request-for handlers ::make-foo {:bar "barrer" :baz "bazzer" :qux "quxxer"})
-            </code></pre>
-            <aside class="notes">
-              The only other thing we need is to use the operation id to choose the correct handler and we can
-              build an http request with a signature like this; it now looks much more like a normal function.
-            </aside>
-          </section>
-
-        </section>
-
-        <section>
-          <h2>What have we got?</h2>
-          <ul>
-            <li>Simple function signature</li>
-            <li>HTTP implementation to be hidden</li>
-            <li>HTTP library of choice</li>
-            <li>Extension points</li>
-            <li>Runtime discovery, not compile time</li>
-          </ul>
-          <aside class="notes">
-
-          </aside>
-        </section>
-
-
-        <section>
-          <h2></h2>
+          <h2>Martian</h2>
           <pre><code class="hljs" data-trim>
-
+(def m (martian-http/bootstrap-swagger
+        "https://pedestal-api.herokuapp.com/swagger.json"))
           </code></pre>
           <aside class="notes">
-
+            We could also create a Martian record from the description. From this point on
+            the var m will refer to a martian record which has been bootstrapped against the pet store API.
           </aside>
         </section>
 
         <section>
-          <h2></h2>
+          <h2>Martian</h2>
           <pre><code class="hljs" data-trim>
+(martian/response-for m :create-pet {:name "Snoop"
+                                     :species "Dog"
+                                     :age 3})
+          </code></pre>
+          <aside class="notes">
+            With martian we give the operation we want to call and the domain parameters it needs... and that's it!
+            It conforms our domain data into the HTTP request we saw before using some simple operations and keeps it all hidden.
+            This one layer of indirection suddenly removes large amounts of code which had been obscuring the purpose and it looks
+            like a normal function again.
 
+            It takes care of content negotiation, serialisation and all the other things that I want the computers to work out between them.
+          </aside>
+        </section>
+
+        <section>
+          <h2>What does it mean?</h2>
+          <ul>
+            <li>Cleaner code</li>
+            <li>Specification always up-to-date</li>
+            <li>Easier refactoring</li>
+          </ul>
+          <aside class="notes">
+            It may seem like a small improvement to the code, but the implications are bigger than replacing five lines of code with one line.
+            Your code is cleaner not just in terms of line count but in terms of concepts. You're no longer being asked to remember what HTTP status codes
+            mean, or whether a parameter might need url encoding. Your mind is freed to concentrate on what it really means to create a pet and all the
+            deep philosophical ramifications that has.
+
+            It is also, without being obvious, DRY - don't repeat yourself. The description of the API is generated from the API itself so it's
+            always guaranteed to be up to date. By writing your own code that says, for example, that species is a route parameter, you're unconciously
+            repeating the code on the server with the usual caveat to repetition - one version will end up being wrong, and it's going to be the client side
+            in this case.
+
+            For this reason small refactorings to the API can be made without your code having to change at all. If a POST is changed to a PUT, or a url is
+            changed, or a query parameter becomes a route parameter you won't have to change your code because you haven't specified those things on your side
+            at all - you're letting the server describe all those things to you.
+          </aside>
+        </section>
+
+        <section>
+          <h2>Interceptors</h2>
+          <br/>
+          <img src="img/martian-call-stack.png" style="height: 55vh;"/>
+
+          <aside class="notes">
+            I'll just speak for a few minutes now on a pattern I used to implement martian.
+
+            Anyone familiar with pedestal or even re-frame will have come across the concept of interceptors before.
+
+            Essentially they behave like frames on a call stack - code that is executed before the next call down the stack, and code that is
+            executed when the stack is popped back to this frame.
+
+            However they are described by data - there's a bit of a theme here - and they can be manipulated like data. In order to do something
+            like time a request we would want to add a frame to the call stack just before the HTTP request is made which would record the time
+            at the start and the time at the end. When your call stack is data this just becomes a simple conj operation!
+
+            Martian uses interceptors to perform each of the steps it takes between invocation and returning the response. These steps include
+            conforming the HTTP request map, choosing the most efficient way to serialise data, making the http call, waiting for the response,
+            deserialising it and returning it to the call site.
+
+            By exposing Martian's interceptor stack in its API it allows the developer to manipulate it in any way they choose - removing operations,
+            adding them, reordering them.
+
+            This is martian's default interceptor stack.
+          </aside>
+        </section>
+
+        <section>
+          <h2>Security is everything</h2>
+          <br/>
+          <img src="img/security.gif"/>
+          <aside class="notes">
+            Let's write an interceptor to add authentication to all our requests.
+          </aside>
+        </section>
+
+        <section>
+          <h2>Authentication interceptor</h2>
+          <pre><code class="hljs" data-trim>
+(def authentication
+  {:name ::authentication
+   :enter (fn [ctx]
+            (assoc-in ctx [:request :headers "Authorization"]
+                      "Token: 12456abc"))})
+          </code></pre>
+          <aside class="notes">
+            The context is a map containing the request, the response and any other bits of data we might want.
+            To add authentication we just add a header called authorization with our special secret value.
+            We do this in the enter phase, before the request is made.
+          </aside>
+        </section>
+
+        <section>
+          <h2>Update the call stack</h2>
+          <br/>
+          <img src="img/martian-call-stack-auth.png" style="height: 55vh;"/>
+          <aside class="notes">
+            This is where we want to insert authentication in the call stack
+          </aside>
+        </section>
+
+        <section>
+          <h2>Update the call stack</h2>
+          <pre><code class="hljs" data-trim>
+(def m (martian-http/bootstrap-swagger
+        "https://pedestal-api.herokuapp.com/swagger.json"
+        {:interceptors (concat martian/default-interceptors
+                               [authentication
+                                martian-http/encode-body
+                                (martian-http/coerce-response)
+                                martian-http/perform-request])}))
+          </code></pre>
+          <aside class="notes">
+            We can provide our stack of interceptors to martian to execute instead of the default stack
+          </aside>
+        </section>
+
+        <section>
+          <h2>Timing is everything</h2>
+          <img src="img/timing.gif"/>
+          <aside class="notes">
+            Now let's write an interceptor to time the request.
+          </aside>
+        </section>
+
+        <section>
+          <h2>Timing interceptor</h2>
+          <pre><code class="hljs" data-trim>
+(def timing
+  {:name ::timing
+   :enter (fn [ctx] (assoc ctx ::start (t/now)))
+   :leave (fn [ctx] (assoc ctx ::duration
+                           (t/minus (t/now) (::start ctx))))})
+          </code></pre>
+          <aside class="notes">
+            Our timing interceptor has both an enter phase and a leave phase. The enter phase adds the start time to the context and
+            when the http request is completed the stack is popped and we call the leave phase which calculates the duration.
+
+            Notice that we don't even see the request or response map in this interceptor - this means we have achieved a nice
+            clean separation between the functional and non-functional.
+          </aside>
+        </section>
+
+        <section>
+          <h2>Update the call stack (again!)</h2>
+          <br/>
+          <img src="img/martian-call-stack-auth-timing.png" style="height: 55vh;"/>
+          <aside class="notes">
+            This is where we want to insert timing around the actual request
+          </aside>
+        </section>
+
+        <section>
+          <h2>Update the call stack (again!)</h2>
+          <pre><code class="hljs" data-trim>
+(def m (martian-http/bootstrap-swagger
+        "https://pedestal-api.herokuapp.com/swagger.json"
+        {:interceptors (concat martian/default-interceptors
+                               [authentication
+                                martian-http/encode-body
+                                (martian-http/coerce-response)
+                                martian-http/perform-request
+                                timing])}))
           </code></pre>
           <aside class="notes">
 
@@ -358,6 +471,8 @@
 					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
 				]
 			});
+
+      // setTimeout(window.location.reload.bind(window.location), 5000);
 		</script>
 	</body>
 </html>
