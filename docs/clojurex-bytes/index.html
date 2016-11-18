@@ -45,81 +45,81 @@
         </section>
 
         <section>
-          <section>
-            <h2>HTTP in Clojure</h2>
-            <pre><code class="hljs" data-trim>
+          <h2>HTTP in Clojure</h2>
+          <pre><code class="hljs" data-trim>
 (defn create-pet []
   (http/post "https://api.com/create-pet/dog" {:as :json}))
-            </code></pre>
-            <aside class="notes">
-              Libraries like clj-http let you make HTTP calls with a sensible, ring-like API.
-              You're describing actions with data. Life is good.
-              At this point you think: this is pretty sweet.
-            </aside>
-          </section>
+          </code></pre>
+          <aside class="notes">
+            Libraries like clj-http let you make HTTP calls with a sensible, ring-like API.
+            You're describing actions with data. Life is good.
+            At this point you think: this is pretty sweet.
+          </aside>
+        </section>
 
-          <section>
-            <img class="stretch" src="img/sweet.jpg"/>
-          </section>
+        <section>
+          <img class="stretch" src="img/sweet.jpg"/>
+        </section>
 
-          <section>
-            <h2>Route params</h2>
-            <pre><code class="hljs" data-trim>
+        <section>
+          <h2>Route params</h2>
+          <pre><code class="hljs" data-trim>
 (defn create-pet [species]
-  (http/post (format "https://api.com/create-pet/%s" species) {:as :json}))
-            </code></pre>
-            <aside class="notes">
-              If you want to make a slightly different call to that API you would of course
-              reuse all that code you just wrote - you're not a monster.
-              But why are we formatting strings? What's going on?
-            </aside>
-          </section>
+  (http/post (format "https://api.com/create-pet/%s" species)
+             {:as :json}))
+          </code></pre>
+          <aside class="notes">
+            If you want to make a slightly different call to that API you would of course
+            reuse all that code you just wrote - you're not a monster.
+            But why are we formatting strings? What's going on?
+          </aside>
+        </section>
 
-          <section>
-            <img class="stretch" src="img/what.jpg"/>
-          </section>
+        <section>
+          <img class="stretch" src="img/what.jpg"/>
+        </section>
 
-          <section>
-            <h2>query params</h2>
-            <pre><code class="hljs" data-trim>
+        <section>
+          <h2>query params</h2>
+          <pre><code class="hljs" data-trim>
 (defn create-pet [species age]
   (http/post (format "https://api.com/create-pet/%s" species)
              {:as :json
               :query-params {:age age}))
-            </code></pre>
-            <aside class="notes">
-              Now we have another parameter, but it goes somewhere else in the HTTP request.
-              This is starting to look bad.
-            </aside>
-          </section>
+          </code></pre>
+          <aside class="notes">
+            Now we have another parameter, but it goes somewhere else in the HTTP request.
+            This is starting to look bad.
+          </aside>
+        </section>
 
-          <section>
-            <img class="stretch" src="img/what-again.jpg"/>
-          </section>
+        <section>
+          <img class="stretch" src="img/what-again.jpg"/>
+        </section>
 
-          <section>
-            <h2>body params</h2>
-            <pre><code class="hljs" data-trim>
+        <section>
+          <h2>body params</h2>
+          <pre><code class="hljs" data-trim>
 (defn create-pet [species name age]
   (http/post (format "https://api.com/create-pet/%s" species)
              {:as :json
               :query-params {:age age}
               :body (json/encode {:name name))
               :headers {"Content-Type" "application/json"}}))
-            </code></pre>
-            <aside class="notes">
-              Body parameters are even more complicated because they have to be encoded.
-              Someone's getting angry.
-            </aside>
-          </section>
+          </code></pre>
+          <aside class="notes">
+            Body parameters are even more complicated because they have to be encoded.
+            Someone's getting angry.
+          </aside>
+        </section>
 
-          <section>
-            <img class="stretch" src="img/i-dare-you.jpg"/>
-          </section>
+        <section>
+          <img class="stretch" src="img/i-dare-you.jpg"/>
+        </section>
 
-          <section>
-            <h2>metrics, environments, authentication...</h2>
-            <pre><code class="hljs" data-trim>
+        <section>
+          <h2>metrics, environments, authentication...</h2>
+          <pre><code class="hljs" data-trim>
 (defn create-pet [metrics host port creds species name age]
   (timing metrics "create-pet"
     (http/post (format "https://%s:%s/create-pet/%s" host port species)
@@ -128,18 +128,16 @@
                 :body (json/encode {:name name))
                 :headers {"Content-Type" "application/json"
                           "Authorization" (str "Token" creds)}})))
-            </code></pre>
-            <aside class="notes">
-              Cross-cutting, non-functional features like metrics, API authentication
-              and environment variables quickly make the code unreadable.
-              It's all gotten a bit much.
-            </aside>
-          </section>
+          </code></pre>
+          <aside class="notes">
+            Cross-cutting, non-functional features like metrics, API authentication
+            and environment variables quickly make the code unreadable.
+            It's all gotten a bit much.
+          </aside>
+        </section>
 
-          <section>
-            <img class="stretch" src="img/i-double-dare-you.jpg"/>
-          </section>
-
+        <section>
+          <img class="stretch" src="img/i-double-dare-you.jpg"/>
         </section>
 
         <section>
@@ -448,7 +446,36 @@
                                 timing])}))
           </code></pre>
           <aside class="notes">
+            Exposing the interceptor stack lets us do anything we wish at any point in the operation.
+          </aside>
+        </section>
 
+        <section>
+          <h2>Interceptors as an API</h2>
+          <ul>
+            <li>Better than multimethods</li>
+            <li>Better than binding dynamic vars</li>
+            <li>Better than arbitrary options maps</li>
+          </ul>
+          <aside class="notes">
+            I realised that interceptors actually provide a brilliant way of allowing the developer to change the way the library works.
+            They can have full control of what happens and when it happens - the martian library is a set of composable interceptors rather than
+            a rigid framework.
+
+            This makes it better than using multimethods as a way to let the developer extend behaviour, because multimethods only allow you to
+            provide implementations for particular dispatch values. You can't choose how the dispatch values are chosen, you can't reorder anything,
+            you can't add new behaviour, only adapt existing behaviour.
+
+            They're better than binding dynamic vars because that's state and makes it hard to reason about how a system works, and has many of the same
+            drawbacks as multimethods. Dynamic vars also cannot cross thread boundaries.
+
+            They're also better than supporting arbitrary options maps, which are often poorly documented and still don't let you add or extend behaviour
+            beyond what the author originally allows.
+
+
+
+            I humbly submit that exposing the interceptor stack is the best way of making a library extendable, reusable and ultimately more useful to the
+            developer whilst reducing the demand on the author to maintain and add features to it. I certainly plan to follow the same pattern for future libraries.
           </aside>
         </section>
 
