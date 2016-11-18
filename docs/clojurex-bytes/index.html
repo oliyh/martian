@@ -153,7 +153,7 @@
                           "Authorization" (str "Token" creds)}})))
             </pre>
             <aside class="notes">
-              If we go back to that last request and pick out the bits we care about,
+              If we look at that last request and pick out the bits we care about,
               the bits that drive functionality, we find there are only four.
               Functionality is the <strong>what</strong> that we are trying to achieve,
               that adds value to our software, and are domain level things that make sense to us.
@@ -166,7 +166,7 @@
               I want them to sort that out between them. I'm trying to solve problems in the business
               domain and that's hard enough without having to make decisions all the time on encoding.
 
-              The signal to noise ratio is very low here, and that's something I wanted to improve.
+              The signal to noise ratio is very low here, and that's something we can improve.
             </aside>
         </section>
 
@@ -195,6 +195,19 @@
         </section>
 
         <section>
+          <h2>That's not a dog</h2>
+          <br/>
+          <img src="img/not-a-dog"/>
+          picture of a uml diagram of a web request or an http spec or something
+          <aside class="notes">
+            When we pull apart the values of our domain object and sprinkle them into someone
+            else's domain object, we're not in our domain anymore.
+
+            This is what our dog looks like, except it's not a dog anymore.
+          </aside>
+        </section>
+
+        <section>
           <h2>Signatures</h2>
           <pre><code class="hljs" data-trim>
               (fn create-pet [species name age])
@@ -208,6 +221,20 @@
             The simplest signatures are the ones that look like this where we pass in only
             what is needed to return the result, no more and no less, and as separately
             named and even typed values.
+          </aside>
+        </section>
+
+        <section>
+          <h2><em>This</em>&nbsp;&nbsp;is a dog</h2>
+          <br/>
+          <img src="img/a-dog"/>
+          picture of a dog with a name tag and a birthday cake with their age on it
+          <aside class="notes">
+            When we talk about a dog called Buster who's 4 years old, this is what we mean.
+
+            This is much more evocative of what we want our code to actually do, and incidentally
+            much more entertaining. Whenever you write code, I want you to see dogs blowing out
+            candles on birthday cakes.
           </aside>
         </section>
 
@@ -250,10 +277,9 @@
             We could use generic middleware to validate incoming requests against those descriptions, rejecting those with incorrect data.
             We could also coerce the data, so we don't have strings everywhere.
             These libraries already exist for your chosen web framework: compojure-api, pedestal-api, yada;
-            they're easy to use. Furthermore, they can serve their own descriptions as json to clients to do interesting things with.
+            they're easy to use. Furthermore, they generate and serve their own descriptions as json to clients to do interesting things with.
           </aside>
         </section>
-
 
         <section>
           <h2>Swagger UI</h2>
@@ -478,6 +504,157 @@
             developer whilst reducing the demand on the author to maintain and add features to it. I certainly plan to follow the same pattern for future libraries.
           </aside>
         </section>
+
+        <section>
+          <h2>Testing</h2>
+          <br/>
+          <img src="img/testing.gif">
+          <aside class="notes">
+            Testing HTTP integration has always been a bit tough. The most complete way is to
+            start a stub server instance and capture requests so you can make some assertions on
+            them.
+          </aside>
+        </section>
+
+        <section>
+          <h2>Stub servers</h2>
+          <ul>
+            <li>Drift away from real life</li>
+            <li>Manually written cases</li>
+            <li>Slow to run</li>
+          </ul>
+          <aside class="notes">
+            Stub servers violate the don't repeat yourself principle - you're repeating code
+            found in the remote API and this will always start to drift.
+            When you write a stub handler you will probably not test every permutation of
+            input and output, because that would mean a lot of code,
+            and finally starting real servers takes time which adds up over many tests.
+          </aside>
+        </section>
+
+        <section>
+          <h2>Mocking</h2>
+          <br/>
+          <img src="img/max-power.gif">
+          <aside class="notes">
+            Mocked calls are the Max Power to the wrong way of stub servers. They're still wrong,
+            but faster.
+          </aside>
+        </section>
+
+        <section>
+          <h2>martian-test</h2>
+          <ul>
+            <li>Uses production definition - always correct</li>
+            <li>Readable error messages</li>
+            <li>Fast</li>
+          </ul>
+
+          <aside class="notes">
+            Martian has a library called martian-test which replaces the HTTP call with assertions
+            driven by the API's definition. This means no repetition, error messages are normal
+            schema validation errors and it's as fast as mocking.
+          </aside>
+        </section>
+
+        <section>
+          <h2>martian-test example</h2>
+          <pre><code class="hljs" data-trim>
+              show the bootstrap with the martian-test interceptors
+              show making a call with bad params (like missing?) returning nice error
+          </code></pre>
+          <aside class="notes">
+            When we bootstrap martian, we provide it with the martian-test interceptors
+
+            ...
+
+            This means our tests can prove that we are always passing good data in to our
+            API calls, which is a great thing.
+          </aside>
+        </section>
+
+        <section>
+          <h2>Responses</h2>
+          <pre>
+(defhandler create-pet
+  {:parameters {:path-params  {:species Species}
+                :query-params {:age Age}
+                :body-params  {:name Name}}
+   <span style="color: yellow;">:responses {200 {:body {:id Id}}}</span>}
+   ...)
+          </pre>
+          <aside class="notes">
+            What about responses from these remote APIs? Swagger lets you describe possible
+            responses as well as inputs, so we know all the possible values that can come back.
+          </aside>
+        </section>
+
+        <section>
+          <h2>Generating responses</h2>
+          <pre><code class="hljs" data-trim>
+              show code to generate a response, and the generated response
+          </code></pre>
+          <aside class="notes">
+
+          </aside>
+        </section>
+
+        <section>
+          <h2>Generative testing</h2>
+          <pre><code class="hljs" data-trim>
+              show generative test
+              example handler could maybe try to parse :id as an integer when maybe it's a string
+          </code></pre>
+          <aside class="notes">
+
+          </aside>
+        </section>
+
+        <section>
+          <h2>No Swagger? No problem</h2>
+          <pre><code class="hljs" data-trim>
+              bootstrap with data
+          </code></pre>
+          <aside class="notes">
+
+          </aside>
+        </section>
+
+        <section>
+          <h2>Any implementation</h2>
+          Implementations provided for clj-http, httpkit, cljs-http
+          If you want to use something else, just write your own interceptor
+          <aside class="notes">
+            Again this is why interceptor API is good
+          </aside>
+        </section>
+
+        <section>
+          <h2>Alternatives</h2>
+          swagger generated code
+          finagle
+          <aside class="notes">
+            Runtime better because data is better than functions
+
+            finagle means you need to control both the server and the client
+          </aside>
+        </section>
+
+        <section>
+          <h2>Conclusion</h2>
+          Separate your domain from implementation
+          Describe data for great good
+          Interceptor all the things
+          <aside class="notes">
+            Keep your code simple and domain oriented
+            Let computers do what computers do best
+
+            Describing data lets you validate, generate
+
+            Interceptors provide ultimate flexibility in designing programmatic APIs
+          </aside>
+        </section>
+
 
 
 			</div>
