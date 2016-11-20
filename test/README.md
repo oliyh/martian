@@ -33,7 +33,7 @@ stub code and providing responses that are always up to date. We can write the t
 (deftest find-user-test
   (testing "happy path works"
     (let [m (-> (martian/bootstrap-swagger "https://api.com" user-api-swagger-definition)
-                (martian-test/respond-with :success))]
+                (martian-test/respond-with :success))
           user (find-user m "abc")]
       (is (not= "Guest" (:name user)))
       (is (instance? Boolean (:write-access? user)))))

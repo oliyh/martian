@@ -197,13 +197,13 @@
         <section>
           <h2>That's not a dog</h2>
           <br/>
-          <img src="img/not-a-dog"/>
-          picture of a uml diagram of a web request or an http spec or something
+          <img class="stretch" src="img/not-a-dog.jpg"/>
           <aside class="notes">
             When we pull apart the values of our domain object and sprinkle them into someone
             else's domain object, we're not in our domain anymore.
 
-            This is what our dog looks like, except it's not a dog anymore.
+            If I create a pet of species dog, method put, name Charlie, content-type application/json,
+            age 3, port 80 it will look like this. That is not a dog.
           </aside>
         </section>
 
@@ -227,10 +227,9 @@
         <section>
           <h2><em>This</em>&nbsp;&nbsp;is a dog</h2>
           <br/>
-          <img src="img/a-dog"/>
-          picture of a dog with a name tag and a birthday cake with their age on it
+          <img class="stretch" src="img/a-dog.gif"/>
           <aside class="notes">
-            When we talk about a dog called Buster who's 4 years old, this is what we mean.
+            When we talk about a dog called Charlie who's 3 years old, this is what we mean.
 
             This is much more evocative of what we want our code to actually do, and incidentally
             much more entertaining. Whenever you write code, I want you to see dogs blowing out
@@ -246,7 +245,9 @@
  :body-params  {:name Name}
           </code></pre>
           <aside class="notes">
-            What if we described our data using data? It would look like this, if we used prismatic schema.
+            The best way to map data from one domain to another is to describe data with data.
+            That might sound like data everywhere, and it is, because it's a good thing.
+            For our pet example it would look like this, if we used prismatic schema.
             We could describe it using clojure.spec as well, which would look slightly different, but the important thing is
             that we now have a tangible description of the signature which we can use to conform data from one shape to
             another, and that lets us do many things.
@@ -261,7 +262,7 @@
   {:parameters {:path-params  {:species Species}
                 :query-params {:age Age}
                 :body-params  {:name Name}}
-   :responses {200 {:body {:id Id}}}}
+   :responses {201 {:body {:id Id}}}}
    ...)
           </code></pre>
 
@@ -294,7 +295,7 @@
         </section>
 
         <section>
-          <h2>Martian</h2>
+          <h2>Make a Martian</h2>
           <pre><code class="hljs" data-trim>
 (def m (martian-http/bootstrap-swagger
         "https://pedestal-api.herokuapp.com/swagger.json"))
@@ -306,7 +307,7 @@
         </section>
 
         <section>
-          <h2>Martian</h2>
+          <h2>Contact Martian</h2>
           <pre><code class="hljs" data-trim>
 (martian/response-for m :create-pet {:name "Snoop"
                                      :species "Dog"
@@ -349,7 +350,7 @@
         <section>
           <h2>Interceptors</h2>
           <br/>
-          <img src="img/martian-call-stack.png" style="height: 55vh;"/>
+          <img class="stretch" src="img/martian-call-stack.png"/>
 
           <aside class="notes">
             I'll just speak for a few minutes now on a pattern I used to implement martian.
@@ -377,7 +378,7 @@
         <section>
           <h2>Security is everything</h2>
           <br/>
-          <img src="img/security.gif"/>
+          <img class="stretch" src="img/security.gif"/>
           <aside class="notes">
             Let's write an interceptor to add authentication to all our requests.
           </aside>
@@ -402,7 +403,7 @@
         <section>
           <h2>Update the call stack</h2>
           <br/>
-          <img src="img/martian-call-stack-auth.png" style="height: 55vh;"/>
+          <img class="stretch" src="img/martian-call-stack-auth.png"/>
           <aside class="notes">
             This is where we want to insert authentication in the call stack
           </aside>
@@ -426,7 +427,7 @@
 
         <section>
           <h2>Timing is everything</h2>
-          <img src="img/timing.gif"/>
+          <img class="stretch" src="img/timing.gif"/>
           <aside class="notes">
             Now let's write an interceptor to time the request.
           </aside>
@@ -453,7 +454,7 @@
         <section>
           <h2>Update the call stack (again!)</h2>
           <br/>
-          <img src="img/martian-call-stack-auth-timing.png" style="height: 55vh;"/>
+          <img class="stretch" src="img/martian-call-stack-auth-timing.png"/>
           <aside class="notes">
             This is where we want to insert timing around the actual request
           </aside>
@@ -506,9 +507,9 @@
         </section>
 
         <section>
-          <h2>Testing</h2>
+          <h2>Always test the right thing</h2>
           <br/>
-          <img src="img/testing.gif">
+          <img class="stretch" src="img/testing.gif">
           <aside class="notes">
             Testing HTTP integration has always been a bit tough. The most complete way is to
             start a stub server instance and capture requests so you can make some assertions on
@@ -518,6 +519,7 @@
 
         <section>
           <h2>Stub servers</h2>
+          <br/>
           <ul>
             <li>Drift away from real life</li>
             <li>Manually written cases</li>
@@ -535,7 +537,7 @@
         <section>
           <h2>Mocking</h2>
           <br/>
-          <img src="img/max-power.gif">
+          <img class="stretch" src="img/max-power.gif">
           <aside class="notes">
             Mocked calls are the Max Power to the wrong way of stub servers. They're still wrong,
             but faster.
@@ -544,6 +546,7 @@
 
         <section>
           <h2>martian-test</h2>
+          </br>
           <ul>
             <li>Uses production definition - always correct</li>
             <li>Readable error messages</li>
@@ -560,8 +563,17 @@
         <section>
           <h2>martian-test example</h2>
           <pre><code class="hljs" data-trim>
-              show the bootstrap with the martian-test interceptors
-              show making a call with bad params (like missing?) returning nice error
+(def m (-> (martian/bootstrap "https://petstore.com" api-definition)
+           (martian-test/respond-with :success)))
+
+(martian/response-for m :create-pet {:name "Charlie"})
+;; => ExceptionInfo Value cannot be coerced to match schema:
+;;                  {:species missing-required-key}
+
+(martian/response-for m :create-pet {:name "Charlie"
+                                     :species "Dog"
+                                     :age 3})
+;; => {:status 201, :body {:id -3}}
           </code></pre>
           <aside class="notes">
             When we bootstrap martian, we provide it with the martian-test interceptors
@@ -580,7 +592,7 @@
   {:parameters {:path-params  {:species Species}
                 :query-params {:age Age}
                 :body-params  {:name Name}}
-   <span style="color: yellow;">:responses {200 {:body {:id Id}}}</span>}
+   <span style="color: yellow;">:responses {201 {:body {:id Id}}}</span>}
    ...)
           </pre>
           <aside class="notes">
@@ -635,6 +647,7 @@
           finagle
           <aside class="notes">
             Runtime better because data is better than functions
+
 
             finagle means you need to control both the server and the client
           </aside>
