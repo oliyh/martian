@@ -283,14 +283,16 @@
         </section>
 
         <section>
-          <h2>Swagger UI</h2>
+          <h2>Moves like Swagger</h2>
           <br/>
           <iframe class="stretch" style="background-color: white;" data-src="http://petstore.swagger.io/"></iframe>
 
           <aside class="notes">
             One thing we could generate is a Swagger description of the API.
-            If we do that, we can use the Swagger UI which lets us explore the API
-            and send and receive data. Notice how we can choose the operation and just type in our data.
+            Swagger is also known as OpenAPI and is a cross language specification for describing
+            APIs and a collection of tools for using these descriptions for various aims.
+            One of these is the Swagger UI which lets us explore the API
+            and use it from our browser. Notice how we can choose the operation and just type in our data.
           </aside>
         </section>
 
@@ -301,25 +303,30 @@
         "https://pedestal-api.herokuapp.com/swagger.json"))
           </code></pre>
           <aside class="notes">
-            We could also create a Martian record from the description. From this point on
-            the var m will refer to a martian record which has been bootstrapped against the pet store API.
+            One of the other things we could also create a Martian record from the description.
+            From this point on the var m will refer to a martian record which has been
+            bootstrapped against the pet store API.
+            So what can we do with this martian thing?
           </aside>
         </section>
 
         <section>
           <h2>Contact Martian</h2>
           <pre><code class="hljs" data-trim>
-(martian/response-for m :create-pet {:name "Snoop"
+(martian/response-for m :create-pet {:name "Charlie"
                                      :species "Dog"
                                      :age 3})
           </code></pre>
           <aside class="notes">
             With martian we give the operation we want to call and the domain parameters it needs... and that's it!
-            It conforms our domain data into the HTTP request we saw before using some simple operations and keeps it all hidden.
+            Martian understands the HTTPness of the API, so it can
+            conform our domain data into the HTTP request we saw before using some simple operations and keep it all hidden.
             This one layer of indirection suddenly removes large amounts of code which had been obscuring the purpose and it looks
             like a normal function again.
 
             It takes care of content negotiation, serialisation and all the other things that I want the computers to work out between them.
+
+            Everything else I'm going to talk about stems from being able to write this call in this way.
           </aside>
         </section>
 
@@ -578,10 +585,14 @@
           <aside class="notes">
             When we bootstrap martian, we provide it with the martian-test interceptors
 
-            ...
+            When we make a bad call, like forgetting to provide the species of our pet for example,
+            we get an exception which tells us this clearly.
+
+            When we make a good call, it succeeds and we get a generated response.
 
             This means our tests can prove that we are always passing good data in to our
-            API calls, which is a great thing.
+            API calls, which is a great thing. If someone changes an API in a way that's incompatible
+            with the way you use it, you'll get a failing test.
           </aside>
         </section>
 
@@ -604,21 +615,48 @@
         <section>
           <h2>Generating responses</h2>
           <pre><code class="hljs" data-trim>
-              show code to generate a response, and the generated response
+(def create-pet-responses
+  (martian-test/response-generator m :create-pet))
+
+(generate create-pet-responses)
+;; => {:status 200, :body {:id -1472372}}
           </code></pre>
           <aside class="notes">
+            Creating a generator is easy - you just ask martian for one for the endpoint you
+            want to test. They use schema generators underneath so behave in the same way.
 
+            Already we're thinking more - what does it mean that an id could be negative?
+            The age of a pet is optional, what happens when I load a pet that doesn't have an age?
+
+            Assumptions about a remote API can easily creep into your codebase without you knowing:
+            these assumptions are implicit and get lost as data propagates through your system.
+            By explicitly describing the remote API at the edge of your system and using generative
+            testing you can avoid a lot of pitfalls and get clearer errors when integrating.
           </aside>
         </section>
 
         <section>
           <h2>Generative testing</h2>
           <pre><code class="hljs" data-trim>
-              show generative test
-              example handler could maybe try to parse :id as an integer when maybe it's a string
+(let [p (prop/for-all [response create-pet-responses]
+         (let [result (handle-response (martian-test/constantly-respond m response))]
+           (if (= 201 (:status response))
+             (= :pet-created (:notification result))
+
+             (= :pet-creation-failed (:notification result)))))]
+
+  (tct/assert-check (tc/quick-check 100 p)))
           </code></pre>
           <aside class="notes">
+            This is some clojure test.check code that will call whatever code handles
+            this particular HTTP response and make some generic assertions.
 
+            I want to make sure that whenever I get a successful creation response that my
+            handler will show a pet created notification to the user, and that in all
+            other instances they see that pet creation failed.
+
+            I can then easily run this through with hundreds of generated responses
+            to make sure my code can deal with anything the remote API can throw at it.
           </aside>
         </section>
 
@@ -628,7 +666,12 @@
               bootstrap with data
           </code></pre>
           <aside class="notes">
-
+            Swagger is probably the most popular way that web APIs can self describe
+            but not everyone uses it. You can still integrate with them using martian via
+            a different bootstrap method that describes the API in a Swagger-like way.
+            This gives you nearly all the benefits. One thing it won't help with is knowing when
+            the remote API changes, but when it does change you can just update your definition
+            and run your tests to see if anything breaks. If it doesn't you're good to go.
           </aside>
         </section>
 
@@ -637,7 +680,17 @@
           Implementations provided for clj-http, httpkit, cljs-http
           If you want to use something else, just write your own interceptor
           <aside class="notes">
-            Again this is why interceptor API is good
+            The actual HTTP client you use underneath martian is up to you. The original driver
+            behind this was using it in Clojurescript as well as in Clojure, and because everything
+            is implemented as an interceptor this turned out to be really easy to do.
+
+            You can even retain the behaviour of these libraries through martian - the asynchronous
+            httpkit solution for example handles the leave phases of all the interceptors inside
+            the callback which gets called when the response comes back, which is normally
+            the place where your thread bindings would get lost and you've lost a lot of context.
+
+            In martian, we pick up the entire context containing the interceptor queue and stack
+            and put it into the callback - no context lost at all.
           </aside>
         </section>
 
@@ -646,10 +699,12 @@
           swagger generated code
           finagle
           <aside class="notes">
-            Runtime better because data is better than functions
+            There are alternatives out there - you can even generate Clojure code from a Swagger
+            definition at compile time. However I believe runtime better because data is better
+            than functions and can open the way to generative testing and other things I've talked about.
 
-
-            finagle means you need to control both the server and the client
+            Twitter wrote a framework called finagle but to use it means you need to control both
+            the server and the client and there is no clojurescript equivalent.
           </aside>
         </section>
 
