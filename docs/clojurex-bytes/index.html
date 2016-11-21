@@ -597,18 +597,53 @@
         </section>
 
         <section>
-          <h2>Responses</h2>
+          <h2>Response schemas</h2>
           <pre>
 (defhandler create-pet
   {:parameters {:path-params  {:species Species}
                 :query-params {:age Age}
                 :body-params  {:name Name}}
-   <span style="color: yellow;">:responses {201 {:body {:id Id}}}</span>}
+   <span style="color: yellow;">:responses {201 {:body {:id Id}}
+               401 {:body {:message s/Str}}
+               402 {:body {:amount s/Int}}
+               403 {:body {:message s/Str}}</span>
+               ...}}
    ...)
           </pre>
           <aside class="notes">
             What about responses from these remote APIs? Swagger lets you describe possible
             responses as well as inputs, so we know all the possible values that can come back.
+
+            Look at all those possible responses. What's the likelihood you'd only write a test for
+            the 201 created response? What about all the others?
+          </aside>
+        </section>
+
+        <section>
+          <img class="stretch" src="img/401.jpg"/>
+          <aside class="notes">
+            401 not authorised
+          </aside>
+        </section>
+
+        <section>
+          <img class="stretch" src="img/402.jpg"/>
+          <aside class="notes">
+            402 payment required
+          </aside>
+        </section>
+
+        <section>
+          <img class="stretch" src="img/403.jpg"/>
+          <br/>
+          <a href="https://http.cat">http.cat</a>
+          <aside class="notes">
+            403 forbidden
+
+            By the way all these come from my favourite website http.cat which
+            completely embraces the rule that your code should conjure up evocative images in your mind.
+
+            As well as dogs with cakes you should be imagining a cat in a toilet every time you see a 403.
           </aside>
         </section>
 
@@ -628,42 +663,46 @@
             Already we're thinking more - what does it mean that an id could be negative?
             The age of a pet is optional, what happens when I load a pet that doesn't have an age?
 
-            Assumptions about a remote API can easily creep into your codebase without you knowing:
-            these assumptions are implicit and get lost as data propagates through your system.
-            By explicitly describing the remote API at the edge of your system and using generative
-            testing you can avoid a lot of pitfalls and get clearer errors when integrating.
+            martian-test comes with all the plumbing you need to create a martian which will return
+            generated responses and let you make generic assertions. You can for example assert that
+            whenever a pet is successfully created, you always notify the user that their action was
+            successful, or if there was a failure that something went wrong. Your integration tests
+            can be much more robust. There are examples on how to do this on github.
           </aside>
         </section>
 
         <section>
-          <h2>Generative testing</h2>
-          <pre><code class="hljs" data-trim>
-(let [p (prop/for-all [response create-pet-responses]
-         (let [result (handle-response (martian-test/constantly-respond m response))]
-           (if (= 201 (:status response))
-             (= :pet-created (:notification result))
-
-             (= :pet-creation-failed (:notification result)))))]
-
-  (tct/assert-check (tc/quick-check 100 p)))
-          </code></pre>
+          <h2>Assumptions vs Generative</h2>
+          <br/>
+          <img class="stretch" src="img/assumptions.gif">
           <aside class="notes">
-            This is some clojure test.check code that will call whatever code handles
-            this particular HTTP response and make some generic assertions.
+            Assumptions in testing can be quite a dangerous thing. You might have tested that you can leap,
+            assuming you're standing on a high friction surface.
 
-            I want to make sure that whenever I get a successful creation response that my
-            handler will show a pet created notification to the user, and that in all
-            other instances they see that pet creation failed.
+            Assumptions about a remote API can easily creep into your codebase without you knowing:
+            these assumptions are implicit and get lost as data propagates through your system.
+            By explicitly describing the remote API at the edge of your system and using generative
+            testing you can avoid a lot of pitfalls and get clearer errors when integrating.
 
-            I can then easily run this through with hundreds of generated responses
-            to make sure my code can deal with anything the remote API can throw at it.
+            Generative tests force you to consider all the permutations that can exist and don't
+            let you make these assumptions. Complexity significantly increases when you start interacting
+            with remote services written by other people, and just because the service behaved as you expected
+            it to for a narrow range of inputs you never know how it might behave under duress.
           </aside>
         </section>
 
         <section>
           <h2>No Swagger? No problem</h2>
           <pre><code class="hljs" data-trim>
-              bootstrap with data
+(martian/bootstrap "https://api.org"
+                   [{:route-name :create-pet
+                     :path-parts ["/pets/" :species]
+                     :method :put
+                     :path-schema {:species s/Str}
+                     :body-schema {:name                 s/Str
+                                   (s/optional-key :age) s/Int}}]
+                   {:produces ["application/json"]
+                    :consumes ["application/json"]})
           </code></pre>
           <aside class="notes">
             Swagger is probably the most popular way that web APIs can self describe
@@ -677,8 +716,35 @@
 
         <section>
           <h2>Any implementation</h2>
-          Implementations provided for clj-http, httpkit, cljs-http
-          If you want to use something else, just write your own interceptor
+          <br/>
+          <div style="text-align: center; vertical-align: bottom; bottom: 0; display: inline-block; padding: 12px;">
+            <a style="color: white" class="github" target="_blank" href="https://github.com/http-kit/http-kit">
+              <img class="logo" src="img/github.png"/>
+              http-kit/http-kit
+            </a>
+          </div>
+
+          <div style="text-align: center; vertical-align: bottom; bottom: 0; display: inline-block; padding: 12px;">
+            <a style="color: white" class="github" target="_blank" href="https://github.com/dakrone/clj-http">
+              <img class="logo" src="img/github.png"/>
+              dakrone/clj-http
+            </a>
+          </div>
+
+          <div style="text-align: center; vertical-align: bottom; bottom: 0; display: inline-block; padding: 12px;">
+            <a style="color: white" class="github" target="_blank" href="https://github.com/r0man/cljs-http">
+              <img class="logo" src="img/github.png"/>
+              r0man/cljs-http
+            </a>
+          </div>
+
+          <div style="text-align: center; vertical-align: bottom; bottom: 0; display: inline-block; padding: 12px;">
+            <a style="color: white" class="github" target="_blank" href="https://github.com/your-face/here">
+              <img class="logo" style="width: 64px;" src="img/angrymartin.png"/>
+              your-face/here
+            </a>
+          </div>
+
           <aside class="notes">
             The actual HTTP client you use underneath martian is up to you. The original driver
             behind this was using it in Clojurescript as well as in Clojure, and because everything
@@ -696,35 +762,48 @@
 
         <section>
           <h2>Alternatives</h2>
-          swagger generated code
-          finagle
+          <br/>
+          <div style="text-align: center; display: inline-block; padding: 12px;">
+            <a style="color: white" class="github" target="_blank" href="http://swagger.io/">
+              <img class="logo" style="width: 128px; display: block; margin: 0 auto;" src="img/swagger.png"/>
+              <br/>
+              swagger
+            </a>
+          </div>
+
+          <div style="text-align: center; display: inline-block; padding: 12px;">
+            <a style="color: white" class="github" target="_blank" href="https://twitter.github.io/finagle/">
+              <img class="logo" style="width: 128px; display: block; margin: 0 auto;" src="img/finagle.png"/>
+              <br/>
+              finagle
+            </a>
+          </div>
           <aside class="notes">
             There are alternatives out there - you can even generate Clojure code from a Swagger
             definition at compile time. However I believe runtime better because data is better
             than functions and can open the way to generative testing and other things I've talked about.
 
             Twitter wrote a framework called finagle but to use it means you need to control both
-            the server and the client and there is no clojurescript equivalent.
+            the server and the client, it's JVM only and there is no clojurescript equivalent.
           </aside>
         </section>
 
         <section>
-          <h2>Conclusion</h2>
-          Separate your domain from implementation
-          Describe data for great good
-          Interceptor all the things
+          <h2>TL;DR</h2>
+          <br/>
+          <ul>
+            <li>Separate your domain from implementation</li>
+            <li>Describe data for great good</li>
+            <li>Interceptor all the things</li>
           <aside class="notes">
             Keep your code simple and domain oriented
             Let computers do what computers do best
 
-            Describing data lets you validate, generate
+            Describing data and data generation open up huge improvements
 
             Interceptors provide ultimate flexibility in designing programmatic APIs
           </aside>
         </section>
-
-
-
 			</div>
 		</div>
 
