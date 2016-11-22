@@ -46,7 +46,7 @@
 
 (defn make-schema
   "Takes a swagger parameter and returns a schema"
-  [definitions {:keys [name required type enum schema properties $ref]}]
+  [definitions {:keys [name required type enum schema properties $ref items]}]
   (cond
     enum (apply s/enum enum)
     (= "string" type) s/Str
@@ -62,6 +62,9 @@
     (= "object" type)
     (schemas-for-parameters definitions (map (fn [[name p]]
                                                (assoc p :name name)) properties))
+
+    (= "array" type)
+    {(->kebab-case-keyword name) [(make-schema definitions items)]}
 
     (= "array" (:type schema))
     {(->kebab-case-keyword name) [(make-schema definitions (:items schema))]}

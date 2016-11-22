@@ -43,12 +43,17 @@
                                                                                :in "path"}
                                                                               {:name "auth-token"
                                                                                :in "header"}]}}
-           (keyword "/users/")                      {:post {:operationId "create-users"
-                                                            :parameters [{:name "Users"
-                                                                          :in "body"
-                                                                          :required true
-                                                                          :schema {:type "array"
-                                                                                   :items {:$ref "#/definitions/User"}}}]}}}
+           (keyword "/orders/")                           {:post {:operationId "create-orders"
+                                                                  :parameters [{:name "order-ids"
+                                                                                :in "body"
+                                                                                :type "array"
+                                                                                :items {:type "string"}}]}}
+           (keyword "/users/")                            {:post {:operationId "create-users"
+                                                                  :parameters [{:name "Users"
+                                                                                :in "body"
+                                                                                :required true
+                                                                                :schema {:type "array"
+                                                                                         :items {:$ref "#/definitions/User"}}}]}}}
    :definitions {:Pet {:type "object"
                        :properties {:id {:type "integer"
                                          :required true}
@@ -131,6 +136,7 @@
             [:update-pet nil]
             [:pet-search nil]
             [:order nil]
+            [:create-orders nil]
             [:create-users nil]]
            (martian/explore m)))
 
@@ -175,6 +181,12 @@
                    {:id 2 :name "Barry"}]}
            (request-for :create-users {:users [{:id 1 :name "Bob"}
                                                {:id 2 :name "Barry"}]})))
+
+    (is (= {:method :post
+            :url "https://api.org/orders/"
+            :body ["order-number-one"
+                   "order-number-two"]}
+           (request-for :create-orders {:order-ids ["order-number-one" "order-number-two"]})))
 
     (is (= {:method :put
             :url "https://api.org/pets/"
