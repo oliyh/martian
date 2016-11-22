@@ -9,9 +9,9 @@
 (deftest http-test
   (let [m (martian-http/bootstrap-swagger swagger-url)]
 
-    (let [response @(martian/response-for m :create-pet {:name "Doggy McDogFace"
-                                                         :type "Dog"
-                                                         :age 3})]
+    (let [response @(martian/response-for m :create-pet {:pet {:name "Doggy McDogFace"
+                                                               :type "Dog"
+                                                               :age 3}})]
       (is (= {:status 201
               :body {:id 123}}
              (select-keys response [:status :body]))))
