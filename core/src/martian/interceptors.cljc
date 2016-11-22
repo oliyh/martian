@@ -38,7 +38,9 @@
 (def set-body-params
   {:name ::body-params
    :enter (fn [{:keys [params handler] :as ctx}]
-            (update ctx :request insert-or-merge :body (schema/coerce-data (:body-schema handler) params)))})
+            (update ctx :request insert-or-merge :body (some-> (schema/coerce-data (:body-schema handler) params)
+                                                               first
+                                                               val)))})
 
 (def set-form-params
   {:name ::form-params

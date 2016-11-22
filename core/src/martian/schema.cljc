@@ -57,10 +57,13 @@
     (make-schema definitions (resolve-ref definitions $ref))
 
     (:$ref schema)
-    (make-schema definitions (resolve-ref definitions (:$ref schema)))
+    {(->kebab-case-keyword name) (make-schema definitions (resolve-ref definitions (:$ref schema)))}
 
     (= "object" type)
     (schemas-for-parameters definitions (map (fn [[name p]]
                                                (assoc p :name name)) properties))
+
+    (= "array" (:type schema))
+    {(->kebab-case-keyword name) [(make-schema definitions (:items schema))]}
 
     :default s/Any))

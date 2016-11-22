@@ -42,12 +42,23 @@
                                                                               {:name "order-id"
                                                                                :in "path"}
                                                                               {:name "auth-token"
-                                                                               :in "header"}]}}}
+                                                                               :in "header"}]}}
+           (keyword "/users/")                      {:post {:operationId "create-users"
+                                                            :parameters [{:name "Users"
+                                                                          :in "body"
+                                                                          :required true
+                                                                          :schema {:type "array"
+                                                                                   :items {:$ref "#/definitions/User"}}}]}}}
    :definitions {:Pet {:type "object"
                        :properties {:id {:type "integer"
                                          :required true}
                                     :name {:type "string"
-                                           :required true}}}}})
+                                           :required true}}}
+                 :User {:type "object"
+                        :properties {:id {:type "integer"
+                                          :required true}
+                                     :name {:type "string"
+                                            :required true}}}}})
 
 (deftest bootstrap-test
   (testing "bootstrap swagger"
@@ -66,8 +77,8 @@
                                  :consumes ["application/xml"]
                                  :path "/pets/"
                                  :method :post
-                                 :body-schema {:id s/Int
-                                               :name s/Str}}]
+                                 :body-schema {:pet {:id s/Int
+                                                     :name s/Str}}}]
                                {:produces ["application/json"]
                                 :consumes ["application/json"]})]
 
@@ -79,7 +90,7 @@
               :url "https://api.org/pets/"
               :body {:id 123
                      :name "Doge"}}
-             (martian/request-for m :create-pet {:id 123 :name "Doge"})))
+             (martian/request-for m :create-pet {:pet {:id 123 :name "Doge"}})))
 
       (is (= ["application/json"] (-> m :handlers first :produces)))
       (is (= ["application/xml"] (-> m :handlers second :produces))))))
@@ -119,7 +130,8 @@
             [:create-pet nil]
             [:update-pet nil]
             [:pet-search nil]
-            [:order nil]]
+            [:order nil]
+            [:create-users nil]]
            (martian/explore m)))
 
     (is (= {:summary nil
@@ -154,8 +166,15 @@
     (is (= {:method :post
             :url "https://api.org/pets/"
             :body {:id 123 :name "charlie"}}
-           (request-for :create-pet {:id 123 :name "charlie"})
-           (request-for :create-pet {:id "123" :name "charlie"})))
+           (request-for :create-pet {:pet {:id 123 :name "charlie"}})
+           (request-for :create-pet {:pet {:id "123" :name "charlie"}})))
+
+    (is (= {:method :post
+            :url "https://api.org/users/"
+            :body [{:id 1 :name "Bob"}
+                   {:id 2 :name "Barry"}]}
+           (request-for :create-users {:users [{:id 1 :name "Bob"}
+                                               {:id 2 :name "Barry"}]})))
 
     (is (= {:method :put
             :url "https://api.org/pets/"
@@ -181,7 +200,7 @@
                             (request-for :create-pet {:pet {:id "one"
                                                             :name 1}})))
 
-      (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema: \{:id missing-required-key, :name missing-required-key\}"
+      (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema: \{:pet missing-required-key\}"
                             (request-for :create-pet))))))
 
 (deftest with-interceptors-test
