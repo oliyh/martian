@@ -75,7 +75,8 @@
 					font-weight: normal;
 					font-size: 0.66em;
 					color: #666;
-					margin: 0;
+			    margin: 0;
+          white-space: pre-line;
 				}
 
 				.speaker-controls-time {
@@ -122,7 +123,8 @@
 				.speaker-controls-notes .value {
 					margin-top: 5px;
 					line-height: 1.4;
-					font-size: 1.2em;
+			    font-size: 1.2em;
+          white-space: pre-line;
 				}
 
 			.clear {
@@ -245,7 +247,7 @@
 					// No need for updating the notes in case of fragment changes
 					if ( data.notes ) {
 						notes.classList.remove( 'hidden' );
-						notesValue.style.whiteSpace = data.whitespace;
+						//notesValue.style.whiteSpace = data.whitespace;
 						if( data.markdown ) {
 							notesValue.innerHTML = marked( data.notes );
 						}

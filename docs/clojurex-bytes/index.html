@@ -42,6 +42,12 @@
               oliyh/martian
             </a>
           </div>
+          <aside class="notes">
+            Hello, I'm Oliver Hine
+            Clojure for 5 years
+            OnTheMarket with Juxt
+            Credit Suisse Clojure/Script UI for traders and hopefully more soon
+          </aside>
         </section>
 
         <section>
@@ -89,6 +95,7 @@
           </code></pre>
           <aside class="notes">
             Now we have another parameter, but it goes somewhere else in the HTTP request.
+            How do we know that? We just do - it's implicit knowledge about the API.
             This is starting to look bad.
           </aside>
         </section>
@@ -109,6 +116,7 @@
           </code></pre>
           <aside class="notes">
             Body parameters are even more complicated because they have to be encoded.
+            We need to supply not just our data but also metadata about our data.
             Someone's getting angry.
           </aside>
         </section>
@@ -187,9 +195,9 @@
 
             A server and a client should have a symmetric understanding of both the request and the response of
             any operation. In this case, they do - the operation takes the same parameters and does what we expect
-            it to do, but this is far from obvious by looking at the code.
+            it to do, but this is far from obvious by looking at how the client side packs it all up and the server side pulls it all out.
 
-            In cases where they don't, and in unguarded code like this, you're going to get bad things happening -
+            In cases where they don't agree on the API, and in unguarded code like this, you're going to get bad things happening -
             strings that should be numbers, nils that shouldn't be nils and so on.
           </aside>
         </section>
@@ -200,7 +208,8 @@
           <img class="stretch" src="img/not-a-dog.jpg"/>
           <aside class="notes">
             When we pull apart the values of our domain object and sprinkle them into someone
-            else's domain object, we're not in our domain anymore.
+            else's domain object, we're not in our domain anymore. We're in a hybrid world that no one understands.
+            The twilight zone, if you will.
 
             If I create a pet of species dog, method put, name Charlie, content-type application/json,
             age 3, port 80 it will look like this. That is not a dog.
@@ -437,6 +446,9 @@
           <img class="stretch" src="img/timing.gif"/>
           <aside class="notes">
             Now let's write an interceptor to time the request.
+            This would normally be quite hard in other libraries because we want to time just the request and response,
+            not all the other stuff that the library might do like deserialisation.
+            In martian it's easy, we just add an interceptor wherever we want.
           </aside>
         </section>
 
@@ -476,8 +488,8 @@
                                [authentication
                                 martian-http/encode-body
                                 (martian-http/coerce-response)
-                                martian-http/perform-request
-                                timing])}))
+                                timing
+                                martian-http/perform-request])}))
           </code></pre>
           <aside class="notes">
             Exposing the interceptor stack lets us do anything we wish at any point in the operation.
@@ -546,8 +558,7 @@
           <br/>
           <img class="stretch" src="img/max-power.gif">
           <aside class="notes">
-            Mocked calls are the Max Power to the wrong way of stub servers. They're still wrong,
-            but faster.
+            Mocked calls are the Max Power of stubbing. They're still wrong, just faster.
           </aside>
         </section>
 
@@ -780,7 +791,7 @@
           </div>
           <aside class="notes">
             There are alternatives out there - you can even generate Clojure code from a Swagger
-            definition at compile time. However I believe runtime better because data is better
+            definition at compile time. However I believe runtime is better because data is better
             than functions and can open the way to generative testing and other things I've talked about.
 
             Twitter wrote a framework called finagle but to use it means you need to control both
