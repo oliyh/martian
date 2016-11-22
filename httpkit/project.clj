@@ -1,4 +1,4 @@
-(defproject martian-httpkit "0.1.2"
+(defproject martian-httpkit "0.1.3-SNAPSHOT"
   :description "httpkit implementation for martian"
   :url "https://github.com/oliyh/martian"
   :license {:name "The MIT License"
