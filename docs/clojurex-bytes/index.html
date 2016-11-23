@@ -186,10 +186,10 @@
             <aside class="notes">
               If we look at that last request and pick out the bits we care about,
               the bits that drive functionality, we find there are only four.
-              Functionality is the <strong>what</strong> that we are trying to achieve,
+              Functionality is what we are trying to achieve,
               that adds value to our software, and are domain level things that make sense to us.
 
-              Everything else is the <strong>how</strong> and it doesn't really add any value
+              Everything else is how we do it, and it doesn't really add any value
               to what we are trying to achieve and is the sort of thing that is
               better left to computers.
 
@@ -425,9 +425,6 @@
             conforming the HTTP request map, choosing the most efficient way to serialise data, making the http call, waiting for the response,
             deserialising it and returning it to the call site.
 
-            By exposing Martian's interceptor stack in its API it allows the developer to manipulate it in any way they choose - removing operations,
-            adding them, reordering them.
-
             This is martian's default interceptor stack.
           </aside>
         </section>
@@ -568,7 +565,7 @@
             you can't add new behaviour, only adapt existing behaviour.
 
             They're better than binding dynamic vars because that's state and makes it hard to reason about how a system works, and has many of the same
-            drawbacks as multimethods. Dynamic vars also cannot cross thread boundaries.
+            drawbacks as multimethods. Dynamic vars also cannot cross thread boundaries so using httpkit wouldn't work properly.
 
             They're also better than supporting arbitrary options maps, which are often poorly documented and still don't let you add or extend behaviour
             beyond what the author originally allows.
@@ -634,7 +631,7 @@
           </ul>
 
           <aside class="notes">
-            Martian has a library called martian-test which replaces the HTTP call with assertions
+            Martian has a sub library called martian-test which replaces the HTTP call with assertions
             driven by the API's definition. This means no repetition, we can test all permutations of responses easily using generative testing, error messages are normal
             schema validation errors and it's as fast as mocking.
           </aside>
@@ -669,6 +666,11 @@
 
             This shows the behaviour of the martian functions, but you can imagine your own code wrapped around these
             interacting with the data passing into and out of the remote API, and how this test behaviour can help.
+
+            When you've built up your test suite you now have the ability to do something pretty special.
+            If someone changes an API that you use in a way that will break your code, your tests will fail and you will know exactly where it broke.
+            If they change their API in a way that won't break your code, you'll be confident that you're still compatible just by running your test suite.
+            That's something I've never been able to do before.
           </aside>
         </section>
 
@@ -748,7 +750,7 @@
         </section>
 
         <section>
-          <h2>Assumptions vs Generative</h2>
+          <h2>Assumptions</h2>
           <br/>
           <img class="stretch" src="img/assumptions.gif">
           <aside class="notes">
@@ -880,6 +882,22 @@
             Interceptors provide ultimate flexibility in designing programmatic APIs
           </aside>
         </section>
+
+				<section data-background-image="img/curiosity-tracks.jpg" style="text-align: left;">
+          <h1>Thanks</h1>
+          <br/><br/><br/><br/><br/><br/><br/>
+          <div style="text-align: center; vertical-align: bottom; bottom: 0;">
+            <a style="color: white" class="github" target="_blank" href="https://github.com/oliyh/martian">
+              <img class="logo" src="img/github.png"/>
+              oliyh/martian
+            </a>
+          </div>
+          <aside class="notes">
+            Thanks
+            Questions?
+          </aside>
+        </section>
+
 			</div>
 		</div>
 
