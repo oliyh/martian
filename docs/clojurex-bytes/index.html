@@ -305,6 +305,12 @@
           </aside>
         </section>
 
+				<section data-background-image="img/mars-from-space.jpg" style="text-align: left;">
+          <h1>life on mars</h1>
+          <aside class="notes">
+          </aside>
+        </section>
+
         <section>
           <h2>Make a Martian</h2>
           <pre><code class="hljs" data-trim>
@@ -427,11 +433,11 @@
 
         <section>
           <h2>Update the call stack</h2>
-          <pre><code class="hljs" data-trim>
+          <pre><code class="hljs" data-trim data-noescape>
 (def m (martian-http/bootstrap-swagger
         "https://pedestal-api.herokuapp.com/swagger.json"
         {:interceptors (concat martian/default-interceptors
-                               [authentication
+                               [<mark>authentication</mark>
                                 martian-http/encode-body
                                 (martian-http/coerce-response)
                                 martian-http/perform-request])}))
@@ -481,14 +487,14 @@
 
         <section>
           <h2>Update the call stack (again!)</h2>
-          <pre><code class="hljs" data-trim>
+          <pre><code class="hljs" data-trim data-noescape>
 (def m (martian-http/bootstrap-swagger
         "https://pedestal-api.herokuapp.com/swagger.json"
         {:interceptors (concat martian/default-interceptors
                                [authentication
                                 martian-http/encode-body
                                 (martian-http/coerce-response)
-                                timing
+                                <mark>timing</mark>
                                 martian-http/perform-request])}))
           </code></pre>
           <aside class="notes">
@@ -518,10 +524,14 @@
             They're also better than supporting arbitrary options maps, which are often poorly documented and still don't let you add or extend behaviour
             beyond what the author originally allows.
 
-
-
             I humbly submit that exposing the interceptor stack is the best way of making a library extendable, reusable and ultimately more useful to the
             developer whilst reducing the demand on the author to maintain and add features to it. I certainly plan to follow the same pattern for future libraries.
+          </aside>
+        </section>
+
+				<section data-background-image="img/marscape.jpg" style="text-align: left;">
+          <h1>Testing</h1>
+          <aside class="notes">
           </aside>
         </section>
 
