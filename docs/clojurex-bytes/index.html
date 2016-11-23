@@ -46,7 +46,9 @@
             Hello, I'm Oliver Hine
             Clojure for 5 years
             OnTheMarket with Juxt
-            Credit Suisse Clojure/Script UI for traders and hopefully more soon
+            Credit Suisse Clojure/Script UI for traders, starting another Clojure project as well
+            Today I'm going to talk about simplifying remote API integration, better ways to test integration and the library I wrote called martian that helps do this.
+            It's available on github with more code examples and explanations.
           </aside>
         </section>
 
@@ -58,13 +60,18 @@
           </code></pre>
           <aside class="notes">
             Libraries like clj-http let you make HTTP calls with a sensible, ring-like API.
+            I'm going to use the classic pet store analogy for the remote API I'm talking about, specifically the endpoint that lets you create a pet within the store.
+            Here we are creating a dog, and it's super simple.
             You're describing actions with data. Life is good.
-            At this point you think: this is pretty sweet.
+            I often use snippets of code like this, with some maps and filters, to show people how awesome and concise clojure is.
           </aside>
         </section>
 
         <section>
           <img class="stretch" src="img/sweet.jpg"/>
+          <aside class="notes">
+            At this point you think: this is pretty sweet.
+          </aside>
         </section>
 
         <section>
@@ -75,14 +82,17 @@
              {:as :json}))
           </code></pre>
           <aside class="notes">
-            If you want to make a slightly different call to that API you would of course
-            reuse all that code you just wrote - you're not a monster.
-            But why are we formatting strings? What's going on?
+            If you want to make a slightly different call to that API you would of course reuse all that code you just wrote - you're not a monster.
+            Here we are making the species of pet a parameter, and building the uri using format.
+            But why are we formatting strings?
           </aside>
         </section>
 
         <section>
           <img class="stretch" src="img/what.jpg"/>
+          <aside class="notes">
+            Isn't that a bit of a smell already?
+          </aside>
         </section>
 
         <section>
@@ -94,14 +104,17 @@
               :query-params {:age age}))
           </code></pre>
           <aside class="notes">
-            Now we have another parameter, but it goes somewhere else in the HTTP request.
-            How do we know that? We just do - it's implicit knowledge about the API.
-            This is starting to look bad.
+            Now we have another parameter, the age of the pet, but it goes somewhere else in the HTTP request.
+            How do we know that? We just do - it's implicit knowledge we have about the API.
+            That implicit knowledge now exists in our codebase.
           </aside>
         </section>
 
         <section>
           <img class="stretch" src="img/what-again.jpg"/>
+          <aside class="notes">
+            It's just gotten a bit worse.
+          </aside>
         </section>
 
         <section>
@@ -115,14 +128,20 @@
               :headers {"Content-Type" "application/json"}}))
           </code></pre>
           <aside class="notes">
-            Body parameters are even more complicated because they have to be encoded.
-            We need to supply not just our data but also metadata about our data.
-            Someone's getting angry.
+            If we add a third parameter, the name of the pet, it gets worse still.
+            Body parameters are even more complicated because they have to be encoded, and we have to say how we encoded them.
+            We need to supply not just our data but also metadata about our data, and that goes in yet another place in the headers.
+            We need to know that the header should be called Content-Type.
+            We need to hope that the server understands the way we encoded it - that's more implicit knowledge we've built in.
+            We've also made the assumption that the server can serve json back to us, but we don't know that either.
           </aside>
         </section>
 
         <section>
           <img class="stretch" src="img/i-dare-you.jpg"/>
+          <aside class="notes">
+            It can't get much worse, can it?
+          </aside>
         </section>
 
         <section>
@@ -139,13 +158,17 @@
           </code></pre>
           <aside class="notes">
             Cross-cutting, non-functional features like metrics, API authentication
-            and environment variables quickly make the code unreadable.
-            It's all gotten a bit much.
+            and environment variables quickly make the code even more unreadable.
+
+            Our create-pet function takes loads of arguments that have nothing to do with the pet itself, and to understand that code you need to know more about HTTP than you do about pets.
           </aside>
         </section>
 
         <section>
           <img class="stretch" src="img/i-double-dare-you.jpg"/>
+          <aside class="notes">
+            We should probably stop at this point, assuming it's not too late and we can get out alive.
+          </aside>
         </section>
 
         <section>
@@ -199,6 +222,8 @@
 
             In cases where they don't agree on the API, and in unguarded code like this, you're going to get bad things happening -
             strings that should be numbers, nils that shouldn't be nils and so on.
+
+            The problem here is actually the same problem, just in reverse.
           </aside>
         </section>
 
@@ -213,6 +238,10 @@
 
             If I create a pet of species dog, method put, name Charlie, content-type application/json,
             age 3, port 80 it will look like this. That is not a dog.
+
+            When our code creates a dog but it doesn't look like a dog we add cognitive overhead to our code.
+            We have to trawl through bits of HTTP and try to pick out what looks important and this prevents you skimming code and understanding what it does.
+            That sort of thing doesn't bode well for the longevity of a codebase.
           </aside>
         </section>
 
@@ -240,8 +269,8 @@
           <aside class="notes">
             When we talk about a dog called Charlie who's 3 years old, this is what we mean.
 
-            This is much more evocative of what we want our code to actually do, and incidentally
-            much more entertaining. Whenever you write code, I want you to see dogs blowing out
+            This is much more evocative of what our code actually does, and incidentally
+            much more entertaining. Whenever you write or read code, I want you to see dogs blowing out
             candles on birthday cakes.
           </aside>
         </section>
@@ -255,7 +284,6 @@
           </code></pre>
           <aside class="notes">
             The best way to map data from one domain to another is to describe data with data.
-            That might sound like data everywhere, and it is, because it's a good thing.
             For our pet example it would look like this, if we used prismatic schema.
             We could describe it using clojure.spec as well, which would look slightly different, but the important thing is
             that we now have a tangible description of the signature which we can use to conform data from one shape to
@@ -285,6 +313,7 @@
           <aside class="notes">
             Our server, which provides the API, could have descriptions for all its operations.
             We could use generic middleware to validate incoming requests against those descriptions, rejecting those with incorrect data.
+            We could describe the encoding we support for requests and responses.
             We could also coerce the data, so we don't have strings everywhere.
             These libraries already exist for your chosen web framework: compojure-api, pedestal-api, yada;
             they're easy to use. Furthermore, they generate and serve their own descriptions as json to clients to do interesting things with.
@@ -302,12 +331,15 @@
             APIs and a collection of tools for using these descriptions for various aims.
             One of these is the Swagger UI which lets us explore the API
             and use it from our browser. Notice how we can choose the operation and just type in our data.
+            Notice also that the swagger description is served as a json file.
           </aside>
         </section>
 
 				<section data-background-image="img/mars-from-space.jpg" style="text-align: left;">
           <h1>life on mars</h1>
           <aside class="notes">
+            That describes a bit where we've come from and where we want to go.
+            I'm going to show you a bit of the martian library now which aims to get us there.
           </aside>
         </section>
 
@@ -318,10 +350,10 @@
         "https://pedestal-api.herokuapp.com/swagger.json"))
           </code></pre>
           <aside class="notes">
-            One of the other things we could also create a Martian record from the description.
+            This is how you bootstrap a Martian record from the json served by a remote Swagger API.
             From this point on the var m will refer to a martian record which has been
             bootstrapped against the pet store API.
-            So what can we do with this martian thing?
+            One line of code to get you going. Let's see what else we can do.
           </aside>
         </section>
 
@@ -341,7 +373,7 @@
 
             It takes care of content negotiation, serialisation and all the other things that I want the computers to work out between them.
 
-            Everything else I'm going to talk about stems from being able to write this call in this way.
+            All the advantages I'm going to talk about next stem from being able to write this call in this way, rather than the full verbose http map.
           </aside>
         </section>
 
@@ -351,6 +383,7 @@
             <li>Cleaner code</li>
             <li>Specification always up-to-date</li>
             <li>Easier refactoring</li>
+            <li>Explicit knowledge</li>
           </ul>
           <aside class="notes">
             It may seem like a small improvement to the code, but the implications are bigger than replacing five lines of code with one line.
@@ -366,6 +399,8 @@
             For this reason small refactorings to the API can be made without your code having to change at all. If a POST is changed to a PUT, or a url is
             changed, or a query parameter becomes a route parameter you won't have to change your code because you haven't specified those things on your side
             at all - you're letting the server describe all those things to you.
+
+            We no longer have implicit knowledge about the API buried in our code, we're using the explicit description from the golden source - the remote API itself.
           </aside>
         </section>
 
@@ -427,7 +462,12 @@
           <br/>
           <img class="stretch" src="img/martian-call-stack-auth.png"/>
           <aside class="notes">
-            This is where we want to insert authentication in the call stack
+            This is where we want to insert authentication in the call stack.
+            Normally if you want to insert some random operation halfway down the callstack of a library you're using, it's not going to be possible unless the library author thought to add an extension point there.
+
+            As a library author you want to make your library useful and flexible, but you don't want a complicated API to support every conceivable thing developers might want to do.
+
+            So what do you do?
           </aside>
         </section>
 
@@ -443,7 +483,12 @@
                                 martian-http/perform-request])}))
           </code></pre>
           <aside class="notes">
-            We can provide our stack of interceptors to martian to execute instead of the default stack
+            Martian exposes its interceptor stack in its API to allows the developer to manipulate it in any way they choose - removing operations, adding them, reordering them.
+
+            We can provide our amended stack of interceptors to martian when we bootstrap it, to execute instead of the default stack, and so insert our authentication behaviour where we want it.
+
+            Users of martian have almost complete control over the behaviour which means they don't need to wait for new releases to add new functionality.
+            Instead they can just use the provided interceptors and compose them with their own like this.
           </aside>
         </section>
 
@@ -453,7 +498,7 @@
           <aside class="notes">
             Now let's write an interceptor to time the request.
             This would normally be quite hard in other libraries because we want to time just the request and response,
-            not all the other stuff that the library might do like deserialisation.
+            not all the other stuff that the library might do like deserialisation which might pollute the numbers.
             In martian it's easy, we just add an interceptor wherever we want.
           </aside>
         </section>
@@ -471,8 +516,8 @@
             Our timing interceptor has both an enter phase and a leave phase. The enter phase adds the start time to the context and
             when the http request is completed the stack is popped and we call the leave phase which calculates the duration.
 
-            Notice that we don't even see the request or response map in this interceptor - this means we have achieved a nice
-            clean separation between the functional and non-functional.
+            Notice that we don't even see the request or response map in this interceptor - this one is all about timing, not about pets.
+            This means we have achieved a nice clean separation between the functional and non-functional.
           </aside>
         </section>
 
@@ -498,7 +543,9 @@
                                 martian-http/perform-request])}))
           </code></pre>
           <aside class="notes">
-            Exposing the interceptor stack lets us do anything we wish at any point in the operation.
+            And again, it's simple just to add our interceptor to the stack whever we want.
+
+            You should be able to implement any behaviour in this way, and each interceptor is a standalone piece of code that can be tested in isolation.
           </aside>
         </section>
 
@@ -510,11 +557,13 @@
             <li>Better than arbitrary options maps</li>
           </ul>
           <aside class="notes">
-            I realised that interceptors actually provide a brilliant way of allowing the developer to change the way the library works.
+            Interceptors actually provide a brilliant way of allowing the developer to change the way the library works.
             They can have full control of what happens and when it happens - the martian library is a set of composable interceptors rather than
-            a rigid framework.
+            a rigid framework. Although interceptors were developed by the pedestal team as a bit of an extension to the ring specification, they provide generic behaviour and could be used in any library to provide all the benefits I've talked about.
 
-            This makes it better than using multimethods as a way to let the developer extend behaviour, because multimethods only allow you to
+            Traditionally you might choose multimethods, dynamic vars or an options map to let the developer change behaviour.
+
+            Inteceptors are better than using multimethods because multimethods only allow you to
             provide implementations for particular dispatch values. You can't choose how the dispatch values are chosen, you can't reorder anything,
             you can't add new behaviour, only adapt existing behaviour.
 
@@ -532,6 +581,7 @@
 				<section data-background-image="img/marscape.jpg" style="text-align: left;">
           <h1>Testing</h1>
           <aside class="notes">
+
           </aside>
         </section>
 
@@ -540,9 +590,8 @@
           <br/>
           <img class="stretch" src="img/testing.gif">
           <aside class="notes">
-            Testing HTTP integration has always been a bit tough. The most complete way is to
-            start a stub server instance and capture requests so you can make some assertions on
-            them.
+            Testing HTTP integration has always been a bit tough. The most complete way is to start a stub server instance and capture requests so you can make some assertions on them.
+            Then we're making real requests and testing every part of the code. Is that enough?
           </aside>
         </section>
 
@@ -569,6 +618,8 @@
           <img class="stretch" src="img/max-power.gif">
           <aside class="notes">
             Mocked calls are the Max Power of stubbing. They're still wrong, just faster.
+
+            They'll drift away from the production specification and they're only as complete as you make them.
           </aside>
         </section>
 
@@ -577,13 +628,14 @@
           </br>
           <ul>
             <li>Uses production definition - always correct</li>
-            <li>Readable error messages</li>
+            <li>Generative - complete</li>
             <li>Fast</li>
+            <li>Readable error messages</li>
           </ul>
 
           <aside class="notes">
             Martian has a library called martian-test which replaces the HTTP call with assertions
-            driven by the API's definition. This means no repetition, error messages are normal
+            driven by the API's definition. This means no repetition, we can test all permutations of responses easily using generative testing, error messages are normal
             schema validation errors and it's as fast as mocking.
           </aside>
         </section>
@@ -604,16 +656,19 @@
 ;; => {:status 201, :body {:id -3}}
           </code></pre>
           <aside class="notes">
-            When we bootstrap martian, we provide it with the martian-test interceptors
+            When we bootstrap martian, we provide it with the martian-test interceptors, at the top.
 
-            When we make a bad call, like forgetting to provide the species of our pet for example,
+            Underneath you see when we make a bad call, like forgetting to provide the species of our pet for example,
             we get an exception which tells us this clearly.
 
-            When we make a good call, it succeeds and we get a generated response.
+            Below that, when we make a good call, it succeeds and we get a generated response.
 
             This means our tests can prove that we are always passing good data in to our
             API calls, which is a great thing. If someone changes an API in a way that's incompatible
             with the way you use it, you'll get a failing test.
+
+            This shows the behaviour of the martian functions, but you can imagine your own code wrapped around these
+            interacting with the data passing into and out of the remote API, and how this test behaviour can help.
           </aside>
         </section>
 
@@ -636,7 +691,7 @@
             responses as well as inputs, so we know all the possible values that can come back.
 
             Look at all those possible responses. What's the likelihood you'd only write a test for
-            the 201 created response? What about all the others?
+            the 201 created response? What about all the others? What is a 402 anyway?
           </aside>
         </section>
 
