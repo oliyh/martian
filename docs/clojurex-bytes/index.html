@@ -44,9 +44,10 @@
           </div>
           <aside class="notes">
             Hello, I'm Oliver Hine
-            Clojure for 5 years
-            OnTheMarket with Juxt
-            Credit Suisse Clojure/Script UI for traders, starting another Clojure project as well
+            Using Clojure for 5 years, in my day job for 4
+            A consultant for Juxt
+            Worked at OnTheMarket, two websites, data pipeline and satellites all in Clojure
+            Now at Credit Suisse building Clojure/Script UI for traders, starting another Clojure project as well
             Today I'm going to talk about simplifying remote API integration, better ways to test integration and the library I wrote called martian that helps do this.
             It's available on github with more code examples and explanations.
           </aside>
@@ -59,10 +60,11 @@
   (http/post "https://api.com/create-pet/dog" {:as :json}))
           </code></pre>
           <aside class="notes">
+            Let's talk about HTTP. We all like HTTP, it's the lingua franca of the internet. There are all sorts of interesting APIs out there full of really useful information that we want to use.
+            The project I'm currently working on collates data from the APIs of about 10 different systems via HTTP.
             Libraries like clj-http let you make HTTP calls with a sensible, ring-like API.
             I'm going to use the classic pet store analogy for the remote API I'm talking about, specifically the endpoint that lets you create a pet within the store.
             Here we are creating a dog, and it's super simple.
-            You're describing actions with data. Life is good.
             I often use snippets of code like this, with some maps and filters, to show people how awesome and concise clojure is.
           </aside>
         </section>
@@ -195,7 +197,7 @@
 
               For example, encoding - I don't really care how my computer talks to another computer,
               I want them to sort that out between them. I'm trying to solve problems in the business
-              domain and that's hard enough without having to make decisions all the time on encoding.
+              domain and that's hard enough without having to make decisions all the time on things like encoding.
 
               The signal to noise ratio is very low here, and that's something we can improve.
             </aside>
@@ -214,7 +216,7 @@
     (create-pet species name age)))
           </code></pre>
           <aside class="notes">
-            Let's look at the corresponding code on the server.
+            Let's look at the corresponding code on the server, the create-pet handler.
 
             A server and a client should have a symmetric understanding of both the request and the response of
             any operation. In this case, they do - the operation takes the same parameters and does what we expect
@@ -272,6 +274,8 @@
             This is much more evocative of what our code actually does, and incidentally
             much more entertaining. Whenever you write or read code, I want you to see dogs blowing out
             candles on birthday cakes.
+
+            Code like this is easy and unambiguous to read and understand, and this helps writing, learning, and refactoring.
           </aside>
         </section>
 
@@ -288,6 +292,8 @@
             We could describe it using clojure.spec as well, which would look slightly different, but the important thing is
             that we now have a tangible description of the signature which we can use to conform data from one shape to
             another, and that lets us do many things.
+
+            Here we explicitly state that species is a route param, age a query param and name is a body param, and provide a schema for each value. There's no ambiguity here.
           </aside>
         </section>
 
@@ -311,10 +317,10 @@
           </div>
 
           <aside class="notes">
-            Our server, which provides the API, could have descriptions for all its operations.
-            We could use generic middleware to validate incoming requests against those descriptions, rejecting those with incorrect data.
-            We could describe the encoding we support for requests and responses.
-            We could also coerce the data, so we don't have strings everywhere.
+            Our server, which provides the API, could have descriptions like these for all its operations.
+            Then we could use generic middleware to validate incoming requests against those descriptions, rejecting those with incorrect data.
+            We could describe the encoding we support for requests and responses so that clients know if they'll be able to speak the same language.
+            We could also coerce the data, so we don't have strings everywhere but actual primitive types.
             These libraries already exist for your chosen web framework: compojure-api, pedestal-api, yada;
             they're easy to use. Furthermore, they generate and serve their own descriptions as json to clients to do interesting things with.
           </aside>
@@ -415,15 +421,17 @@
             Anyone familiar with pedestal or even re-frame will have come across the concept of interceptors before.
 
             Essentially they behave like frames on a call stack - code that is executed before the next call down the stack, and code that is
-            executed when the stack is popped back to this frame.
+            executed when the result bubbles back up.
 
-            However they are described by data - there's a bit of a theme here - and they can be manipulated like data. In order to do something
-            like time a request we would want to add a frame to the call stack just before the HTTP request is made which would record the time
-            at the start and the time at the end. When your call stack is data this just becomes a simple conj operation!
+            However they are described by data and they can be manipulated like data. In order to do something
+            like time a request we would want to add a frame to the call stack just before the operation we want to time.
+            When your call stack is data this just becomes a simple conj operation!
 
-            Martian uses interceptors to perform each of the steps it takes between invocation and returning the response. These steps include
-            conforming the HTTP request map, choosing the most efficient way to serialise data, making the http call, waiting for the response,
-            deserialising it and returning it to the call site.
+            Interceptors are like a reified call stack, and this is a very powerful concept.
+
+            Martian uses interceptors to perform each of the steps it takes between invocation and returning the response. These steps shown here include
+            conforming the HTTP request map with the method, url etc, choosing the most efficient way to serialise data on the way down on the left hand side,
+            making the http call at the bottom, waiting for the response, then up the right hand side we are deserialising it and returning it to the call site.
 
             This is martian's default interceptor stack.
           </aside>
@@ -451,6 +459,8 @@
             The context is a map containing the request, the response and any other bits of data we might want.
             To add authentication we just add a header called authorization with our special secret value.
             We do this in the enter phase, before the request is made.
+
+            Notice there is no mention of any pet in here - we have a nice separation of concerns. This interceptor just does authentication and doesn't pollute our domain.
           </aside>
         </section>
 
@@ -480,7 +490,7 @@
                                 martian-http/perform-request])}))
           </code></pre>
           <aside class="notes">
-            Martian exposes its interceptor stack in its API to allows the developer to manipulate it in any way they choose - removing operations, adding them, reordering them.
+            Martian exposes its interceptor stack in its API to allow the developer to manipulate it in any way they choose - removing operations, adding them, reordering them.
 
             We can provide our amended stack of interceptors to martian when we bootstrap it, to execute instead of the default stack, and so insert our authentication behaviour where we want it.
 
@@ -510,11 +520,11 @@
                            (t/minus (t/now) (::start ctx))))})
           </code></pre>
           <aside class="notes">
-            Our timing interceptor has both an enter phase and a leave phase. The enter phase adds the start time to the context and
-            when the http request is completed the stack is popped and we call the leave phase which calculates the duration.
+            Our timing interceptor has both an enter phase and a leave phase. The enter phase happens before the request and adds the start time to the context and
+            when the http request is completed we begin the leave phases which calculates the duration.
 
-            Notice that we don't even see the request or response map in this interceptor - this one is all about timing, not about pets.
-            This means we have achieved a nice clean separation between the functional and non-functional.
+            Notice that we don't even see the request or response map in this interceptor - this one is all about timing, not about pets or HTTP.
+            Again, we have achieved a nice clean separation between the functional and non-functional.
           </aside>
         </section>
 
@@ -564,8 +574,8 @@
             provide implementations for particular dispatch values. You can't choose how the dispatch values are chosen, you can't reorder anything,
             you can't add new behaviour, only adapt existing behaviour.
 
-            They're better than binding dynamic vars because that's state and makes it hard to reason about how a system works, and has many of the same
-            drawbacks as multimethods. Dynamic vars also cannot cross thread boundaries so using httpkit wouldn't work properly.
+            They're better than binding dynamic vars because they rely on state and makes it hard to reason about how a system works when state can change at any time, and also have many of the same
+            drawbacks as multimethods. Dynamic vars also cannot cross thread boundaries so using httpkit with it's asynchronous response callback wouldn't work properly.
 
             They're also better than supporting arbitrary options maps, which are often poorly documented and still don't let you add or extend behaviour
             beyond what the author originally allows.
@@ -632,8 +642,10 @@
 
           <aside class="notes">
             Martian has a sub library called martian-test which replaces the HTTP call with assertions
-            driven by the API's definition. This means no repetition, we can test all permutations of responses easily using generative testing, error messages are normal
-            schema validation errors and it's as fast as mocking.
+            driven by the API's definition. This means no repetition, we can use generative testing to easily test all the permutations of the responses the server could return, error messages are normal
+            schema validation errors so very readable and it's as fast as mocking because it has no need to start a webserver.
+
+            Let's look at an example of how to use it.
           </aside>
         </section>
 
@@ -653,16 +665,19 @@
 ;; => {:status 201, :body {:id -3}}
           </code></pre>
           <aside class="notes">
-            When we bootstrap martian, we provide it with the martian-test interceptors, at the top.
+            When we bootstrap martian, we do it the same way as we do in production, so it has exactly the same definitions. This is very important.
+            Then we tell it to always respond with success, at the top.
 
-            Underneath you see when we make a bad call, like forgetting to provide the species of our pet for example,
-            we get an exception which tells us this clearly.
+            This respond-with behaviour removes the interceptor which makes the actual http request and replaces it with one that simply generates a response.
 
-            Below that, when we make a good call, it succeeds and we get a generated response.
+            On the next line you see when we make a bad call, like forgetting to provide the species of our pet for example,
+            we get an exception which tells us this clearly. We haven't had to call the server, we've just validated the request against the schema that the server has provided.
+
+            Below that, when we make a good call, it succeeds and we get a generated response, and this response is generated from the responses that the server has told us it can generate without having to go near the server itself.
 
             This means our tests can prove that we are always passing good data in to our
-            API calls, which is a great thing. If someone changes an API in a way that's incompatible
-            with the way you use it, you'll get a failing test.
+            API calls, which is a really great thing to be able to test. If someone changes an API in a way that's incompatible
+            with the way you use it, you'll get a failing test without hammering a real system with your test data.
 
             This shows the behaviour of the martian functions, but you can imagine your own code wrapped around these
             interacting with the data passing into and out of the remote API, and how this test behaviour can help.
@@ -735,6 +750,8 @@
 ;; => {:status 200, :body {:id -1472372}}
           </code></pre>
           <aside class="notes">
+            You can also write truly generative tests using test.check.
+
             Creating a generator is easy - you just ask martian for one for the endpoint you
             want to test. They use schema generators underneath so behave in the same way.
 
@@ -783,12 +800,11 @@
                     :consumes ["application/json"]})
           </code></pre>
           <aside class="notes">
-            Swagger is probably the most popular way that web APIs can self describe
-            but not everyone uses it. You can still integrate with them using martian via
-            a different bootstrap method that describes the API in a Swagger-like way.
-            This gives you nearly all the benefits. One thing it won't help with is knowing when
-            the remote API changes, but when it does change you can just update your definition
-            and run your tests to see if anything breaks. If it doesn't you're good to go.
+            Swagger is probably the most popular way that web APIs can self describe but not everyone uses it.
+            If they don't, and in fact most of them don't, you may think that there's little use and you'll have to go back to writing code that makes Samuel L Jackson angry.
+
+            Good news though, you <b>can</b> integrate with these services using martian. You just use a different bootstrap method that describes the API in a Swagger-like way but is actually just clojure data.
+            This gives you nearly all the benefits. One thing it won't help with is knowing when the remote API changes, but when it does change you can just update your definition and run your tests to see if anything breaks. If it doesn't you're good to go.
           </aside>
         </section>
 
@@ -857,12 +873,9 @@
             </a>
           </div>
           <aside class="notes">
-            There are alternatives out there - you can even generate Clojure code from a Swagger
-            definition at compile time. However I believe runtime is better because data is better
-            than functions and can open the way to generative testing and other things I've talked about.
+            There are alternatives out there - you can even generate Clojure code from a Swagger definition at compile time. However I believe runtime is better because data is better than functions and can open the way to generative testing and other things I've talked about.
 
-            Twitter wrote a framework called finagle but to use it means you need to control both
-            the server and the client, it's JVM only and there is no clojurescript equivalent.
+            Twitter wrote a framework called finagle but to use it means you need to control both the server and the client, it's JVM only and there is no clojurescript equivalent.
           </aside>
         </section>
 
