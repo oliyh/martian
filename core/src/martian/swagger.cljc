@@ -45,33 +45,35 @@
             %) parts)))
 
 (defn- ->handler [{:keys [definitions] :as swagger-map} url-pattern [method swagger-definition]]
-  (let [path-parts (tokenise-path url-pattern)
-        uri (string/join (map str path-parts))
-        parameters (:parameters swagger-definition)]
-    {:path uri
-     :path-parts path-parts
-     :method method
-     :path-schema (path-schema definitions parameters)
-     :query-schema (query-schema definitions parameters)
-     :body-schema (body-schema definitions parameters)
-     :form-schema (form-schema definitions parameters)
-     :headers-schema (headers-schema definitions parameters)
-     :response-schemas (response-schemas definitions (:responses swagger-definition))
-     :produces (some :produces [swagger-definition swagger-map])
-     :consumes (some :consumes [swagger-definition swagger-map])
-     :swagger-definition swagger-definition
-     ;; todo path constraints - required?
-     ;; :path-constraints {:id "(\\d+)"},
-     ;; {:in "path", :name "id", :description "", :required true, :type "string", :format "uuid"
-     :route-name (->kebab-case-keyword (:operationId swagger-definition))}))
+  (when-let [route-name (some-> (:operationId swagger-definition) ->kebab-case-keyword)]
+    (let [path-parts (tokenise-path url-pattern)
+          uri (string/join (map str path-parts))
+          parameters (:parameters swagger-definition)]
+      {:path uri
+       :path-parts path-parts
+       :method method
+       :path-schema (path-schema definitions parameters)
+       :query-schema (query-schema definitions parameters)
+       :body-schema (body-schema definitions parameters)
+       :form-schema (form-schema definitions parameters)
+       :headers-schema (headers-schema definitions parameters)
+       :response-schemas (response-schemas definitions (:responses swagger-definition))
+       :produces (some :produces [swagger-definition swagger-map])
+       :consumes (some :consumes [swagger-definition swagger-map])
+       :swagger-definition swagger-definition
+       ;; todo path constraints - required?
+       ;; :path-constraints {:id "(\\d+)"},
+       ;; {:in "path", :name "id", :description "", :required true, :type "string", :format "uuid"
+       :route-name route-name})))
 
 (defn swagger->handlers [swagger-json]
   (let [swagger-spec (keywordize-keys swagger-json)]
     (reduce-kv
      (fn [handlers url-pattern swagger-handlers]
-       (into handlers (map (partial ->handler
-                                    swagger-spec
-                                    url-pattern)
-                           swagger-handlers)))
+       (into handlers (remove nil?
+                        (map (partial ->handler
+                                      swagger-spec
+                                      url-pattern)
+                             swagger-handlers))))
      []
      (:paths swagger-spec))))

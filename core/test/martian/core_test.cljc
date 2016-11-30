@@ -53,7 +53,10 @@
                                                                                 :in "body"
                                                                                 :required true
                                                                                 :schema {:type "array"
-                                                                                         :items {:$ref "#/definitions/User"}}}]}}}
+                                                                                         :items {:$ref "#/definitions/User"}}}]}
+                                                           ;; operationId is intentionally missing from the get method
+                                                           :get {}}}
+
    :definitions {:Pet {:type "object"
                        :properties {:id {:type "integer"
                                          :required true}
