@@ -70,10 +70,9 @@
   (let [swagger-spec (keywordize-keys swagger-json)]
     (reduce-kv
      (fn [handlers url-pattern swagger-handlers]
-       (into handlers (remove nil?
-                        (map (partial ->handler
-                                      swagger-spec
-                                      url-pattern)
-                             swagger-handlers))))
+       (into handlers (keep (partial ->handler
+                                     swagger-spec
+                                     url-pattern)
+                            swagger-handlers)))
      []
      (:paths swagger-spec))))
