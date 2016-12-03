@@ -62,10 +62,10 @@
                           :params params)))))))
 
 (defn explore
-  ([{:keys [handlers]}] (mapv (juxt :route-name (comp :summary :swagger-definition)) handlers))
+  ([{:keys [handlers]}] (mapv (juxt :route-name :summary) handlers))
   ([{:keys [handlers]} route-name]
    (when-let [handler (find-handler handlers route-name)]
-     {:summary (get-in handler [:swagger-definition :summary])
+     {:summary (:summary handler)
       :parameters (apply merge (map handler [:path-schema :query-schema :body-schema :form-schema :headers-schema]))})))
 
 (defn- build-instance [api-root handlers {:keys [interceptors]}]

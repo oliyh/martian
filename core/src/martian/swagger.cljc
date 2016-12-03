@@ -60,6 +60,7 @@
        :response-schemas (response-schemas definitions (:responses swagger-definition))
        :produces (some :produces [swagger-definition swagger-map])
        :consumes (some :consumes [swagger-definition swagger-map])
+       :summary (:summary swagger-definition)
        :swagger-definition swagger-definition
        ;; todo path constraints - required?
        ;; :path-constraints {:id "(\\d+)"},
