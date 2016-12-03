@@ -16,17 +16,9 @@
    interceptors/set-form-params
    interceptors/set-header-params])
 
-(defn- tokenise-path [url-pattern]
-  (let [parts (map first (re-seq #"([^:]+|:[^/]+)" url-pattern))]
-    (map #(if-let [param-name (second (re-matches #"^:(.+)/?" %))]
-            (keyword param-name)
-            %)
-         parts)))
-
 (defn- concise->handlers [concise-handlers global-produces global-consumes]
-  (map (fn [{:keys [path] :as handler}]
+  (map (fn [handler]
          (-> handler
-             (assoc :path-parts (tokenise-path path))
              (update :produces #(or % global-produces))
              (update :consumes #(or % global-consumes))))
        concise-handlers))

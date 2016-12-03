@@ -76,17 +76,18 @@
   (testing "bootstrap data"
     (let [m (martian/bootstrap "https://api.org"
                                [{:route-name :load-pet
-                                 :path "/pets/:id"
+                                 :path-parts ["/pets/" :id]
                                  :method :get
                                  :path-schema {:id s/Int}}
 
                                 {:route-name :create-pet
                                  :produces ["application/xml"]
                                  :consumes ["application/xml"]
-                                 :path "/pets/"
+                                 :path-parts ["/pets/"]
                                  :method :post
                                  :body-schema {:pet {:id s/Int
                                                      :name s/Str}}}]
+
                                {:produces ["application/json"]
                                 :consumes ["application/json"]})]
 
