@@ -11,7 +11,7 @@ You can bootstrap it in one line and start calling the server:
          '[martian.clj-http :as martian-http])
 
 (let [m (martian-http/bootstrap-swagger "https://pedestal-api.herokuapp.com/swagger.json")]
-  (martian/response-for m :create-pet {:name "Doggy McDogFace" :type "Dog" :age 3})
+  (martian/response-for m :create-pet {:pet {:name "Doggy McDogFace" :type "Dog" :age 3}})
   ;; => {:status 201 :body {:id 123}}
 
   (martian/response-for m :get-pet {:id 123}))
@@ -78,7 +78,7 @@ like that provided by [pedestal-api](https://github.com/oliyh/pedestal-api):
   ;;     :as :byte-array}
 
   ;; perform the request to create a pet and read back the pet-id from the response
-  (let [pet-id (-> (martian/response-for m :create-pet {:name "Doggy McDogFace" :type "Dog" :age 3})
+  (let [pet-id (-> (martian/response-for m :create-pet {:pet {:name "Doggy McDogFace" :type "Dog" :age 3}})
                    (get-in [:body :id]))]
 
     ;; load the pet using the id
