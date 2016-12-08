@@ -81,11 +81,6 @@ like that provided by [pedestal-api](https://github.com/oliyh/pedestal-api):
   (let [pet-id (-> (martian/response-for m :create-pet {:pet {:name "Doggy McDogFace" :type "Dog" :age 3}})
                    (get-in [:body :id]))]
 
-  ;; :martian.core/body can optionally be used in lieu of explicitly naming the body schema
-  (let [pet-id (-> (martian/response-for m :create-pet {::martian/body {:name "Doggy McDogFace" :type "Dog" :age 3}})
-                   (get-in [:body :id]))]
-
-
     ;; load the pet using the id
     (martian/response-for m :get-pet {:id pet-id})))
 
@@ -93,6 +88,10 @@ like that provided by [pedestal-api](https://github.com/oliyh/pedestal-api):
     ;;     :body {:name "Doggy McDogFace"
     ;;            :type "Dog"
     ;;            :age 3}}
+
+  ;; :martian.core/body can optionally be used in lieu of explicitly naming the body schema
+  (let [pet-id (-> (martian/response-for m :create-pet {::martian/body {:name "Doggy McDogFace" :type "Dog" :age 3}})
+                   (get-in [:body :id]))]))
 ```
 
 ## Testing with martian-test
