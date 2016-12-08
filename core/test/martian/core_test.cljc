@@ -188,7 +188,8 @@
             :url "https://api.org/pets/"
             :body {:id 123 :name "charlie"}}
            (request-for :create-pet {:pet {:id 123 :name "charlie"}})
-           (request-for :create-pet {:pet {:id "123" :name "charlie"}})))
+           (request-for :create-pet {:pet {:id "123" :name "charlie"}})
+           (request-for :create-pet {::martian/body {:id 123 :name "charlie"}})))
 
     (is (= {:method :post
             :url "https://api.org/users/"

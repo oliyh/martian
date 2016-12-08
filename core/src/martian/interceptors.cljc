@@ -38,9 +38,13 @@
 (def set-body-params
   {:name ::body-params
    :enter (fn [{:keys [params handler] :as ctx}]
-            (update ctx :request insert-or-merge :body (some-> (schema/coerce-data (:body-schema handler) params)
-                                                               first
-                                                               val)))})
+            (let [body (or
+                         (some->> (:martian.core/body params)
+                                  (schema/coerce-data (-> (:body-schema handler) first val)))
+                         (some-> (schema/coerce-data (:body-schema handler) params)
+                                 first
+                                 val))]
+              (update ctx :request insert-or-merge :body body)))})
 
 (def set-form-params
   {:name ::form-params
