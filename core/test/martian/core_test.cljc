@@ -13,12 +13,17 @@
                                                                  :summary "Loads a pet by id"
                                                                  :parameters [{:name "id"
                                                                                :in "path"
-                                                                               :type "integer"}]}}
+                                                                               :type "integer"}]
+                                                                 :responses {200 {:description "The pet requested"
+                                                                                  :schema {:$ref "#/definitions/Pet"}}}}}
            (keyword "/pets/")                             {:get {:operationId "all-pets"
                                                                  :parameters [{:name "sort"
                                                                                :in "query"
                                                                                :enum ["desc","asc"]
-                                                                               :required false}]}
+                                                                               :required false}]
+                                                                 :responses {200 {:description "An array of all the pets"
+                                                                                  :schema {:type "array"
+                                                                                           :items {:$ref "#/definitions/Pet"}}}}}
                                                            :post {:operationId "create-pet"
                                                                   :parameters [{:name "Pet"
                                                                                 :in "body"
@@ -146,8 +151,14 @@
 
     (is (= {:summary nil
             :parameters {:id s/Int
-                         :name s/Str}}
-           (martian/explore m :update-pet)))))
+                         :name s/Str}
+            :returns {}}
+           (martian/explore m :update-pet)))
+
+    (is (= {:summary nil
+            :parameters {(s/optional-key :sort) (s/maybe (s/enum "desc" "asc"))}
+            :returns {200 [{:id s/Int, :name s/Str}]}}
+           (martian/explore m :all-pets)))))
 
 (deftest request-for-test
   (let [m (martian/bootstrap-swagger "https://api.org" swagger-definition)

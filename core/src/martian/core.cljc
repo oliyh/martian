@@ -66,7 +66,10 @@
   ([{:keys [handlers]} route-name]
    (when-let [handler (find-handler handlers route-name)]
      {:summary (:summary handler)
-      :parameters (apply merge (map handler [:path-schema :query-schema :body-schema :form-schema :headers-schema]))})))
+      :parameters (apply merge (map handler [:path-schema :query-schema :body-schema :form-schema :headers-schema]))
+      :returns (->> (:response-schemas handler)
+                    (map (juxt (comp :v :status) :body))
+                    (into {}))})))
 
 (defn- build-instance [api-root handlers {:keys [interceptors]}]
   (->Martian api-root handlers (or interceptors default-interceptors)))
