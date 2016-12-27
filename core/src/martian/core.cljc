@@ -14,7 +14,8 @@
    interceptors/set-query-params
    interceptors/set-body-params
    interceptors/set-form-params
-   interceptors/set-header-params])
+   interceptors/set-header-params
+   interceptors/enqueue-route-specific-interceptors])
 
 (defn- concise->handlers [concise-handlers global-produces global-consumes]
   (map (fn [handler]
@@ -25,6 +26,17 @@
 
 (defn find-handler [handlers route-name]
   (first (filter #(= (keyword route-name) (:route-name %)) handlers)))
+
+(defn update-handler
+  "Update a handler in the martian record with the provided route-name
+   e.g. add route-specific interceptors:
+   (update-handler m :load-pet assoc :interceptors [an-interceptor])"
+  [{:keys [handlers] :as m} route-name update-fn & update-args]
+  (update m :handlers #(mapv (fn [handler]
+                               (if (= (keyword route-name) (:route-name handler))
+                                 (apply update-fn handler update-args)
+                                 handler))
+                             %)))
 
 (defrecord Martian [api-root handlers interceptors])
 

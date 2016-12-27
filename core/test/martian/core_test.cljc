@@ -109,6 +109,41 @@
       (is (= ["application/json"] (-> m :handlers first :produces)))
       (is (= ["application/xml"] (-> m :handlers second :produces))))))
 
+(deftest route-specific-interceptors-test
+  (testing "bootstrap-swagger with helpers"
+    (let [m (-> (martian/bootstrap-swagger "https://api.org" swagger-definition)
+                (martian/update-handler :load-pet assoc :interceptors [{:id ::override-load-pet-method
+                                                                        :enter #(assoc-in % [:request :method] :xget)}]))]
+      (is (= {:method :xget
+              :url "https://api.org/pets/123"}
+             (martian/request-for m :load-pet {:id 123})))))
+
+  (testing "bootstrap data"
+    (let [m (martian/bootstrap "https://api.org"
+                               [{:route-name :load-pet
+                                 :path-parts ["/pets/" :id]
+                                 :method :get
+                                 :path-schema {:id s/Int}
+                                 :interceptors [{:id ::override-load-pet-method
+                                                 :enter #(assoc-in % [:request :method] :xget)}]}
+
+                                {:route-name :create-pet
+                                 :produces ["application/xml"]
+                                 :consumes ["application/xml"]
+                                 :path-parts ["/pets/"]
+                                 :method :post
+                                 :body-schema {:pet {:id s/Int
+                                                     :name s/Str}}
+                                 :interceptors [{:id ::for-create-pet-fake-response
+                                                 :leave #(assoc % :response {::for-create-pet true})}]}])]
+
+      (is (= {:method :xget
+              :url "https://api.org/pets/123"}
+             (martian/request-for m :load-pet {:id 123})))
+
+      (is (= {::for-create-pet true}
+             (martian/response-for m :create-pet {:pet {:id 123 :name "Charlie"}}))))))
+
 (deftest url-for-test
   (let [m (martian/bootstrap-swagger "https://api.org" swagger-definition)
         url-for (partial martian/url-for m)]

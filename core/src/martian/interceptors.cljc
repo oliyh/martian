@@ -55,3 +55,10 @@
   {:name ::header-params
    :enter (fn [{:keys [params handler] :as ctx}]
             (update ctx :request insert-or-merge :headers (stringify-keys (schema/coerce-data (:headers-schema handler) params))))})
+
+(def enqueue-route-specific-interceptors
+  {:name ::enqueue-route-specific-interceptors
+   :enter (fn [{:keys [handler] :as ctx}]
+            (if-let [i (:interceptors handler)]
+              (update ctx ::tc/queue #(into (into tc/queue i) %))
+              ctx))})

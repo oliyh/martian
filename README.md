@@ -34,7 +34,7 @@ ensuring that your response handling code is also correct. Examples are below.
 [![Clojars Project](https://img.shields.io/clojars/v/martian-test.svg)](https://clojars.org/martian-test)
 
 ## Features
-- Bootstrap an instance from just a Swagger url
+- Bootstrap an instance from just a Swagger url or provide your own API mapping
 - Modular with support for `clj-http` and `httpkit` (Clojure) and `cljs-http` (ClojureScript)
 - Build urls and request maps from code or generate and perform the request, returning the response
 - Explore an API from your REPL
@@ -49,6 +49,7 @@ ensuring that your response handling code is also correct. Examples are below.
 
 Given a [Swagger API definition](https://pedestal-api.herokuapp.com/swagger.json)
 like that provided by [pedestal-api](https://github.com/oliyh/pedestal-api):
+
 ```clojure
 (require '[martian.core :as martian]
          '[martian.clj-http :as martian-http])
@@ -126,11 +127,40 @@ The following example shows how exceptions will be thrown by bad code and how re
 By making your application code accept a Martian instance you can inject a test instance within your tests, making
 previously untestable code testable again.
 
+## No Swagger, no problem
+
+Although bootstrapping against a remote Swagger API using `bootstrap-swagger` is simplest
+and allows you to use the golden source to define the API, you may likely find yourself
+needing to integrate with an API beyond your control which does not use Swagger.
+
+Martian offers a separate `bootstrap` function which you can provide with handlers defined as data.
+Here's an example:
+
+```clojure
+(martian/bootstrap "https://api.org"
+                   [{:route-name :load-pet
+                     :path-parts ["/pets/" :id]
+                     :method :get
+                     :path-schema {:id s/Int}}
+
+                    {:route-name :create-pet
+                     :produces ["application/xml"]
+                     :consumes ["application/xml"]
+                     :path-parts ["/pets/"]
+                     :method :post
+                     :body-schema {:pet {:id s/Int
+                                         :name s/Str}}}])]
+
+```
+
 ## Custom behaviour
 
 You may wish to provide additional behaviour to requests. This can be done by providing Martian with interceptors
 which behave in the same way as pedestal interceptors.
-For example, if you wish to add an authentication header to each request:
+
+### Global behaviour
+You can add interceptors to the stack that gets executed on every request when bootstrapping martian.
+For example, if you wish to add an authentication header and a timer to all requests:
 
 ```clojure
 (require '[martian.core :as martian]
@@ -164,6 +194,30 @@ For example, if you wish to add an authentication header to each request:
         (martian/response-for m :all-pets {:id 123}))
         ;; Request to :all-pets took 38ms
         ;; => {:status 200 :body {:pets []}}
+```
+
+### Per route behaviour
+
+Sometimes individual routes require custom behaviour. This can be achieved by writing a
+global interceptor which inspects the route-name and decides what to do, but a more specific
+option exists using `bootstrap` as follows:
+
+```clojure
+(martian/bootstrap "https://api.org"
+                   [{:route-name :load-pet
+                     :path-parts ["/pets/" :id]
+                     :method :get
+                     :path-schema {:id s/Int}
+                     :interceptors [{:id ::override-load-pet-method
+                                     :enter #(assoc-in % [:request :method] :xget)}]}])
+```
+
+Alternatively you can use the helpers to update a martian created from `bootstrap-swagger`:
+
+```clojure
+(-> (martian/bootstrap-swagger "https://api.org" swagger-definition)
+    (martian/update-handler :load-pet assoc :interceptors [{:id ::override-load-pet-method
+                                                            :enter #(assoc-in % [:request :method] :xget)}]))
 ```
 
 ## Java
