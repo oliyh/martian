@@ -45,6 +45,8 @@ ensuring that your response handling code is also correct. Examples are below.
 - Simple, data driven behaviour with low coupling using libraries and patterns you already know
 - Pure client code, no server code or modifications required
 
+For more details and rationale you can [watch the talk given at ClojureX Bytes](https://skillsmatter.com/skillscasts/8843-clojure-bytes#video).
+
 ## Clojure / ClojureScript
 
 Given a [Swagger API definition](https://pedestal-api.herokuapp.com/swagger.json)
