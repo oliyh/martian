@@ -1,5 +1,6 @@
 (ns martian.runner
-  (:require [doo.runner :refer-macros [doo-tests]]
-            [martian.core-test]))
+  (:require [doo.runner :refer-macros [doo-all-tests]]
+            [martian.core-test]
+            [martian.schema-test]))
 
-(doo-tests 'martian.core-test)
+(doo-all-tests #"^martian.*test$")

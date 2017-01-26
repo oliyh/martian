@@ -30,11 +30,12 @@
 (defn schemas-for-parameters
   "Given a collection of swagger parameters returns a schema map"
   [definitions parameters]
-  (->> (for [{:keys [name required] :as parameter} parameters
-             :let [name (keyword name)
-                   schema (make-schema definitions parameter)]]
-         [(if required name (s/optional-key name))
-          (if required schema (s/maybe schema))])
+  (->> parameters
+       (map (fn [{:keys [name required] :as param}]
+              {(cond-> (->kebab-case-keyword name)
+                 (not required)
+                 s/optional-key)
+               (make-schema definitions param)}))
        (into {})))
 
 (defn- resolve-ref [definitions ref]
@@ -44,38 +45,42 @@
            keyword
            definitions))
 
-(defn make-schema
-  "Takes a swagger parameter and returns a schema"
-  [definitions {:keys [name required type enum schema properties $ref items]}]
+(defn- schema-type [definitions {:keys [type enum $ref] :as param}]
   (cond
     enum (apply s/enum enum)
     (= "string" type) s/Str
     (= "integer" type) s/Int
     (= "boolean" type) s/Bool
+    (or (= "object" type) $ref) (make-schema definitions param)
 
+    :else
+    s/Any))
+
+(defn make-schema
+  "Takes a swagger parameter and returns a schema"
+  [definitions {:keys [name required type enum schema properties $ref items] :as param}]
+
+  (cond
     $ref
-    (make-schema definitions (resolve-ref definitions $ref))
+    (make-schema definitions (-> (dissoc param :$ref)
+                                 (merge (resolve-ref definitions $ref))))
 
     (:$ref schema)
-    (let [s (make-schema definitions (resolve-ref definitions (:$ref schema)))]
-      (if name
-        {(->kebab-case-keyword name) s}
-        s))
+    (make-schema definitions (-> (dissoc param :schema)
+                                 (merge (resolve-ref definitions (:$ref schema)))))
 
-    (= "object" type)
-    (schemas-for-parameters definitions (map (fn [[name p]]
-                                               (assoc p :name name)) properties))
+    :else
+    (cond-> (cond
+              (= "array" type)
+              [(schema-type definitions (assoc items :required true))]
 
-    (= "array" type)
-    (let [s [(make-schema definitions items)]]
-      (if name
-        {(->kebab-case-keyword name) s}
-        s))
+              (= "array" (:type schema))
+              [(schema-type definitions (assoc (:items schema) :required true))]
 
-    (= "array" (:type schema))
-    (let [s [(make-schema definitions (:items schema))]]
-      (if name
-        {(->kebab-case-keyword name) s}
-        s))
+              (= "object" type)
+              (schemas-for-parameters definitions (map (fn [[name p]] (assoc p :name name)) properties))
 
-    :default s/Any))
+              :else
+              (schema-type definitions param))
+      (and (not required) (not= "array" type) (not= "array" (:type schema)))
+      s/maybe)))

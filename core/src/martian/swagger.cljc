@@ -6,8 +6,8 @@
             [schema.core :as s]))
 
 (defn- body-schema [definitions swagger-params]
-  (when-let [body-param (first (not-empty (filter #(= "body" (:in %)) swagger-params)))]
-    (schema/make-schema definitions body-param)))
+  (when-let [body-params (not-empty (filter #(= "body" (:in %)) swagger-params))]
+    (schema/schemas-for-parameters definitions body-params)))
 
 (defn- form-schema [definitions swagger-params]
   (when-let [form-params (not-empty (filter #(= "formData" (:in %)) swagger-params))]
@@ -28,7 +28,7 @@
 (defn- response-schemas [definitions swagger-responses]
   (for [[status response] swagger-responses]
     {:status (s/eq status)
-     :body (schema/make-schema definitions (:schema response))}))
+     :body (schema/make-schema definitions (assoc (:schema response) :required true))}))
 
 (defn- sanitise [x]
   (if (string? x)
