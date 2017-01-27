@@ -2,7 +2,8 @@
   (:require [martian.schema :as schema]
             [clojure.walk :refer [stringify-keys]]
             [clojure.string :as string]
-            [tripod.context :as tc]))
+            [tripod.context :as tc]
+            [schema.core :as s]))
 
 (def request-only-handler
   {:name ::request-only-handler
@@ -38,13 +39,12 @@
 (def set-body-params
   {:name ::body-params
    :enter (fn [{:keys [params handler] :as ctx}]
-            (let [body (or
-                         (some->> (:martian.core/body params)
-                                  (schema/coerce-data (-> (:body-schema handler) first val)))
-                         (some-> (schema/coerce-data (:body-schema handler) params)
-                                 first
-                                 val))]
-              (update ctx :request insert-or-merge :body body)))})
+            (if-let [[body-key body-schema] (first (:body-schema handler))]
+              (let [body-params (or (:martian.core/body params)
+                                    (get params (s/explicit-schema-key body-key))
+                                    params)]
+                (update ctx :request insert-or-merge :body (schema/coerce-data body-schema body-params)))
+              ctx))})
 
 (def set-form-params
   {:name ::form-params

@@ -20,10 +20,13 @@
 (defn coerce-data
   "Extracts the data referred to by the schema's keys and coerces it"
   [schema data]
-  (some->> (keys schema)
-           (map s/explicit-schema-key)
-           (select-keys data)
-           ((sc/coercer! schema coercion-matchers))))
+  (when schema
+    (if (map? schema)
+      (some->> (keys schema)
+               (map s/explicit-schema-key)
+               (select-keys data)
+               ((sc/coercer! schema coercion-matchers)))
+      ((sc/coercer! schema coercion-matchers) data))))
 
 (declare make-schema)
 

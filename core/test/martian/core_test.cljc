@@ -104,7 +104,7 @@
               :url "https://api.org/pets/"
               :body {:id 123
                      :name "Doge"}}
-             (martian/request-for m :create-pet {:pet {:id 123 :name "Doge"}})))
+             (martian/request-for m :create-pet {:id 123 :name "Doge"})))
 
       (is (= ["application/json"] (-> m :handlers first :produces)))
       (is (= ["application/xml"] (-> m :handlers second :produces))))))
@@ -222,9 +222,13 @@
     (is (= {:method :post
             :url "https://api.org/pets/"
             :body {:id 123 :name "charlie"}}
+
+           ;; these three forms are equivalent
+           (request-for :create-pet {:id 123 :name "charlie"})
            (request-for :create-pet {:pet {:id 123 :name "charlie"}})
-           (request-for :create-pet {:pet {:id "123" :name "charlie"}})
-           (request-for :create-pet {::martian/body {:id 123 :name "charlie"}})))
+           (request-for :create-pet {::martian/body {:id 123 :name "charlie"}})
+
+           (request-for :create-pet {:pet {:id "123" :name "charlie"}})))
 
     (is (= {:method :post
             :url "https://api.org/users/"
@@ -263,7 +267,7 @@
                             (request-for :create-pet {:pet {:id "one"
                                                             :name 1}})))
 
-      (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema: \{:pet missing-required-key\}"
+      (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema: \{:id missing-required-key, :name missing-required-key\}"
                             (request-for :create-pet))))))
 
 (deftest with-interceptors-test
