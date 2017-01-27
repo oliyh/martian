@@ -85,7 +85,7 @@ like that provided by [pedestal-api](https://github.com/oliyh/pedestal-api):
                    (get-in [:body :id]))]
 
     ;; load the pet using the id
-    (martian/response-for m :get-pet {:id pet-id})))
+    (martian/response-for m :get-pet {:id pet-id}))
 
     ;; => {:status 200
     ;;     :body {:name "Doggy McDogFace"
