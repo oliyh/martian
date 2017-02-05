@@ -1,6 +1,7 @@
 (ns martian.schema-test
   (:require [martian.schema :as schema]
             [schema.core :as s]
+            [camel-snake-kebab.core :refer [->kebab-case-keyword]]
             #?(:clj [clojure.test :refer :all]
                :cljs [cljs.test :refer-macros [deftest testing is run-tests]])))
 
@@ -67,7 +68,7 @@
                                              :required false
                                              :type "integer"}])))
 
-  (let [body-param {:name "Pet"
+  (let [body-param {:name "pet"
                     :in "body"
                     :required false
                     :schema {:$ref "#/definitions/Pet"}}
@@ -85,3 +86,36 @@
                       :name s/Str
                       (s/optional-key :tags) [s/Str]})}
            (schema/schemas-for-parameters definitions [body-param])))))
+
+(deftest keys-test
+  (testing "default params"
+    (is (= {:CamelKey s/Int}
+           (schema/schemas-for-parameters
+            {}
+            [{:name "CamelKey"
+              :in "path"
+              :required true
+              :type "integer"}]))))
+
+  (testing "kebab params"
+    (is (= {:kebab-key s/Int}
+           (schema/schemas-for-parameters
+            {}
+            [{:name "KebabKey"
+              :in "path"
+              :required true
+              :type "integer"}]
+            ->kebab-case-keyword))))
+
+  (testing "body params"
+    (is (= {:pet {:CamelBodyKey s/Int}}
+
+           (schema/schemas-for-parameters
+            {:Pet {:type "object"
+                   :properties {:CamelBodyKey {:type "integer"
+                                               :required true}}}}
+            [{:name "Pet"
+              :in "path"
+              :required true
+              :schema {:$ref "#/definitions/Pet"}}]
+            ->kebab-case-keyword)))))

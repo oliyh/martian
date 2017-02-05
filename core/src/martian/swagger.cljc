@@ -7,7 +7,7 @@
 
 (defn- body-schema [definitions swagger-params]
   (when-let [body-params (not-empty (filter #(= "body" (:in %)) swagger-params))]
-    (schema/schemas-for-parameters definitions body-params)))
+    (schema/schemas-for-parameters definitions body-params ->kebab-case-keyword)))
 
 (defn- form-schema [definitions swagger-params]
   (when-let [form-params (not-empty (filter #(= "formData" (:in %)) swagger-params))]
@@ -15,15 +15,15 @@
 
 (defn- path-schema [definitions swagger-params]
   (when-let [path-params (not-empty (filter #(= "path" (:in %)) swagger-params))]
-    (schema/schemas-for-parameters definitions path-params)))
+    (schema/schemas-for-parameters definitions path-params ->kebab-case-keyword)))
 
 (defn- query-schema [definitions swagger-params]
   (when-let [query-params (not-empty (filter #(= "query" (:in %)) swagger-params))]
     (schema/schemas-for-parameters definitions query-params)))
 
 (defn- headers-schema [definitions swagger-params]
-  (when-let [query-params (not-empty (filter #(= "header" (:in %)) swagger-params))]
-    (schema/schemas-for-parameters definitions query-params)))
+  (when-let [header-params (not-empty (filter #(= "header" (:in %)) swagger-params))]
+    (schema/schemas-for-parameters definitions header-params)))
 
 (defn- response-schemas [definitions swagger-responses]
   (for [[status response] swagger-responses]

@@ -32,14 +32,15 @@
 
 (defn schemas-for-parameters
   "Given a collection of swagger parameters returns a schema map"
-  [definitions parameters]
-  (->> parameters
-       (map (fn [{:keys [name required] :as param}]
-              {(cond-> (->kebab-case-keyword name)
-                 (not required)
-                 s/optional-key)
-               (make-schema definitions param)}))
-       (into {})))
+  ([definitions parameters] (schemas-for-parameters definitions parameters keyword))
+  ([definitions parameters key-fn]
+   (->> parameters
+        (map (fn [{:keys [name required] :as param}]
+               {(cond-> (key-fn name)
+                  (not required)
+                  s/optional-key)
+                (make-schema definitions param)}))
+        (into {}))))
 
 (defn- resolve-ref [definitions ref]
   (some->> ref
