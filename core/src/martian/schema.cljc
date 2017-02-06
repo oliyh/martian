@@ -17,16 +17,21 @@
   (or (sc/string-coercion-matcher schema)
       (string-enum-matcher schema)))
 
+(defn- from-maybe [s]
+  (if (instance? schema.core.Maybe s)
+    (:schema s)
+    s))
+
 (defn coerce-data
   "Extracts the data referred to by the schema's keys and coerces it"
   [schema data]
-  (when schema
-    (if (map? schema)
-      (some->> (keys schema)
+  (when-let [s (from-maybe schema)]
+    (if (map? s)
+      (some->> (keys s)
                (map s/explicit-schema-key)
                (select-keys data)
                ((sc/coercer! schema coercion-matchers)))
-      ((sc/coercer! schema coercion-matchers) data))))
+      ((sc/coercer! s coercion-matchers) data))))
 
 (declare make-schema)
 

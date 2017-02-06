@@ -119,3 +119,20 @@
               :required true
               :schema {:$ref "#/definitions/Pet"}}]
             ->kebab-case-keyword)))))
+
+(deftest coerce-data-test
+  (testing "maps"
+    (let [data {:a "1" :b ["1" "2"] :c 3}]
+      (is (= {:a 1
+              :b [1 2]}
+             (schema/coerce-data {:a s/Int :b [s/Int]} data)
+             (schema/coerce-data (s/maybe {:a s/Int :b [s/Int]}) data)
+             (schema/coerce-data (s/maybe {(s/optional-key :a) (s/maybe s/Int)
+                                           (s/optional-key :b) (s/maybe [s/Int])}) data)))))
+
+  (testing "arrays"
+    (let [data ["1" "2"]]
+      (is (= [1 2]
+             (schema/coerce-data [s/Int] data)
+             (schema/coerce-data (s/maybe [s/Int]) data)
+             (schema/coerce-data (s/maybe [(s/maybe s/Int)]) data))))))
