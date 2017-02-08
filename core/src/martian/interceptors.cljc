@@ -3,7 +3,8 @@
             [clojure.walk :refer [stringify-keys]]
             [clojure.string :as string]
             [tripod.context :as tc]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [clojure.set :refer [rename-keys]]))
 
 (def request-only-handler
   {:name ::request-only-handler
@@ -20,6 +21,11 @@
     (get m k) (update m k #(merge v %))
     (not-empty v) (assoc m k v)
     :else m))
+
+(def rename-parameters
+  {:name ::rename-parameters
+   :enter (fn [{:keys [handler] :as ctx}]
+            (update ctx :params rename-keys (:parameter-aliases handler)))})
 
 (def set-method
   {:name ::method

@@ -33,6 +33,14 @@
                ((sc/coercer! schema coercion-matchers)))
       ((sc/coercer! s coercion-matchers) data))))
 
+(defn parameter-keys [schemas]
+  (mapcat
+   (fn [schema]
+     (when-let [s (from-maybe schema)]
+       (when (and (map? s) (not (record? s)))
+         (concat (map s/explicit-schema-key (keys s)) (parameter-keys (vals s))))))
+   schemas))
+
 (declare make-schema)
 
 (defn schemas-for-parameters

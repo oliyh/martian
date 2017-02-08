@@ -46,7 +46,7 @@
                                                                                :in "path"}
                                                                               {:name "order-id"
                                                                                :in "path"}
-                                                                              {:name "auth-token"
+                                                                              {:name "AuthToken"
                                                                                :in "header"}]}}
            (keyword "/orders/")                           {:post {:operationId "create-orders"
                                                                   :parameters [{:name "order-ids"
@@ -216,7 +216,7 @@
 
     (is (= {:method :get
             :url "https://api.org/users/123/orders/234"
-            :headers {"auth-token" "abc-1234"}}
+            :headers {"AuthToken" "abc-1234"}}
            (request-for :order {:user-id 123 :order-id 234 :auth-token "abc-1234"})))
 
     (is (= {:method :post

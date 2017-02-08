@@ -9,7 +9,8 @@
             [schema.core :as s]))
 
 (def default-interceptors
-  [interceptors/set-method
+  [interceptors/rename-parameters
+   interceptors/set-method
    interceptors/set-url
    interceptors/set-query-params
    interceptors/set-body-params
@@ -17,11 +18,20 @@
    interceptors/set-header-params
    interceptors/enqueue-route-specific-interceptors])
 
+(defn- parameter-aliases [handler]
+  (let [ks (schema/parameter-keys (map handler [:path-schema
+                                                :query-schema
+                                                :body-schema
+                                                :form-schema
+                                                :headers-schema]))]
+    (zipmap (map ->kebab-case-keyword ks) ks)))
+
 (defn- concise->handlers [concise-handlers global-produces global-consumes]
   (map (fn [handler]
          (-> handler
              (update :produces #(or % global-produces))
-             (update :consumes #(or % global-consumes))))
+             (update :consumes #(or % global-consumes))
+             (assoc :parameter-aliases (parameter-aliases handler))))
        concise-handlers))
 
 (defn find-handler [handlers route-name]
@@ -94,7 +104,8 @@
 
    ;; => https://api.org/pets/123"
   [api-root swagger-json & [opts]]
-  (build-instance api-root (swagger/swagger->handlers swagger-json) (keywordize-keys opts)))
+  (build-instance api-root (map #(assoc % :parameter-aliases (parameter-aliases %))
+                                (swagger/swagger->handlers swagger-json)) (keywordize-keys opts)))
 
 (defn bootstrap
   "Creates a martian instance from a martian description"
