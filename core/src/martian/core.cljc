@@ -18,20 +18,20 @@
    interceptors/set-header-params
    interceptors/enqueue-route-specific-interceptors])
 
-(defn- parameter-aliases [handler]
-  (let [ks (schema/parameter-keys (map handler [:path-schema
-                                                :query-schema
-                                                :body-schema
-                                                :form-schema
-                                                :headers-schema]))]
-    (zipmap (map ->kebab-case-keyword ks) ks)))
+(def ^:private parameter-schemas [:path-schema :query-schema :body-schema :form-schema :headers-schema])
+
+(defn- enrich-handler [handler]
+  (-> handler
+      (assoc :parameter-aliases (let [ks (schema/parameter-keys (map handler parameter-schemas))]
+                                  (zipmap (map ->kebab-case-keyword ks) ks)))))
 
 (defn- concise->handlers [concise-handlers global-produces global-consumes]
-  (map (fn [handler]
-         (-> handler
-             (update :produces #(or % global-produces))
-             (update :consumes #(or % global-consumes))
-             (assoc :parameter-aliases (parameter-aliases handler))))
+  (map (comp
+        enrich-handler
+        (fn [handler]
+          (-> handler
+              (update :produces #(or % global-produces))
+              (update :consumes #(or % global-consumes)))))
        concise-handlers))
 
 (defn find-handler [handlers route-name]
@@ -88,7 +88,7 @@
   ([{:keys [handlers]} route-name]
    (when-let [handler (find-handler handlers route-name)]
      {:summary (:summary handler)
-      :parameters (apply merge (map handler [:path-schema :query-schema :body-schema :form-schema :headers-schema]))
+      :parameters (apply merge (map handler parameter-schemas))
       :returns (->> (:response-schemas handler)
                     (map (juxt (comp :v :status) :body))
                     (into {}))})))
@@ -104,8 +104,7 @@
 
    ;; => https://api.org/pets/123"
   [api-root swagger-json & [opts]]
-  (build-instance api-root (map #(assoc % :parameter-aliases (parameter-aliases %))
-                                (swagger/swagger->handlers swagger-json)) (keywordize-keys opts)))
+  (build-instance api-root (map enrich-handler (swagger/swagger->handlers swagger-json)) (keywordize-keys opts)))
 
 (defn bootstrap
   "Creates a martian instance from a martian description"
