@@ -71,7 +71,9 @@
                         :properties {:id {:type "integer"
                                           :required true}
                                      :name {:type "string"
-                                            :required true}}}}})
+                                            :required true}
+                                     :emailAddress {:type "string"
+                                                    :required true}}}}})
 
 (deftest bootstrap-test
   (testing "bootstrap swagger"
@@ -232,10 +234,10 @@
 
     (is (= {:method :post
             :url "https://api.org/users/"
-            :body [{:id 1 :name "Bob"}
-                   {:id 2 :name "Barry"}]}
-           (request-for :create-users {:users [{:id 1 :name "Bob"}
-                                               {:id 2 :name "Barry"}]})))
+            :body [{:id 1 :name "Bob" :emailAddress "bob@builder.com"}
+                   {:id 2 :name "Barry" :emailAddress "barry@builder.com"}]}
+           (request-for :create-users {:users [{:id 1 :name "Bob" :email-address "bob@builder.com"}
+                                               {:id 2 :name "Barry" :email-address "barry@builder.com"}]})))
 
     (is (= {:method :post
             :url "https://api.org/orders/"

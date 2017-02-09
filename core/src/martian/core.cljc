@@ -54,7 +54,7 @@
   ([martian route-name] (url-for martian route-name {}))
   ([{:keys [api-root handlers]} route-name params]
    (when-let [handler (find-handler handlers route-name)]
-     (let [params (->> params keywordize-keys (schema/coerce-data (:path-schema handler)))]
+     (let [params (->> params keywordize-keys (interceptors/coerce-data handler :path-schema))]
        (str api-root (string/join (map #(get params % %) (:path-parts handler))))))))
 
 (defn request-for

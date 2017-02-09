@@ -37,10 +37,13 @@
    :enter (fn [{:keys [params url-for handler] :as ctx}]
             (update ctx :request create-only :url (url-for (:route-name handler) params)))})
 
+(defn coerce-data [{:keys [parameter-aliases] :as handler} schema-key params]
+  (schema/coerce-data (get handler schema-key) params parameter-aliases))
+
 (def set-query-params
   {:name ::query-params
    :enter (fn [{:keys [params handler] :as ctx}]
-            (update ctx :request insert-or-merge :query-params (schema/coerce-data (:query-schema handler) params)))})
+            (update ctx :request insert-or-merge :query-params (coerce-data handler :query-schema params)))})
 
 (def set-body-params
   {:name ::body-params
@@ -49,18 +52,18 @@
               (let [body-params (or (:martian.core/body params)
                                     (get params (s/explicit-schema-key body-key))
                                     params)]
-                (update ctx :request insert-or-merge :body (schema/coerce-data body-schema body-params)))
+                (update ctx :request insert-or-merge :body (schema/coerce-data body-schema body-params (:parameter-aliases handler))))
               ctx))})
 
 (def set-form-params
   {:name ::form-params
    :enter (fn [{:keys [params handler] :as ctx}]
-            (update ctx :request insert-or-merge :form-params (schema/coerce-data (:form-schema handler) params)))})
+            (update ctx :request insert-or-merge :form-params (coerce-data handler :form-schema params)))})
 
 (def set-header-params
   {:name ::header-params
    :enter (fn [{:keys [params handler] :as ctx}]
-            (update ctx :request insert-or-merge :headers (stringify-keys (schema/coerce-data (:headers-schema handler) params))))})
+            (update ctx :request insert-or-merge :headers (stringify-keys (coerce-data handler :headers-schema params))))})
 
 (def enqueue-route-specific-interceptors
   {:name ::enqueue-route-specific-interceptors

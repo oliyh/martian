@@ -136,3 +136,18 @@
              (schema/coerce-data [s/Int] data)
              (schema/coerce-data (s/maybe [s/Int]) data)
              (schema/coerce-data (s/maybe [(s/maybe s/Int)]) data))))))
+
+(deftest parameter-keys-test
+  (is (= [:foo]
+         (schema/parameter-keys [{:foo s/Int}])))
+
+  (is (= [:foo :bar]
+         (schema/parameter-keys [{:foo s/Int}
+                                 {:bar s/Str}])))
+
+  (is (= [:foo :bar :baz :quu :quux :fizz :buzz]
+         (schema/parameter-keys [{:foo s/Int}
+                                 {:bar s/Str}
+                                 {:baz {:quu s/Bool
+                                        :quux s/Num}}
+                                 {:fizz [{:buzz s/Str}]}]))))

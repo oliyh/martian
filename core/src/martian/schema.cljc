@@ -1,7 +1,8 @@
 (ns martian.schema
   (:require [camel-snake-kebab.core :refer [->kebab-case-keyword]]
             [schema.core :as s]
-            [schema.coerce :as sc]))
+            [schema.coerce :as sc]
+            [clojure.set :refer [rename-keys]]))
 
 (defn- keyword->string [s]
   (if (keyword? s) (name s) s))
@@ -24,21 +25,33 @@
 
 (defn coerce-data
   "Extracts the data referred to by the schema's keys and coerces it"
-  [schema data]
+  [schema data & [parameter-aliases]]
   (when-let [s (from-maybe schema)]
     (if (map? s)
       (some->> (keys s)
                (map s/explicit-schema-key)
-               (select-keys data)
+               (select-keys (rename-keys data parameter-aliases))
                ((sc/coercer! schema coercion-matchers)))
-      ((sc/coercer! s coercion-matchers) data))))
+
+      ((sc/coercer! schema coercion-matchers)
+       (map #(if (map? %)
+               (rename-keys % parameter-aliases)
+               %)
+            data)))))
 
 (defn parameter-keys [schemas]
   (mapcat
    (fn [schema]
      (when-let [s (from-maybe schema)]
-       (when (and (map? s) (not (record? s)))
-         (concat (map s/explicit-schema-key (keys s)) (parameter-keys (vals s))))))
+       (cond
+         (and (map? s) (not (record? s)))
+         (concat (map s/explicit-schema-key (keys s)) (parameter-keys (vals s)))
+
+         (coll? s)
+         (parameter-keys s)
+
+         :else
+         nil)))
    schemas))
 
 (declare make-schema)
