@@ -292,7 +292,7 @@
                                  :method :put
                                  :path-schema {:camelId s/Int}
                                  :query-schema {:camelVersion s/Int}
-                                 :body-schema {:camel {:camelName s/Str}}
+                                 :body-schema {:Camel {:camelName s/Str}}
                                  :headers-schema {(s/optional-key :camelToken) s/Str}
                                  :form-schema {:camelHumps (s/maybe s/Int)}}])]
 
@@ -311,11 +311,23 @@
                                                  :camel-humps 2
                                                  :camel-name "kebab"})
 
+           (martian/request-for m :create-camel {:camel-id 1
+                                                 :camel-version 2
+                                                 :camel-token "cAmEl"
+                                                 :camel-humps 2
+                                                 :camel {:camel-name "kebab"}})
+
            (martian/request-for m :create-camel {:camelId 1
                                                  :camelVersion 2
                                                  :camelToken "cAmEl"
                                                  :camelHumps 2
-                                                 :camelName "kebab"})))))
+                                                 :camelName "kebab"})
+
+           (martian/request-for m :create-camel {:camelId 1
+                                                 :camelVersion 2
+                                                 :camelToken "cAmEl"
+                                                 :camelHumps 2
+                                                 :Camel {:camelName "kebab"}})))))
 
 #?(:clj
    (deftest java-api-test

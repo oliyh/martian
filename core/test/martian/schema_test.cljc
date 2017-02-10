@@ -97,18 +97,8 @@
               :required true
               :type "integer"}]))))
 
-  (testing "kebab params"
-    (is (= {:kebab-key s/Int}
-           (schema/schemas-for-parameters
-            {}
-            [{:name "KebabKey"
-              :in "path"
-              :required true
-              :type "integer"}]
-            ->kebab-case-keyword))))
-
   (testing "body params"
-    (is (= {:pet {:CamelBodyKey s/Int}}
+    (is (= {:Pet {:CamelBodyKey s/Int}}
 
            (schema/schemas-for-parameters
             {:Pet {:type "object"
@@ -117,8 +107,7 @@
             [{:name "Pet"
               :in "path"
               :required true
-              :schema {:$ref "#/definitions/Pet"}}]
-            ->kebab-case-keyword)))))
+              :schema {:$ref "#/definitions/Pet"}}])))))
 
 (deftest coerce-data-test
   (testing "maps"

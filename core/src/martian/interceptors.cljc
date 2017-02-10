@@ -3,7 +3,8 @@
             [clojure.walk :refer [stringify-keys]]
             [clojure.string :as string]
             [tripod.context :as tc]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [camel-snake-kebab.core :refer [->kebab-case-keyword]]))
 
 (def request-only-handler
   {:name ::request-only-handler
@@ -43,10 +44,12 @@
   {:name ::body-params
    :enter (fn [{:keys [params handler] :as ctx}]
             (if-let [[body-key body-schema] (first (:body-schema handler))]
-              (let [body-params (or (:martian.core/body params)
+              (let [parameter-aliases (:parameter-aliases handler)
+                    body-params (or (:martian.core/body params)
                                     (get params (s/explicit-schema-key body-key))
+                                    (get params (->kebab-case-keyword (s/explicit-schema-key body-key)))
                                     params)]
-                (update ctx :request insert-or-merge :body (schema/coerce-data body-schema body-params (:parameter-aliases handler))))
+                (update ctx :request insert-or-merge :body (schema/coerce-data body-schema body-params parameter-aliases)))
               ctx))})
 
 (def set-form-params

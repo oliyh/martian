@@ -1,6 +1,5 @@
 (ns martian.schema
-  (:require [camel-snake-kebab.core :refer [->kebab-case-keyword]]
-            [schema.core :as s]
+  (:require [schema.core :as s]
             [schema.coerce :as sc]
             [clojure.set :refer [rename-keys]]))
 
@@ -58,15 +57,14 @@
 
 (defn schemas-for-parameters
   "Given a collection of swagger parameters returns a schema map"
-  ([definitions parameters] (schemas-for-parameters definitions parameters keyword))
-  ([definitions parameters key-fn]
-   (->> parameters
-        (map (fn [{:keys [name required] :as param}]
-               {(cond-> (key-fn name)
-                  (not required)
-                  s/optional-key)
-                (make-schema definitions param)}))
-        (into {}))))
+  [definitions parameters]
+  (->> parameters
+       (map (fn [{:keys [name required] :as param}]
+              {(cond-> (keyword name)
+                 (not required)
+                 s/optional-key)
+               (make-schema definitions param)}))
+       (into {})))
 
 (defn- resolve-ref [definitions ref]
   (some->> ref
