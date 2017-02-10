@@ -37,6 +37,9 @@
 (defn find-handler [handlers route-name]
   (first (filter #(= (keyword route-name) (:route-name %)) handlers)))
 
+(defn handler-for [m route-name]
+  (find-handler (:handlers m) route-name))
+
 (defn update-handler
   "Update a handler in the martian record with the provided route-name
    e.g. add route-specific interceptors:
