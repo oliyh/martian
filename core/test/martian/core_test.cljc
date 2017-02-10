@@ -290,13 +290,17 @@
                                [{:route-name :create-camel
                                  :path-parts ["/camels/" :camelId]
                                  :method :put
+                                 :path-schema {:camelId s/Int}
                                  :query-schema {:camelVersion s/Int}
                                  :body-schema {:camel {:camelName s/Str}}
                                  :headers-schema {(s/optional-key :camelToken) s/Str}
                                  :form-schema {:camelHumps (s/maybe s/Int)}}])]
 
+    (is (= "https://camels.org/camels/1"
+           (martian/url-for m :create-camel {:camel-id 1})))
+
     (is (= {:method :put,
-            :url "https://camels.org/camels/:camelId",
+            :url "https://camels.org/camels/1",
             :query-params {:camelVersion 2},
             :body {:camelName "kebab"},
             :form-params {:camelHumps 2},
