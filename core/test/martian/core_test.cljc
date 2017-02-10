@@ -285,6 +285,28 @@
             :headers {"auth-token" "1234-secret"}}
            (request-for :load-pet {:id 123})))))
 
+(deftest kebab-mapping-test
+  (let [m (martian/bootstrap "https://camels.org"
+                               [{:route-name :create-camel
+                                 :path-parts ["/camels/" :camelId]
+                                 :method :put
+                                 :query-schema {:camelVersion s/Int}
+                                 :body-schema {:camel {:camelName s/Str}}
+                                 :headers-schema {(s/optional-key :camelToken) s/Str}
+                                 :form-schema {:camelHumps (s/maybe s/Int)}}])]
+
+    (is (= {:method :put,
+            :url "https://camels.org/camels/:camelId",
+            :query-params {:camelVersion 2},
+            :body {:camelName "kebab"},
+            :form-params {:camelHumps 2},
+            :headers {"camelToken" "cAmEl"}}
+             (martian/request-for m :create-camel {:camel-id 1
+                                                   :camel-version 2
+                                                   :camel-token "cAmEl"
+                                                   :camel-humps 2
+                                                   :camel-name "kebab"})))))
+
 #?(:clj
    (deftest java-api-test
      (let [swagger-definition
