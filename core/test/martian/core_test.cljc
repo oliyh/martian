@@ -305,11 +305,17 @@
             :body {:camelName "kebab"},
             :form-params {:camelHumps 2},
             :headers {"camelToken" "cAmEl"}}
-             (martian/request-for m :create-camel {:camel-id 1
-                                                   :camel-version 2
-                                                   :camel-token "cAmEl"
-                                                   :camel-humps 2
-                                                   :camel-name "kebab"})))))
+           (martian/request-for m :create-camel {:camel-id 1
+                                                 :camel-version 2
+                                                 :camel-token "cAmEl"
+                                                 :camel-humps 2
+                                                 :camel-name "kebab"})
+
+           (martian/request-for m :create-camel {:camelId 1
+                                                 :camelVersion 2
+                                                 :camelToken "cAmEl"
+                                                 :camelHumps 2
+                                                 :camelName "kebab"})))))
 
 #?(:clj
    (deftest java-api-test
