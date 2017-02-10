@@ -9,8 +9,7 @@
             [schema.core :as s]))
 
 (def default-interceptors
-  [interceptors/rename-parameters
-   interceptors/set-method
+  [interceptors/set-method
    interceptors/set-url
    interceptors/set-query-params
    interceptors/set-body-params
