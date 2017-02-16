@@ -42,6 +42,7 @@ ensuring that your response handling code is also correct. Examples are below.
 - Negotiates the most efficient content-type and handles serialisation and deserialisation including `transit`, `edn` and `json`
 - Support for integration testing without requiring external HTTP stubs
 - Routes are named as idiomatic kebab-case keywords of the `operationId` of the endpoint in the Swagger definition
+- Parameters are aliased to idiomatic kebab-case keywords so that your code remains neat and clean
 - Simple, data driven behaviour with low coupling using libraries and patterns you already know
 - Pure client code, no server code or modifications required
 
@@ -154,9 +155,33 @@ Here's an example:
                      :consumes ["application/xml"]
                      :path-parts ["/pets/"]
                      :method :post
-                     :body-schema {:pet {:id s/Int
-                                         :name s/Str}}}])]
+                     :body-schema {:pet {:id   s/Int
+                                         :name s/Str}}}])
 
+```
+
+## Idiomatic parameters
+
+If an API has a parameter called `FooBar` it's difficult to stop that leaking into your own code - the Clojure idiom is to
+use kebab-cased keywords such as `:foo-bar`. Martian maps parameters to their kebab-cased equivalents so that your code looks neater
+but preserves the mapping so that the API is passed the correct parameter names:
+
+```clojure
+(let [m (martian/bootstrap "https://api.org"
+                           [{:route-name  :create-pet
+                             :path-parts  ["/pets/"]
+                             :method      :post
+                             :body-schema {:pet {:PetId     s/Int
+                                                 :FirstName s/Str
+                                                 :LastName  s/Str}}}])]
+
+  (martian/request-for m :create-pet {:pet-id 1 :first-name "Doggy" :last-name "McDogFace"}))
+
+;; => {:method :post
+;;     :url    "https://api.org/pets/"
+;;     :body   {:PetId     1
+;;              :FirstName "Doggy"
+;;              :LastName  "McDogFace"}}
 ```
 
 ## Custom behaviour
