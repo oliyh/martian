@@ -327,7 +327,20 @@
                                                  :camelVersion 2
                                                  :camelToken "cAmEl"
                                                  :camelHumps 2
-                                                 :Camel {:camelName "kebab"}})))))
+                                                 :Camel {:camelName "kebab"}})))
+
+    (is (= [[:create-camel nil]]
+           (martian/explore m)))
+
+    (is (= {:summary nil,
+            :parameters
+            {:camel-id                     s/Int,
+             :camel-version                s/Int,
+             :camel                        {:camel-name s/Str},
+             :camel-humps                  (s/maybe s/Int),
+             (s/optional-key :camel-token) s/Str},
+            :returns {}}
+           (martian/explore m :create-camel)))))
 
 #?(:clj
    (deftest java-api-test

@@ -2,7 +2,7 @@
   (:require [tripod.context :as tc]
             [camel-snake-kebab.core :refer [->kebab-case-keyword]]
             [clojure.string :as string]
-            [clojure.walk :refer [keywordize-keys]]
+            [clojure.walk :refer [keywordize-keys postwalk-replace]]
             [martian.interceptors :as interceptors]
             [martian.schema :as schema]
             [martian.swagger :as swagger]
@@ -90,7 +90,10 @@
   ([{:keys [handlers]} route-name]
    (when-let [handler (find-handler handlers route-name)]
      {:summary (:summary handler)
-      :parameters (apply merge (map handler parameter-schemas))
+      :parameters (let [parameter-aliases (:parameter-aliases handler)]
+                    (->> (map handler parameter-schemas)
+                         (apply merge)
+                         (postwalk-replace (zipmap (vals parameter-aliases) (keys parameter-aliases)))))
       :returns (->> (:response-schemas handler)
                     (map (juxt (comp :v :status) :body))
                     (into {}))})))
