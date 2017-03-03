@@ -1,4 +1,4 @@
-(defproject martian "0.1.4"
+(defproject martian "0.1.5-SNAPSHOT"
   :description "Client routing for Swagger APIs"
   :url "https://github.com/oliyh/martian"
   :license {:name "The MIT License"
