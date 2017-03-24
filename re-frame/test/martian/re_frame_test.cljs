@@ -1,5 +1,6 @@
 (ns martian.re-frame-test
   (:require [martian.re-frame :as martian]
+            [martian.core :refer [url-for]]
             [cljs.test :refer-macros [deftest testing is run-tests async]]
             [cljs.core.async :refer [<! timeout]]
             [re-frame.core :as re-frame]
@@ -30,13 +31,19 @@
    (rf-test/wait-for
     [::martian/init]
 
-    (re-frame/dispatch [:http/request
-                        :create-pet
-                        {:name "Doggy McDogFace"
-                         :type "Dog"
-                         :age 3}
-                        ::create-pet-success
-                        ::http-failure])
+    (testing "can subscribe to the instance"
+      (let [m @(re-frame/subscribe [::martian/instance])]
+        (is (= "http://localhost:8888/pets/123"
+               (url-for m :get-pet {:id 123})))))
+
+    (testing "can make http requests by dispatching an event"
+      (re-frame/dispatch [:http/request
+                          :create-pet
+                          {:name "Doggy McDogFace"
+                           :type "Dog"
+                           :age 3}
+                          ::create-pet-success
+                          ::http-failure]))
 
     (rf-test/wait-for
      [#{::create-pet-success ::http-failure}]
