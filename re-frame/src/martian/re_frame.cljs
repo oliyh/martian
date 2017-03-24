@@ -26,6 +26,6 @@
  (fn [{:keys [db]} [_ operation-id params on-success on-failure]]
    {::request [(::martian db) operation-id params on-success on-failure]}))
 
-(defn init [swagger-url]
-  (go (let [martian (<! (martian-http/bootstrap-swagger swagger-url))]
+(defn init [swagger-url & [params]]
+  (go (let [martian (<! (martian-http/bootstrap-swagger swagger-url params))]
         (re-frame/dispatch-sync [::init martian]))))
