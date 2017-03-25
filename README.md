@@ -115,10 +115,8 @@ The following example shows how exceptions will be thrown by bad code and how re
 (require '[martian.core :as martian]
          '[martian.test :as martian-test])
 
-(let [m (martian/bootstrap-swagger
-          "https://pedestal-api.herokuapp.com/swagger.json"
-          swagger-definition
-          {:interceptors [martian-test/generate-response]})]
+(let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
+            (martian-test/respond-with :random))]
 
   (martian/response-for m :get-pet {})
   ;; => ExceptionInfo Value cannot be coerced to match schema: {:id missing-required-key}
