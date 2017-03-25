@@ -116,6 +116,7 @@ The following example shows how exceptions will be thrown by bad code and how re
          '[martian.test :as martian-test])
 
 (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
+            (martian-test/respond-as :clj-http)
             (martian-test/respond-with :random))]
 
   (martian/response-for m :get-pet {})

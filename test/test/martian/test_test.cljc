@@ -6,6 +6,7 @@
             [clojure.test.check.properties :as prop #?@(:cljs [:include-macros true])]
             [clojure.test.check.clojure-test :as tct]
             [schema.core :as s]
+            [clojure.core.async :as a]
             #?(:clj [clojure.test :refer :all]
                :cljs [cljs.test :refer-macros [deftest testing is run-tests]])))
 
@@ -76,3 +77,28 @@
                             (not (nil? output)))))]
 
     (tct/assert-check (tc/quick-check 100 p))))
+
+(deftest simulate-implementation-responses-test
+  #?(:clj
+     (testing "clj-http"
+       (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
+                   (martian-test/respond-as :clj-http)
+                   (martian-test/respond-with :success))]
+
+         (is (= 200 (:status (martian/response-for m :load-pet {:id 123})))))))
+
+  #?(:clj
+     (testing "httpkit"
+       (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
+                   (martian-test/respond-as :httpkit)
+                   (martian-test/respond-with :success))]
+
+         (is (= 200 (:status @(martian/response-for m :load-pet {:id 123})))))))
+
+  #?(:cljs
+     (testing "cljs-http"
+       (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
+                   (martian-test/respond-as :cljs-http)
+                   (martian-test/respond-with :success))]
+
+         (is (= 200 (:status (a/<!! (martian/response-for m :load-pet {:id 123})))))))))

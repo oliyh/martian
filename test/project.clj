@@ -8,7 +8,8 @@
             [lein-doo "0.1.6"]]
   :dependencies [[martian :version]
                  [prismatic/schema-generators "0.1.0"]
-                 [org.clojure/test.check "0.9.0"]]
+                 [org.clojure/test.check "0.9.0"]
+                 [org.clojure/core.async "0.3.442"]]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.8.0"]
                                        [org.clojure/clojurescript "1.9.36"]]}
              :dev {:exclusions [[org.clojure/tools.reader]]
