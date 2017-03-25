@@ -3,7 +3,7 @@
             [schema-generators.generators :as g]
             [clojure.test.check.generators :as tcg]
             [schema.core :as s]
-            [clojure.core.async :as a]))
+            #?(:cljs [cljs.core.async :as a])))
 
 (defn- status-range [from to]
   (fn [{:keys [status]}]

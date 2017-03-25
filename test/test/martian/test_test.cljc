@@ -6,9 +6,10 @@
             [clojure.test.check.properties :as prop #?@(:cljs [:include-macros true])]
             [clojure.test.check.clojure-test :as tct]
             [schema.core :as s]
-            [clojure.core.async :as a]
             #?(:clj [clojure.test :refer :all]
-               :cljs [cljs.test :refer-macros [deftest testing is run-tests]])))
+               :cljs [cljs.test :refer-macros [deftest testing is run-tests async]])
+            #?(:cljs [cljs.core.async :as a]))
+  #?(:cljs (:require-macros [cljs.core.async.macros :refer [go]])))
 
 #?(:cljs
    (def Throwable js/Error))
@@ -97,8 +98,11 @@
 
   #?(:cljs
      (testing "cljs-http"
-       (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
-                   (martian-test/respond-as :cljs-http)
-                   (martian-test/respond-with :success))]
+       (async done
+              (go
+                (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
+                            (martian-test/respond-as :cljs-http)
+                            (martian-test/respond-with :success))]
 
-         (is (= 200 (:status (a/<!! (martian/response-for m :load-pet {:id 123})))))))))
+                  (is (= 200 (:status (a/<! (martian/response-for m :load-pet {:id 123})))))
+                  (done)))))))
