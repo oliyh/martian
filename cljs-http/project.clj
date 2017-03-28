@@ -11,7 +11,7 @@
                  [org.clojure/core.async "0.2.374"]]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.8.0"]
                                        [org.clojure/clojurescript "1.9.36"]]}
-             :dev {:source-paths ["../test-common"]
+             :dev {:source-paths ["../test-common" "dev"]
                    :exclusions [[org.clojure/tools.reader]]
                    :dependencies [[org.clojure/clojure "1.8.0"]
                                   [org.clojure/tools.reader "0.10.0"]

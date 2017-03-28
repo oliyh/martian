@@ -3,7 +3,8 @@
             [cljs-http.util :as util]
             [cljs.core.async :refer [<!]]
             [martian.core :as martian]
-            [cljs.reader :refer [read-string]])
+            [cljs.reader :refer [read-string]]
+            [tripod.context :as tc])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
 (def supported-encodings
@@ -40,23 +41,29 @@
 
    :leave (fn [{:keys [request response handler] :as ctx}]
             (assoc ctx :response
-                   (go
-                     (let [response (<! response)]
-                       (if-let [content-type (and (:body response)
-                                                  (not= :auto (:as request))
-                                                  (not-empty (get-in response [:headers "Content-Type"])))]
-                         (update response :body
-                                 (condp re-find content-type
-                                   #"application/json" util/json-decode
-                                   #"application/edn" read-string
-                                   #"application/transit\+json" #(util/transit-decode % :json {})
-                                   identity))
-                         response)))))})
+                   (if-let [content-type (and (:body response)
+                                              (not= :auto (:as request))
+                                              (not-empty (get-in response [:headers "Content-Type"])))]
+                     (update response :body
+                             (condp re-find content-type
+                               #"application/json" util/json-decode
+                               #"application/edn" read-string
+                               #"application/transit\+json" #(util/transit-decode % :json {})
+                               identity))
+                     response)))})
+
+(defn- go-async [ctx]
+  (-> ctx tc/terminate (dissoc ::tc/stack)))
 
 (def perform-request
   {:name ::perform-request
    :leave (fn [{:keys [request] :as ctx}]
-            (assoc ctx :response (http/request request)))})
+            (-> ctx
+                go-async
+                (assoc :response
+                       (go (let [response (<! (http/request request))]
+                             (:response (tc/execute (assoc ctx :response response))))))))})
+
 
 (def default-interceptors
   (concat martian/default-interceptors [encode-body coerce-response perform-request]))
