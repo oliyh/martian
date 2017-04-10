@@ -113,10 +113,10 @@ correct without maintenance of a stub.
 The following example shows how exceptions will be thrown by bad code and how responses can be generated:
 ```clojure
 (require '[martian.core :as martian]
+         '[martian.httpkit :as martian-http]
          '[martian.test :as martian-test])
 
-(let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
-            (martian-test/respond-as :clj-http)
+(let [m (-> (martian-http/bootstrap-swagger "https://pedestal-api.herokuapp.com/swagger.json")
             (martian-test/respond-with :random))]
 
   (martian/response-for m :get-pet {})
