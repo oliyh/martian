@@ -4,8 +4,7 @@
             [clojure.walk :refer [keywordize-keys]]
             [martian.schema :as schema]
             [schema.core :as s]
-            #?(:clj [clojure.edn :refer [read-string]]
-               :cljs [cljs.reader :refer [read-string]])))
+            #?(:cljs [cljs.reader :refer [read-string]])))
 
 (defn- body-schema [definitions swagger-params]
   (when-let [body-params (not-empty (filter #(= "body" (:in %)) swagger-params))]
