@@ -6,6 +6,7 @@
             [clojure.test.check.properties :as prop #?@(:cljs [:include-macros true])]
             [clojure.test.check.clojure-test :as tct]
             [schema.core :as s]
+            #?(:clj [martian.httpkit :as martian-http])
             #?(:clj [clojure.test :refer :all]
                :cljs [cljs.test :refer-macros [deftest testing is run-tests async]])
             #?(:cljs [cljs.core.async :as a]))
@@ -20,9 +21,9 @@
                                                        :name "id"
                                                        :type "integer"
                                                        :required true}]
-                                         :responses {200 {:description "A pet"
-                                                          :schema {:$ref "#/definitions/Pet"}}
-                                                     404 {:schema {:type "string"}}}}}}
+                                         :responses {:200 {:description "A pet"
+                                                           :schema {:$ref "#/definitions/Pet"}}
+                                                     :404 {:schema {:type "string"}}}}}}
    :definitions {:Pet {:type "object"
                        :properties {:id {:type "integer"
                                          :required true}
@@ -106,3 +107,19 @@
 
                   (is (= 200 (:status (a/<! (martian/response-for m :load-pet {:id 123})))))
                   (done)))))))
+
+#?(:clj
+   (deftest test-pedestal-api
+     ;; this is an example of how to take a real martian, bootstrapped from a real source, and use it in testing
+     ;; the respond-with fn removes http interceptors and replaces them with the test interceptors
+
+     (let [real-martian (-> (martian-http/bootstrap-swagger "https://pedestal-api.herokuapp.com/swagger.json"))]
+
+       (let [test-martian (martian-test/respond-with real-martian :success)]
+
+         (is (every? #{"martian.interceptors" "martian.test"} (map (comp namespace :name) (:interceptors test-martian))))
+         (is (contains? (set (:interceptors test-martian)) martian-test/httpkit-responder))
+         (is (= 200 (:status @(martian/response-for test-martian :get-pet {:id 123})))))
+
+       (let [test-martian (martian-test/respond-with real-martian :error)]
+         (is (contains? #{400 404 500} (:status @(martian/response-for test-martian :get-pet {:id 123}))))))))

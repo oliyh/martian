@@ -27,7 +27,7 @@
 
 (defn- response-schemas [definitions swagger-responses]
   (for [[status response] swagger-responses]
-    {:status (s/eq status)
+    {:status (s/eq (Integer/parseInt (name status)))
      :body (schema/make-schema definitions (assoc (:schema response) :required true))}))
 
 (defn- sanitise [x]

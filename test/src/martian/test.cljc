@@ -45,15 +45,10 @@
   (let [{:keys [response-schemas]} (martian/find-handler handlers route-name)]
     (make-generator :random response-schemas)))
 
-(defn constantly-respond [martian response]
-  (update martian :interceptors concat [(constant-response response)]))
-
-(defn respond-with [martian response-type]
-  (update martian :interceptors concat [(generate-response-interceptor response-type)]))
 
 #?(:clj
    (def httpkit-responder
-     {:name :httpkit-responder
+     {:name ::httpkit-responder
       :leave (fn [ctx]
                (let [p (promise)]
                  (deliver p (:response ctx))
@@ -61,26 +56,55 @@
 
 #?(:clj
    (def clj-http-responder
-     {:name :clj-http-responder
+     {:name ::clj-http-responder
       :leave identity}))
 
 #?(:cljs
    (def cljs-http-responder
-     {:name :cljs-http-responder
+     {:name ::cljs-http-responder
       :leave (fn [ctx]
                (let [c (a/chan)]
                  (a/put! c (:response ctx))
                  (assoc ctx :response c)))}))
 
-(def responders
-  #?(:clj
-     {:httpkit httpkit-responder
-      :clj-http clj-http-responder}
-     :cljs
-     {:cljs-http cljs-http-responder}))
+(def ^:private http-interceptors
+  #?(:clj {"martian.httpkit"  httpkit-responder
+           "martian.clj-http" clj-http-responder}
+     :cljs {"martian.cljs-http" cljs-http-responder}))
 
-(defn respond-as [martian implementation-name]
-  "Implementations of http requests - as provided by martian httpkit, clj-http and cljs-http - give
+(defn- replace-http-interceptors [martian]
+  (update martian :interceptors
+          (fn [interceptors]
+            (->> interceptors
+                 (map #(if-let [responder (and (= "perform-request" (name (:name %)))
+                                               (get http-interceptors (namespace (:name %))))]
+                         responder
+                         %))
+                 (remove (comp (set (keys http-interceptors)) namespace :name))))))
+
+(defn constantly-respond
+  "Adds an interceptor that simulates the server constantly responding with the supplied response.
+   Removes all interceptors that would perform real HTTP operations"
+  [martian response]
+  (-> (replace-http-interceptors martian)
+      (update :interceptors concat [(constant-response response)])))
+
+(defn respond-with
+  "Adds an interceptor that simulates the server responding to operations by generating responses of the supplied response-type
+   from the handler response schemas.
+   Removes all interceptors that would perform real HTTP operations"
+  [martian response-type]
+  (-> (replace-http-interceptors martian)
+      (update :interceptors concat [(generate-response-interceptor response-type)])))
+
+(defn respond-as
+  "You only need to call this if you have a martian which was created without martian's standard http-specific interceptors,
+   i.e. those found in martian.httpkit and so on.
+
+  Implementations of http requests - as provided by martian httpkit, clj-http and cljs-http - give
   implementation-specific response types; promises, data and core.async channels respectively.
-  As your production code will expect these response types this interceptor lets you simulate those response wrappers."
-  (update martian :interceptors #(concat [(get responders implementation-name)] %)))
+  As your production code will expect these response types this interceptor lets you simulate those response wrappers.
+  Removes all interceptors that would perform real HTTP operations"
+  [martian implementation-name]
+  (-> (replace-http-interceptors martian)
+      (update :interceptors #(concat [(get http-interceptors (str "martian." (name implementation-name)))] %))))
