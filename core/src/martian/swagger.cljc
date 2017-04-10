@@ -26,8 +26,9 @@
     (schema/schemas-for-parameters definitions header-params)))
 
 (defn- response-schemas [definitions swagger-responses]
-  (for [[status response] swagger-responses]
-    {:status (s/eq (Integer/parseInt (name status)))
+  (for [[status response] swagger-responses
+        :let [status-code (if (number? status) status (Integer/parseInt (name status)))]]
+    {:status (s/eq status-code)
      :body (schema/make-schema definitions (assoc (:schema response) :required true))}))
 
 (defn- sanitise [x]

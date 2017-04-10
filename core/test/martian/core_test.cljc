@@ -14,16 +14,16 @@
                                                                  :parameters [{:name "id"
                                                                                :in "path"
                                                                                :type "integer"}]
-                                                                 :responses {200 {:description "The pet requested"
-                                                                                  :schema {:$ref "#/definitions/Pet"}}}}}
+                                                                 :responses {:200 {:description "The pet requested"
+                                                                                   :schema {:$ref "#/definitions/Pet"}}}}}
            (keyword "/pets/")                             {:get {:operationId "all-pets"
                                                                  :parameters [{:name "sort"
                                                                                :in "query"
                                                                                :enum ["desc","asc"]
                                                                                :required false}]
-                                                                 :responses {200 {:description "An array of all the pets"
-                                                                                  :schema {:type "array"
-                                                                                           :items {:$ref "#/definitions/Pet"}}}}}
+                                                                 :responses {:200 {:description "An array of all the pets"
+                                                                                   :schema {:type "array"
+                                                                                            :items {:$ref "#/definitions/Pet"}}}}}
                                                            :post {:operationId "create-pet"
                                                                   :parameters [{:name "Pet"
                                                                                 :in "body"
