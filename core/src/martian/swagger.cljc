@@ -3,7 +3,9 @@
             [clojure.string :as string]
             [clojure.walk :refer [keywordize-keys]]
             [martian.schema :as schema]
-            [schema.core :as s]))
+            [schema.core :as s]
+            #?(:clj [clojure.edn :refer [read-string]]
+               :cljs [cljs.reader :refer [read-string]])))
 
 (defn- body-schema [definitions swagger-params]
   (when-let [body-params (not-empty (filter #(= "body" (:in %)) swagger-params))]
@@ -27,7 +29,7 @@
 
 (defn- response-schemas [definitions swagger-responses]
   (for [[status response] swagger-responses
-        :let [status-code (if (number? status) status (Integer/parseInt (name status)))]]
+        :let [status-code (if (number? status) status (read-string (name status)))]]
     {:status (s/eq status-code)
      :body (schema/make-schema definitions (assoc (:schema response) :required true))}))
 
