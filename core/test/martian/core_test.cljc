@@ -285,6 +285,20 @@
             :headers {"auth-token" "1234-secret"}}
            (request-for :load-pet {:id 123})))))
 
+(deftest any-body-test
+  (let [m (martian/bootstrap "https://bodyblobs.com"
+                               [{:route-name :create-blob
+                                 :path-parts ["/"]
+                                 :method :put
+                                 :body-schema {:blob s/Any}}])
+        body {:some-key {:some-nested "thing"}}]
+
+    (is (= {:method :put,
+            :url "https://bodyblobs.com/"
+            :body body}
+           (martian/request-for m :create-blob {::martian/body body})
+           (martian/request-for m :create-blob {:blob body})))))
+
 (deftest kebab-mapping-test
   (let [m (martian/bootstrap "https://camels.org"
                                [{:route-name :create-camel

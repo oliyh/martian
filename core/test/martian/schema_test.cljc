@@ -124,7 +124,18 @@
       (is (= [1 2]
              (schema/coerce-data [s/Int] data)
              (schema/coerce-data (s/maybe [s/Int]) data)
-             (schema/coerce-data (s/maybe [(s/maybe s/Int)]) data))))))
+             (schema/coerce-data (s/maybe [(s/maybe s/Int)]) data)))))
+
+  (testing "anys are identity"
+    (let [data ["a" "b"]]
+      (is (= data
+             (schema/coerce-data s/Any data)
+             (schema/coerce-data (s/maybe s/Any) data))))
+
+    (let [data {:a 1}]
+      (is (= data
+             (schema/coerce-data s/Any data)
+             (schema/coerce-data {s/Keyword s/Any} data))))))
 
 (deftest parameter-keys-test
   (is (= [:foo]

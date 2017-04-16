@@ -26,17 +26,28 @@
   "Extracts the data referred to by the schema's keys and coerces it"
   [schema data & [parameter-aliases]]
   (when-let [s (from-maybe schema)]
-    (if (map? s)
-      (some->> (keys s)
-               (map s/explicit-schema-key)
-               (select-keys (rename-keys data parameter-aliases))
-               ((sc/coercer! schema coercion-matchers)))
+    (cond
+      (instance? schema.core.AnythingSchema s)
+      ((sc/coercer! schema coercion-matchers) data)
 
+      (map? s)
+      (if (every? s/specific-key? (keys s))
+        (some->> (keys s)
+                 (map s/explicit-schema-key)
+                 (select-keys (rename-keys data parameter-aliases))
+                 ((sc/coercer! schema coercion-matchers)))
+        (some->> (rename-keys data parameter-aliases)
+                 ((sc/coercer! schema coercion-matchers))))
+
+      (coll? s) ;; primitives, arrays, arrays of maps
       ((sc/coercer! schema coercion-matchers)
        (map #(if (map? %)
                (rename-keys % parameter-aliases)
                %)
-            data)))))
+            data))
+
+      :else
+      ((sc/coercer! schema coercion-matchers) data))))
 
 (defn parameter-keys [schemas]
   (mapcat
