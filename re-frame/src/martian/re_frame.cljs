@@ -9,12 +9,15 @@
  ::request
  (fn [[m operation-id params on-success on-failure]]
    (go
-     (if-let [response-chan (martian/response-for m operation-id params)]
-       (let [{:keys [error-code] :as response} (<! response-chan)]
-         (if (= :no-error error-code)
-           (re-frame/dispatch [on-success response operation-id params])
-           (re-frame/dispatch [on-failure response operation-id params])))
-       (re-frame/dispatch [on-failure :unknown-route operation-id params])))))
+     (try
+       (if-let [response-chan (martian/response-for m operation-id params)]
+         (let [{:keys [error-code] :as response} (<! response-chan)]
+           (if (= :no-error error-code)
+             (re-frame/dispatch [on-success response operation-id params])
+             (re-frame/dispatch [on-failure response operation-id params])))
+         (re-frame/dispatch [on-failure :unknown-route operation-id params]))
+       (catch js/Error e
+         (re-frame/dispatch [on-failure e operation-id params]))))))
 
 (re-frame/reg-event-db
  ::init
