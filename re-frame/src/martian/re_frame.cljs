@@ -26,10 +26,12 @@
  (fn [{:keys [db]} [_ operation-id params on-success on-failure]]
    {::request [(::martian db) operation-id params on-success on-failure]}))
 
+(defn instance [db _]
+  (::martian db))
+
 (re-frame/reg-sub
  ::instance
- (fn [db _]
-   (::martian db)))
+ instance)
 
 (defn init [swagger-url & [params]]
   (go (let [martian (<! (martian-http/bootstrap-swagger swagger-url params))]
