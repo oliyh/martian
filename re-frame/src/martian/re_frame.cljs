@@ -29,7 +29,7 @@
  (fn [{:keys [db]} [_ operation-id params on-success on-failure]]
    {::request [(::martian db) operation-id params on-success on-failure]}))
 
-(defn instance [db _]
+(defn instance [db & _]
   (::martian db))
 
 (re-frame/reg-sub
