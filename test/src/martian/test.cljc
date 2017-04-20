@@ -26,20 +26,27 @@
   (some-> (make-generator response-type response-schemas)
           (tcg/generate)))
 
-(defn generate-response-interceptor [response-type]
-  {:name ::generate-response
+(defn generate-responses [response-types]
+  {:name ::generate-responses
+   :leave (fn [{:keys [handler] :as ctx}]
+            (let [response-type (get response-types (:route-name handler) :random)]
+              (assoc ctx :response (make-response response-type (:response-schemas handler)))))})
+
+(defn always-generate-response [response-type]
+  {:name ::always-generate-response
    :leave (fn [{:keys [handler] :as ctx}]
             (assoc ctx :response (make-response response-type (:response-schemas handler))))})
 
-(def generate-response (generate-response-interceptor :random))
+(def generate-response (always-generate-response :random))
 
-(def generate-error-response (generate-response-interceptor :error))
+(def generate-error-response (always-generate-response :error))
 
-(def generate-success-response (generate-response-interceptor :success))
+(def generate-success-response (always-generate-response :success))
 
-(defn constant-response [response]
-  {:name ::constant-response
-   :leave (fn [ctx] (assoc ctx :response response))})
+(defn constant-responses [responses]
+  {:name ::constant-responses
+   :leave (fn [{:keys [handler] :as ctx}]
+            (assoc ctx :response (get responses (:route-name handler))))})
 
 (defn response-generator [{:keys [handlers]} route-name]
   (let [{:keys [response-schemas]} (martian/find-handler handlers route-name)]
@@ -82,20 +89,20 @@
                          %))
                  (remove (comp (set (keys http-interceptors)) namespace :name))))))
 
-(defn constantly-respond
+(defn respond-with-constant
   "Adds an interceptor that simulates the server constantly responding with the supplied response.
-   Removes all interceptors that would perform real HTTP operations"
-  [martian response]
+   Removes all interceptors that would perform real HTTP operations."
+  [martian responses]
   (-> (replace-http-interceptors martian)
-      (update :interceptors concat [(constant-response response)])))
+      (update :interceptors concat [(constant-responses responses)])))
 
-(defn respond-with
+(defn respond-with-generated
   "Adds an interceptor that simulates the server responding to operations by generating responses of the supplied response-type
    from the handler response schemas.
    Removes all interceptors that would perform real HTTP operations"
-  [martian response-type]
+  [martian response-types]
   (-> (replace-http-interceptors martian)
-      (update :interceptors concat [(generate-response-interceptor response-type)])))
+      (update :interceptors concat [(generate-responses response-types)])))
 
 (defn respond-as
   "You only need to call this if you have a martian which was created without martian's standard http-specific interceptors,

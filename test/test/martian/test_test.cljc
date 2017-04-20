@@ -32,7 +32,7 @@
 
 (deftest generate-response-test
   (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
-              (martian-test/respond-with :random))]
+              (martian-test/respond-with-generated {:load-pet :random}))]
 
     (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema"
                           (martian/response-for m :load-pet {:id "abc"})))
@@ -47,7 +47,7 @@
 
 (deftest generate-successful-response-test
   (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
-              (martian-test/respond-with :success))]
+              (martian-test/respond-with-generated {:load-pet :success}))]
 
     (is (nil? (s/check {:status (s/eq 200)
                         :body {:id s/Int
@@ -56,7 +56,7 @@
 
 (deftest generate-error-response-test
   (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
-              (martian-test/respond-with :error))]
+              (martian-test/respond-with-generated {:load-pet :error}))]
 
     (is (nil? (s/check {:status (s/eq 404)
                         :body s/Str}
@@ -73,7 +73,7 @@
 (deftest test-check-test
   (let [m (martian/bootstrap-swagger "https://api.com" swagger-definition)
         p (prop/for-all [response (martian-test/response-generator m :load-pet)]
-                        (let [output (fn-to-test (martian-test/constantly-respond m response))]
+                        (let [output (fn-to-test (martian-test/respond-with-constant m {:load-pet response}))]
                           (if (not= 200 (:status response))
                             (nil? output)
                             (not (nil? output)))))]
@@ -85,7 +85,7 @@
      (testing "clj-http"
        (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
                    (martian-test/respond-as :clj-http)
-                   (martian-test/respond-with :success))]
+                   (martian-test/respond-with-generated {:load-pet :success}))]
 
          (is (= 200 (:status (martian/response-for m :load-pet {:id 123})))))))
 
@@ -93,7 +93,7 @@
      (testing "httpkit"
        (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
                    (martian-test/respond-as :httpkit)
-                   (martian-test/respond-with :success))]
+                   (martian-test/respond-with-generated {:load-pet :success}))]
 
          (is (= 200 (:status @(martian/response-for m :load-pet {:id 123})))))))
 
@@ -103,7 +103,7 @@
               (go
                 (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
                             (martian-test/respond-as :cljs-http)
-                            (martian-test/respond-with :success))]
+                            (martian-test/respond-with-generated {:load-pet :success}))]
 
                   (is (= 200 (:status (a/<! (martian/response-for m :load-pet {:id 123})))))
                   (done)))))))
@@ -115,11 +115,11 @@
 
      (let [real-martian (-> (martian-http/bootstrap-swagger "https://pedestal-api.herokuapp.com/swagger.json"))]
 
-       (let [test-martian (martian-test/respond-with real-martian :success)]
+       (let [test-martian (martian-test/respond-with-generated real-martian {:get-pet :success})]
 
          (is (every? #{"martian.interceptors" "martian.test"} (map (comp namespace :name) (:interceptors test-martian))))
          (is (contains? (set (:interceptors test-martian)) martian-test/httpkit-responder))
          (is (= 200 (:status @(martian/response-for test-martian :get-pet {:id 123})))))
 
-       (let [test-martian (martian-test/respond-with real-martian :error)]
+       (let [test-martian (martian-test/respond-with-generated real-martian {:get-pet :error})]
          (is (contains? #{400 404 500} (:status @(martian/response-for test-martian :get-pet {:id 123}))))))))

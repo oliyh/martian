@@ -33,14 +33,14 @@ stub code and providing responses that are always up to date. We can write the t
 (deftest find-user-test
   (testing "happy path works"
     (let [m (-> (martian/bootstrap-swagger "https://api.com" user-api-swagger-definition)
-                (martian-test/respond-with :success))
+                (martian-test/respond-with-generated {:load-user :success}))
           user (find-user m "abc")]
       (is (not= "Guest" (:name user)))
       (is (instance? Boolean (:write-access? user)))))
 
   (testing "guest access works"
     (let [m (-> (martian/bootstrap-swagger "https://api.com" user-api-swagger-definition)
-                (martian-test/respond-with :error))]
+                (martian-test/respond-with-generated {:load-user :error}))]
           user (find-user m "abc")]
       (is (= "Guest" (:name user)))
       (is (false? (:write-access? user))))))
@@ -63,7 +63,7 @@ all possible behaviour in the following way:
   (let [m (martian/bootstrap-swagger "https://api.com" swagger-definition)
         p (prop/for-all [response (martian-test/response-generator m :load-user)]
 
-                        (let [user (find-user (martian-test/constantly-respond m response))]
+                        (let [user (find-user (martian-test/respond-with-constant m {:load-user response}))]
                           (if (= 200 (:status response))
                             (and (= (:name response) (:name user))
                                  (= (not (:read-only response)) (:write-access? user)))
