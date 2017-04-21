@@ -66,6 +66,9 @@
 (def default-interceptors
   (concat martian/default-interceptors [encode-body default-coerce-response perform-request]))
 
+(defn bootstrap [api-root concise-handlers & [opts]]
+  (martian/bootstrap api-root concise-handlers (merge {:interceptors default-interceptors} opts)))
+
 (defn bootstrap-swagger [url & [{:keys [interceptors] :as params}]]
   (let [swagger-definition (:body (http/get url {:as :json}))
         {:keys [scheme server-name server-port]} (http/parse-url url)
