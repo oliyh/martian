@@ -26,12 +26,15 @@ The `martian-test` library allows you to assert that your code constructs valid 
 actually calling them, using the Swagger spec to validate the parameters. It can also generate responses in the same way,
 ensuring that your response handling code is also correct. Examples are below.
 
+`martian-re-frame` integrates martian event handlers into `re-frame`, simplifying connecting your UI to data sources.
+
 ## Latest versions
 [![Clojars Project](https://img.shields.io/clojars/v/martian.svg)](https://clojars.org/martian)
 [![Clojars Project](https://img.shields.io/clojars/v/martian-clj-http.svg)](https://clojars.org/martian-clj-http)
 [![Clojars Project](https://img.shields.io/clojars/v/martian-httpkit.svg)](https://clojars.org/martian-httpkit)
 [![Clojars Project](https://img.shields.io/clojars/v/martian-cljs-http.svg)](https://clojars.org/martian-cljs-http)
 [![Clojars Project](https://img.shields.io/clojars/v/martian-test.svg)](https://clojars.org/martian-test)
+[![Clojars Project](https://img.shields.io/clojars/v/martian-re-frame.svg)](https://clojars.org/martian-re-frame)
 
 ## Features
 - Bootstrap an instance from just a Swagger url or provide your own API mapping
