@@ -233,7 +233,7 @@ For example, if you wish to add an authentication header and a timer to all requ
 
 Sometimes individual routes require custom behaviour. This can be achieved by writing a
 global interceptor which inspects the route-name and decides what to do, but a more specific
-option exists using `bootstrap` as follows:
+option exists using `bootstrap` and providing `:interceptors` as follows:
 
 ```clojure
 (martian/bootstrap "https://api.org"
@@ -241,15 +241,15 @@ option exists using `bootstrap` as follows:
                      :path-parts ["/pets/" :id]
                      :method :get
                      :path-schema {:id s/Int}
-                     :interceptors [{:id ::override-load-pet-method
+                     :interceptors [{:name ::override-load-pet-method
                                      :enter #(assoc-in % [:request :method] :xget)}]}])
 ```
 
-Alternatively you can use the helpers to update a martian created from `bootstrap-swagger`:
+Alternatively you can use the helpers like `update-handler` to update a martian created from `bootstrap-swagger`:
 
 ```clojure
 (-> (martian/bootstrap-swagger "https://api.org" swagger-definition)
-    (martian/update-handler :load-pet assoc :interceptors [{:id ::override-load-pet-method
+    (martian/update-handler :load-pet assoc :interceptors [{:name ::override-load-pet-method
                                                             :enter #(assoc-in % [:request :method] :xget)}]))
 ```
 
