@@ -1,7 +1,7 @@
 (ns martian.schema
   (:require [schema.core :as s]
             [schema.coerce :as sc]
-            [clojure.set :refer [rename-keys]]))
+            [clojure.walk :refer [postwalk-replace]]))
 
 (defn- keyword->string [s]
   (if (keyword? s) (name s) s))
@@ -22,6 +22,9 @@
     (:schema s)
     s))
 
+(defn- unalias-parameters [data parameter-aliases]
+  (postwalk-replace parameter-aliases data))
+
 (defn coerce-data
   "Extracts the data referred to by the schema's keys and coerces it"
   [schema data & [parameter-aliases]]
@@ -34,15 +37,15 @@
       (if (every? s/specific-key? (keys s))
         (some->> (keys s)
                  (map s/explicit-schema-key)
-                 (select-keys (rename-keys data parameter-aliases))
+                 (select-keys (unalias-parameters data parameter-aliases))
                  ((sc/coercer! schema coercion-matchers)))
-        (some->> (rename-keys data parameter-aliases)
+        (some->> (unalias-parameters data parameter-aliases)
                  ((sc/coercer! schema coercion-matchers))))
 
       (coll? s) ;; primitives, arrays, arrays of maps
       ((sc/coercer! schema coercion-matchers)
        (map #(if (map? %)
-               (rename-keys % parameter-aliases)
+               (unalias-parameters % parameter-aliases)
                %)
             data))
 

@@ -135,7 +135,17 @@
     (let [data {:a 1}]
       (is (= data
              (schema/coerce-data s/Any data)
-             (schema/coerce-data {s/Keyword s/Any} data))))))
+             (schema/coerce-data {s/Keyword s/Any} data)))))
+
+  (testing "deeply nested aliasing"
+    (let [data {:aCamel {:anotherCamel {:camelsEverywhere 1}}}]
+      (is (= data
+             (schema/coerce-data
+              {s/Keyword s/Any}
+              {:a-camel {:another-camel {:camels-everywhere 1}}}
+              {:a-camel :aCamel
+               :another-camel :anotherCamel
+               :camels-everywhere :camelsEverywhere}))))))
 
 (deftest parameter-keys-test
   (is (= [:foo]

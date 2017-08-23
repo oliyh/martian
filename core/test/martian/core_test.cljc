@@ -201,57 +201,64 @@
   (let [m (martian/bootstrap-swagger "https://api.org" swagger-definition)
         request-for (partial martian/request-for m)]
 
-    (is (= {:method :get
-            :url "https://api.org/pets/123"}
-           (request-for :load-pet {:id 123})
-           (request-for :load-pet {:id "123"})))
+    (testing "parameter coercion"
+      (is (= {:method :get
+              :url "https://api.org/pets/123"}
+             (request-for :load-pet {:id 123})
+             (request-for :load-pet {:id "123"}))))
 
-    (is (= {:method :get
-            :url "https://api.org/pets/"}
-           (request-for :all-pets {})))
+    (testing "method and url"
+      (is (= {:method :get
+              :url "https://api.org/pets/"}
+             (request-for :all-pets {}))))
 
-    (is (= {:method :get
-            :url "https://api.org/pets/"
-            :query-params {:sort "asc"}}
-           (request-for :all-pets {:sort "asc"})
-           (request-for :all-pets {:sort :asc})))
+    (testing "query-params"
+      (is (= {:method :get
+              :url "https://api.org/pets/"
+              :query-params {:sort "asc"}}
+             (request-for :all-pets {:sort "asc"})
+             (request-for :all-pets {:sort :asc}))))
 
-    (is (= {:method :get
-            :url "https://api.org/users/123/orders/234"
-            :headers {"AuthToken" "abc-1234"}}
-           (request-for :order {:user-id 123 :order-id 234 :auth-token "abc-1234"})))
+    (testing "headers"
+      (is (= {:method :get
+              :url "https://api.org/users/123/orders/234"
+              :headers {"AuthToken" "abc-1234"}}
+             (request-for :order {:user-id 123 :order-id 234 :auth-token "abc-1234"}))))
 
-    (is (= {:method :post
-            :url "https://api.org/pets/"
-            :body {:id 123 :name "charlie"}}
+    (testing "body maps"
+      (is (= {:method :post
+              :url "https://api.org/pets/"
+              :body {:id 123 :name "charlie"}}
 
-           ;; these three forms are equivalent
-           (request-for :create-pet {:id 123 :name "charlie"})
-           (request-for :create-pet {:pet {:id 123 :name "charlie"}})
-           (request-for :create-pet {::martian/body {:id 123 :name "charlie"}})
+             ;; these three forms are equivalent, demonstrating destructuring options
+             (request-for :create-pet {:id 123 :name "charlie"})
+             (request-for :create-pet {:pet {:id 123 :name "charlie"}})
+             (request-for :create-pet {::martian/body {:id 123 :name "charlie"}})
 
-           (request-for :create-pet {:pet {:id "123" :name "charlie"}})))
+             (request-for :create-pet {:pet {:id "123" :name "charlie"}}))))
 
-    (is (= {:method :post
-            :url "https://api.org/users/"
-            :body [{:id 1 :name "Bob" :emailAddress "bob@builder.com"}
-                   {:id 2 :name "Barry" :emailAddress "barry@builder.com"}]}
-           (request-for :create-users {:users [{:id 1 :name "Bob" :email-address "bob@builder.com"}
-                                               {:id 2 :name "Barry" :email-address "barry@builder.com"}]})))
+    (testing "body arrays"
+      (is (= {:method :post
+              :url "https://api.org/users/"
+              :body [{:id 1 :name "Bob" :emailAddress "bob@builder.com"}
+                     {:id 2 :name "Barry" :emailAddress "barry@builder.com"}]}
+             (request-for :create-users {:users [{:id 1 :name "Bob" :email-address "bob@builder.com"}
+                                                 {:id 2 :name "Barry" :email-address "barry@builder.com"}]}))))
 
-    (is (= {:method :post
-            :url "https://api.org/orders/"
-            :body ["order-number-one"
-                   "order-number-two"]}
-           (request-for :create-orders {:order-ids ["order-number-one" "order-number-two"]})))
-
-    (is (= {:method :put
-            :url "https://api.org/pets/"
-            :form-params {:id 123 :name "nigel"}}
-           (request-for :update-pet {:id 123 :name "nigel"})))
+    (testing "primitive body arrays"
+      (is (= {:method :post
+              :url "https://api.org/orders/"
+              :body ["order-number-one"
+                     "order-number-two"]}
+             (request-for :create-orders {:order-ids ["order-number-one" "order-number-two"]}))))
 
     (testing "providing initial request map"
-      (is (= {:method :get
+      (is (= {:method :put
+              :url "https://api.org/pets/"
+              :form-params {:id 123 :name "nigel"}}
+             (request-for :update-pet {:id 123 :name "nigel"})))
+
+      (is (= {:method :get ;; overridden from definition
               :url "https://api.org/pets/"
               :form-params {:id 123 :name "nigel"}}
              (request-for :update-pet {::martian/request {:method :get}
@@ -306,7 +313,9 @@
                                  :method :put
                                  :path-schema {:camelId s/Int}
                                  :query-schema {:camelVersion s/Int}
-                                 :body-schema {:Camel {:camelName s/Str}}
+                                 :body-schema {:Camel {:camelName s/Str
+                                                       :camelTrain {:leaderName s/Str
+                                                                    (s/optional-key :followerCamels) [{:followerName s/Str}]}}}
                                  :headers-schema {(s/optional-key :camelToken) s/Str}
                                  :form-schema {:camelHumps (s/maybe s/Int)}}])]
 
@@ -316,45 +325,60 @@
     (is (= {:method :put,
             :url "https://camels.org/camels/1",
             :query-params {:camelVersion 2},
-            :body {:camelName "kebab"},
+            :body {:camelName "kebab"
+                   :camelTrain {:leaderName "camel leader"
+                                :followerCamels [{:followerName "OCaml"}]}},
             :form-params {:camelHumps 2},
             :headers {"camelToken" "cAmEl"}}
+
+           ;; fully destructured
            (martian/request-for m :create-camel {:camel-id 1
                                                  :camel-version 2
                                                  :camel-token "cAmEl"
                                                  :camel-humps 2
-                                                 :camel-name "kebab"})
+                                                 :camel-name "kebab"
+                                                 :camel-train {:leader-name "camel leader"
+                                                               :follower-camels [{:follower-name "OCaml"}]}})
 
+           ;; nested under (kebabbed) body key
            (martian/request-for m :create-camel {:camel-id 1
                                                  :camel-version 2
                                                  :camel-token "cAmEl"
                                                  :camel-humps 2
-                                                 :camel {:camel-name "kebab"}})
+                                                 :camel {:camel-name "kebab"
+                                                         :camel-train {:leader-name "camel leader"
+                                                                       :follower-camels [{:follower-name "OCaml"}]}}})
 
+           ;; destructured, already in camel case
            (martian/request-for m :create-camel {:camelId 1
                                                  :camelVersion 2
                                                  :camelToken "cAmEl"
                                                  :camelHumps 2
-                                                 :camelName "kebab"})
+                                                 :camelName "kebab"
+                                                 :camelTrain {:leaderName "camel leader"
+                                                              :followerCamels [{:followerName "OCaml"}]}})
 
+           ;; nested under (already camelled) body key
            (martian/request-for m :create-camel {:camelId 1
                                                  :camelVersion 2
                                                  :camelToken "cAmEl"
                                                  :camelHumps 2
-                                                 :Camel {:camelName "kebab"}})))
+                                                 :Camel {:camelName "kebab"
+                                                         :camelTrain {:leaderName "camel leader"
+                                                                      :followerCamels [{:followerName "OCaml"}]}}})))
 
-    (is (= [[:create-camel nil]]
-           (martian/explore m)))
-
-    (is (= {:summary nil,
-            :parameters
-            {:camel-id                     s/Int,
-             :camel-version                s/Int,
-             :camel                        {:camel-name s/Str},
-             :camel-humps                  (s/maybe s/Int),
-             (s/optional-key :camel-token) s/Str},
-            :returns {}}
-           (martian/explore m :create-camel)))))
+    (testing "explore shows idiomatic kebab keys"
+      (is (= {:summary nil,
+              :parameters
+              {:camel-id                     s/Int,
+               :camel-version                s/Int,
+               :camel                        {:camel-name s/Str
+                                              :camel-train {:leader-name s/Str
+                                                            (s/optional-key :follower-camels) [{:follower-name s/Str}]}},
+               :camel-humps                  (s/maybe s/Int),
+               (s/optional-key :camel-token) s/Str},
+              :returns {}}
+             (martian/explore m :create-camel))))))
 
 #?(:clj
    (deftest java-api-test
