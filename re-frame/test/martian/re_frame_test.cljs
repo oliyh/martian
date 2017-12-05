@@ -37,7 +37,7 @@
                (mc/url-for m :get-pet {:id 123})))))
 
     (testing "can make http requests by dispatching an event"
-      (re-frame/dispatch [:http/request
+      (re-frame/dispatch [::martian/request
                           :create-pet
                           {:name "Doggy McDogFace"
                            :type "Dog"
@@ -58,7 +58,7 @@
     [::martian/init]
 
     (testing "calls failure handler when input coercion error occurs"
-      (re-frame/dispatch [:http/request
+      (re-frame/dispatch [::martian/request
                           :create-pet
                           {:name 1}
                           ::create-pet-success
@@ -70,3 +70,32 @@
          (is (= :create-pet op-id))
          (is (= "Interceptor Exception: Value cannot be coerced to match schema: {:name (not (cljs$core$string? 1))}"
                 (.-message error)))))))))
+
+(deftest re-frame-pending-requests-test
+  (rf-test/run-test-async
+
+   (re-frame/reg-event-db
+    ::create-pet-success
+    (fn [db]
+      (is (= :create-pet (-> @(re-frame/subscribe [::martian/pending-requests])
+                             first
+                             first)))
+      db))
+
+   (martian/init "http://localhost:8888/swagger.json")
+
+   (rf-test/wait-for
+    [::martian/init]
+
+    (testing "can make http requests by dispatching an event"
+      (re-frame/dispatch [::martian/request
+                          :create-pet
+                          {:name "Doggy McDogFace"
+                           :type "Dog"
+                           :age 3}
+                          ::create-pet-success
+                          ::http-failure]))
+
+    (rf-test/wait-for
+     [::martian/on-complete]
+     (is (empty? @(re-frame/subscribe [::martian/pending-requests])))))))

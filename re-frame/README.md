@@ -29,7 +29,7 @@ that martian can bring:
 
 (martian/init "http://pedestal-api.herokuapp.com/swagger.json")
 
-(re-frame/dispatch [:http/request             ;; event for performing an http request
+(re-frame/dispatch [::martian/request             ;; event for performing an http request
                     :create-pet               ;; the route name to call
                     {:name "Doggy McDogFace"  ;; data to send to the endpoint
                      :type "Dog"
