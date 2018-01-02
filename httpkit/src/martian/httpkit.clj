@@ -74,7 +74,7 @@
                               (condp re-find content-type
                                 #"application/json" #(json/decode % key-fn)
                                 #"application/edn" edn/read-string
-                                #"application/transit\+json" #(transit-decode (.getBytes %) :json)
+                                #"application/transit\+json" #(transit-decode (.getBytes ^String %) :json)
                                 #"application/transit\+msgpack" #(transit-decode % :msgpack)
                                 identity))
                       response)))}))

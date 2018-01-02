@@ -51,7 +51,7 @@
                           (condp re-find content-type
                             #"application/json" #(json/decode % key-fn)
                             #"application/edn" http/parse-edn
-                            #"application/transit\+json" #(http/parse-transit (ByteArrayInputStream. (.getBytes %)) :json)
+                            #"application/transit\+json" #(http/parse-transit (ByteArrayInputStream. (.getBytes ^String %)) :json)
                             #"application/transit\+msgpack" #(http/parse-transit (ByteArrayInputStream. %) :msgpack)
                             identity))
                ctx))}))
