@@ -87,10 +87,12 @@
            keyword
            definitions))
 
-(defn- schema-type [definitions {:keys [type enum $ref] :as param}]
+(defn- schema-type [definitions {:keys [type enum format $ref] :as param}]
   (cond
     enum (apply s/enum enum)
-    (= "string" type) s/Str
+    (= "string" type) (if (= "uuid" format)
+                        (s/cond-pre s/Str s/Uuid)
+                        s/Str)
     (= "integer" type) s/Int
     (= "boolean" type) s/Bool
     (or (= "object" type) $ref) (make-schema definitions param)

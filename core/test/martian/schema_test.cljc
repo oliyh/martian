@@ -34,6 +34,14 @@
                                              :required true
                                              :type "unknown"}]))))
 
+(deftest uuid-test
+  (is (= (s/cond-pre s/Str s/Uuid)
+         (schema/make-schema {} {:name "uuid"
+                                 :in "path"
+                                 :required true
+                                 :type "string"
+                                 :format "uuid"}))))
+
 (deftest arrays-test
   (is (= [s/Str]
          (schema/make-schema {} {:name "tags"
