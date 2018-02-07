@@ -99,3 +99,38 @@
     (rf-test/wait-for
      [::martian/on-complete]
      (is (empty? @(re-frame/subscribe [::martian/pending-requests])))))))
+
+(deftest deduplicate-requests-test
+  (rf-test/run-test-async
+
+   (let [request-counter (atom {})]
+
+     (re-frame/reg-fx
+      ::martian/request
+      (fn [[_ operation-id & args]]
+        (swap! request-counter update operation-id inc)))
+
+     (martian/init "http://localhost:8888/swagger.json")
+
+     (rf-test/wait-for
+      [::martian/init]
+
+      (testing "duplicate requests are only made once"
+        (let [req [::martian/request
+                   :create-pet
+                   {:name "Doggy McDogFace"
+                    :type "Dog"
+                    :age 3}
+                   ::create-pet-success
+                   ::http-failure]]
+          (re-frame/dispatch-sync req)
+          (re-frame/dispatch-sync req)
+          (re-frame/dispatch-sync [::martian/request :get-pet {:id 123}])))
+
+      (re-frame/dispatch [::test-complete])
+      (rf-test/wait-for
+       [::test-complete]
+
+       (is (= {:create-pet 1
+               :get-pet 1}
+              @request-counter)))))))

@@ -36,8 +36,11 @@
    (update-in db [::martian :pending] disj req)))
 
 (defn- do-request [{:keys [db]} [_ operation-id params on-success on-failure]]
-  {:db (update-in db [::martian :pending] conj [operation-id params on-success on-failure])
-   ::request [(instance db) operation-id params on-success on-failure]})
+  (let [request-key [operation-id params on-success on-failure]]
+    (if (contains? (get-in db [::martian :pending]) request-key)
+      {:db db}
+      {:db (update-in db [::martian :pending] conj request-key)
+       ::request [(instance db) operation-id params on-success on-failure]})))
 
 ;; deprecated, use ::request instead
 (re-frame/reg-event-fx :http/request do-request)
