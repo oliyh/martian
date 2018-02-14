@@ -46,7 +46,7 @@ ensuring that your response handling code is also correct. Examples are below.
 - Negotiates the most efficient content-type and handles serialisation and deserialisation including `transit`, `edn` and `json`
 - Support for integration testing without requiring external HTTP stubs
 - Routes are named as idiomatic kebab-case keywords of the `operationId` of the endpoint in the Swagger definition
-- Parameters are aliased to idiomatic kebab-case keywords so that your code remains neat and clean
+- Parameters are aliased to kebab-case keywords so that your code remains idiomatic, neat and clean
 - Simple, data driven behaviour with low coupling using libraries and patterns you already know
 - Pure client code, no server code or modifications required
 
@@ -106,6 +106,32 @@ like that provided by [pedestal-api](https://github.com/oliyh/pedestal-api):
                    (get-in [:body :id]))]))
 ```
 
+## No Swagger, no problem
+
+Although bootstrapping against a remote Swagger API using `bootstrap-swagger` is simplest
+and allows you to use the golden source to define the API, you may likely find yourself
+needing to integrate with an API beyond your control which does not use Swagger.
+
+Martian offers a separate `bootstrap` function which you can provide with handlers defined as data.
+Here's an example:
+
+```clojure
+(martian/bootstrap "https://api.org"
+                   [{:route-name :load-pet
+                     :path-parts ["/pets/" :id]
+                     :method :get
+                     :path-schema {:id s/Int}}
+
+                    {:route-name :create-pet
+                     :produces ["application/xml"]
+                     :consumes ["application/xml"]
+                     :path-parts ["/pets/"]
+                     :method :post
+                     :body-schema {:pet {:id   s/Int
+                                         :name s/Str}}}])
+
+```
+
 ## Testing with martian-test
 Testing code that calls external systems can be tricky - you either build often elaborate stubs which start
 to become as complex as the system you are calling, or else you ignore it all together with `(constantly true)`.
@@ -137,32 +163,6 @@ The following example shows how exceptions will be thrown by bad code and how re
 By making your application code accept a Martian instance you can inject a test instance within your tests, making
 previously untestable code testable again.
 
-## No Swagger, no problem
-
-Although bootstrapping against a remote Swagger API using `bootstrap-swagger` is simplest
-and allows you to use the golden source to define the API, you may likely find yourself
-needing to integrate with an API beyond your control which does not use Swagger.
-
-Martian offers a separate `bootstrap` function which you can provide with handlers defined as data.
-Here's an example:
-
-```clojure
-(martian/bootstrap "https://api.org"
-                   [{:route-name :load-pet
-                     :path-parts ["/pets/" :id]
-                     :method :get
-                     :path-schema {:id s/Int}}
-
-                    {:route-name :create-pet
-                     :produces ["application/xml"]
-                     :consumes ["application/xml"]
-                     :path-parts ["/pets/"]
-                     :method :post
-                     :body-schema {:pet {:id   s/Int
-                                         :name s/Str}}}])
-
-```
-
 ## Idiomatic parameters
 
 If an API has a parameter called `FooBar` it's difficult to stop that leaking into your own code - the Clojure idiom is to
@@ -185,6 +185,16 @@ but preserves the mapping so that the API is passed the correct parameter names:
 ;;     :body   {:PetId     1
 ;;              :FirstName "Doggy"
 ;;              :LastName  "McDogFace"}}
+```
+
+Body parameters may be supplied in three ways: with an alias, destructured or as an explicit value.
+
+```clojure
+;; the following three forms are equivalent
+(request-for :create-pet {:pet {:pet-id 1 :first-name "Doggy" :last-name "McDogFace"}})           ;; the :pet alias
+(request-for :create-pet {:pet-id 1 :first-name "Doggy" :last-name "McDogFace"})                  ;; destructured
+(request-for :create-pet {::martian/body {:pet-id 1 :first-name "Doggy" :last-name "McDogFace"}}) ;; explicit body value
+
 ```
 
 ## Custom behaviour
