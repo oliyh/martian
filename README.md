@@ -264,6 +264,26 @@ Alternatively you can use the helpers like `update-handler` to update a martian 
                                                             :enter #(assoc-in % [:request :method] :xget)}]))
 ```
 
+Interceptors provided at a per-route level are inserted into the interceptor chain at execution time by the interceptor called
+`:martian.interceptors/enqueue-route-specific-interceptors`. This results in the following chain:
+
+- `set-method`
+- `set-url`
+- `set-query-params`
+- `set-body-params`
+- `set-form-params`
+- `set-header-params`
+- `enqueue-route-specific-interceptors` - injects the following at runtime:
+  - `route-interceptor-1` e.g. `::override-load-pet-method`
+  - `route-interceptor-2`
+  - etc
+- `encode-body`
+- `default-coerce-response`
+- `perform-request`
+
+This means your route interceptors have available to them the unserialised request on enter and the deserialised response on leave.
+You may move or provide your own version of `enqueue-route-specific-interceptors` to change this behaviour.
+
 ## Java
 
 ```java
