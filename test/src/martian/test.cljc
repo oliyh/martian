@@ -1,5 +1,6 @@
 (ns martian.test
   (:require [martian.core :as martian]
+            [martian.interceptors :as interceptors]
             [schema-generators.generators :as g]
             [clojure.test.check.generators :as tcg]
             [schema.core :as s]
@@ -75,7 +76,7 @@
                  (assoc ctx :response c)))}))
 
 (def ^:private http-interceptors
-  #?(:clj {"martian.httpkit"  httpkit-responder
+  #?(:clj {"martian.httpkit" httpkit-responder
            "martian.clj-http" clj-http-responder}
      :cljs {"martian.cljs-http" cljs-http-responder}))
 
@@ -87,7 +88,8 @@
                                                (get http-interceptors (namespace (:name %))))]
                          responder
                          %))
-                 (remove (comp (set (keys http-interceptors)) namespace :name))))))
+                 (remove (comp (set (keys http-interceptors)) namespace :name))
+                 (remove (comp #{::interceptors/encode-body ::interceptors/coerce-response} :name))))))
 
 (defn respond-with-constant
   "Adds an interceptor that simulates the server constantly responding with the supplied response.

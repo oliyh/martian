@@ -5,7 +5,10 @@
             :url "http://opensource.org/licenses/MIT"}
   :dependencies [[frankiesardo/tripod "0.2.0"]
                  [prismatic/schema "1.1.2"]
-                 [camel-snake-kebab "0.4.0"]]
+                 [camel-snake-kebab "0.4.0"]
+                 [cheshire "5.6.2"]
+                 [com.cognitect/transit-clj "0.8.300"]
+                 [frankiesardo/linked "1.2.9"]]
   :plugins [[lein-cljsbuild "1.1.1"]
             [lein-doo "0.1.6"]]
   :java-source-paths ["src"]

@@ -1,18 +1,15 @@
 (ns martian.httpkit-test
   (:require [martian.httpkit :as martian-http]
             [martian.core :as martian]
+            [martian.interceptors :as interceptors]
             [martian.server-stub :refer [with-server swagger-url]]
+            [martian.encoding :as encoding]
+            [martian.test-utils :refer [input-stream->byte-array]]
             [clojure.test :refer :all]
             [clojure.java.io :as io]
-            [cheshire.core :as json])
-  (:import [java.io ByteArrayOutputStream]))
+            [cheshire.core :as json]))
 
 (use-fixtures :once with-server)
-
-(defn- input-stream->byte-array [input-stream]
-  (with-open [os (ByteArrayOutputStream.)]
-    (io/copy (io/input-stream input-stream) os)
-    (.toByteArray os)))
 
 (deftest http-test
   (let [m (martian-http/bootstrap-swagger swagger-url)]
@@ -27,7 +24,7 @@
              (-> (martian/request-for m :create-pet {:pet {:name "Doggy McDogFace"
                                                            :type "Dog"
                                                            :age 3}})
-                 (update :body #(martian-http/transit-decode (input-stream->byte-array %) :msgpack))))))
+                 (update :body #(encoding/transit-decode (input-stream->byte-array %) :msgpack))))))
 
     (let [response @(martian/response-for m :create-pet {:pet {:name "Doggy McDogFace"
                                                                :type "Dog"
@@ -44,10 +41,10 @@
 
 (deftest custom-encoders-test
   ;; todo
-  ;; 1. move as much of the implementation code into core as possible
-  ;; 2. make the server support xml so can test the user story of adding a content type that martian doesn't support
-  ;; 3. write release notes confirming the breaking change
-  ;; 4. Test the auto case
+  ;; 1. write release notes confirming the breaking change
+  ;; 2. Move this test into core and use dummy perform-request
+  ;; 3. Test the auto case
+  ;; 4. See how much cljs-http can benefit
   (testing "proving that you can supply your own encoders and decoders for any content type supported by the api"
     (let [test-body-json (json/encode {:name "Bob"
                                        :type "Dog"
@@ -55,8 +52,8 @@
           my-encoders {"application/json" {:encode (constantly test-body-json)
                                            :decode (constantly ::test-decode)}}
           m (martian-http/bootstrap-swagger swagger-url {:interceptors (concat martian/default-interceptors
-                                                                               [(martian-http/encode-body my-encoders)
-                                                                                (martian-http/coerce-response my-encoders)
+                                                                               [(interceptors/encode-body my-encoders)
+                                                                                (interceptors/coerce-response my-encoders)
                                                                                 martian-http/perform-request])})]
 
       (is (= {:method :post
