@@ -15,7 +15,8 @@
   :javac-options ["-target" "1.8" "-source" "1.8"]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.8.0"]
                                        [org.clojure/clojurescript "1.9.36"]]}
-             :dev {:exclusions [[org.clojure/tools.reader]]
+             :dev {:source-paths ["../test-common"]
+                   :exclusions [[org.clojure/tools.reader]]
                    :resource-paths ["test-resources"]
                    :dependencies [[org.clojure/clojure "1.8.0"]
                                   [org.clojure/clojurescript "1.9.36"]
