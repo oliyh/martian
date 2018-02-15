@@ -44,6 +44,7 @@ ensuring that your response handling code is also correct. Examples are below.
 - Explore an API from your REPL
 - Extensible via interceptor pattern - inject your own interceptors anywhere in the chain
 - Negotiates the most efficient content-type and handles serialisation and deserialisation including `transit`, `edn` and `json`
+- Easy to add support for any other content-type
 - Support for integration testing without requiring external HTTP stubs
 - Routes are named as idiomatic kebab-case keywords of the `operationId` of the endpoint in the Swagger definition
 - Parameters are aliased to kebab-case keywords so that your code remains idiomatic, neat and clean
@@ -283,6 +284,29 @@ Interceptors provided at a per-route level are inserted into the interceptor cha
 
 This means your route interceptors have available to them the unserialised request on enter and the deserialised response on leave.
 You may move or provide your own version of `enqueue-route-specific-interceptors` to change this behaviour.
+
+## Custom content-types
+
+Martian allows you to add support for content-types in addition to those supported out of the box - `transit`, `edn` and `json`.
+
+```clojure
+(require '[martian.core :as m])
+(require '[martian.httpkit :as http])
+(require '[martian.encoding :as encoding])
+(require '[martian.interceptors :as i])
+
+(let [encoders (assoc (encoding/default-encoders)
+                      "application/magical" {:encode magic-encoder
+                                             :decode magic-decoder
+                                             :as :magic})]
+  (http/bootstrap-swagger
+   "https://example-api.com"
+   {:interceptors (concat m/default-interceptors
+                          [(i/encode-body encoders)
+                           (i/coerce-response encoders)
+                           http/perform-request])}))
+
+```
 
 ## Java
 
