@@ -5,7 +5,8 @@
             [tripod.context :as tc]
             [schema.core :as s]
             [camel-snake-kebab.core :refer [->kebab-case-keyword]]
-            #?(:clj [martian.encoding :as encoding])))
+            [martian.encoding :as encoding]
+            [martian.encoders :as encoders]))
 
 (def request-only-handler
   {:name ::request-only-handler
@@ -70,42 +71,34 @@
               (update ctx ::tc/queue #(into (into tc/queue i) %))
               ctx))})
 
-#?(:clj
-   (defn encode-body
-     ([] (encode-body (encoding/default-encoders)))
-     ([encoders]
-      {:name ::encode-body
-       :enter (fn [{:keys [request handler] :as ctx}]
-                (let [content-type (and (:body request)
-                                        (not (get-in request [:headers "Content-Type"]))
-                                        (encoding/choose-content-type encoders (:consumes handler)))
-                      {:keys [encode] :as encoder} (encoding/find-encoder encoders content-type)]
-                  (cond-> ctx
-                    (get-in ctx [:request :body]) (update-in [:request :body] encode)
-                    content-type (assoc-in [:request :headers "Content-Type"] content-type))))})))
+(defn encode-body [encoders]
+  {:name ::encode-body
+   :enter (fn [{:keys [request handler] :as ctx}]
+            (let [content-type (and (:body request)
+                                    (not (get-in request [:headers "Content-Type"]))
+                                    (encoding/choose-content-type encoders (:consumes handler)))
+                  {:keys [encode] :as encoder} (encoding/find-encoder encoders content-type)]
+              (cond-> ctx
+                (get-in ctx [:request :body]) (update-in [:request :body] encode)
+                content-type (assoc-in [:request :headers "Content-Type"] content-type))))})
 
-#?(:clj
-   (def default-encode-body (encode-body)))
+(def default-encode-body (encode-body (encoders/default-encoders)))
 
-#?(:clj
-   (defn coerce-response
-     ([] (coerce-response (encoding/default-encoders)))
-     ([encoders]
-      {:name ::coerce-response
-       :enter (fn [{:keys [request handler] :as ctx}]
-                (let [content-type (and (not (get-in request [:headers "Accept"]))
-                                        (encoding/choose-content-type encoders (:produces handler)))
-                      {:keys [as] :or {as :text}} (encoding/find-encoder encoders content-type)]
+(defn coerce-response [encoders]
+  {:name ::coerce-response
+   :enter (fn [{:keys [request handler] :as ctx}]
+            (let [content-type (and (not (get-in request [:headers "Accept"]))
+                                    (encoding/choose-content-type encoders (:produces handler)))
+                  {:keys [as] :or {as :text}} (encoding/find-encoder encoders content-type)]
 
-                  (cond-> (assoc-in ctx [:request :as] as)
-                    content-type (assoc-in [:request :headers "Accept"] content-type))))
+              (cond-> (assoc-in ctx [:request :as] as)
+                content-type (assoc-in [:request :headers "Accept"] content-type))))
 
-       :leave (fn [{:keys [request response handler] :as ctx}]
-                (assoc ctx :response
-                       (let [content-type (and (:body response)
-                                               (not-empty (get-in response [:headers :content-type])))
-                             {:keys [matcher decode] :as encoder} (encoding/find-encoder encoders content-type)]
-                         (update response :body decode))))})))
+   :leave (fn [{:keys [request response handler] :as ctx}]
+            (assoc ctx :response
+                   (let [content-type (and (:body response)
+                                           (not-empty (get-in response [:headers :content-type])))
+                         {:keys [matcher decode] :as encoder} (encoding/find-encoder encoders content-type)]
+                     (update response :body decode))))})
 
-#?(:clj
-   (def default-coerce-response (coerce-response)))
+(def default-coerce-response (coerce-response (encoders/default-encoders)))

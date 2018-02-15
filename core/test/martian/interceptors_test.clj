@@ -2,12 +2,12 @@
   (:require [martian.interceptors :as i]
             [cheshire.core :as json]
             [clojure.test :refer :all]
-            [martian.encoding :as encoding]
+            [martian.encoders :as encoders]
             [martian.test-utils :refer [input-stream->byte-array]]
             [tripod.context :as tc]))
 
 (deftest encode-body-test
-  (let [i (i/encode-body)
+  (let [i i/default-encode-body
         body {:the {:wheels ["on" "the" "bus"]}
               :go {:round {:and "round"}}}]
     (testing "json"
@@ -29,7 +29,7 @@
                (-> ((:enter i) {:request {:body body}
                                 :handler {:consumes ["application/transit+json"]}})
                    :request
-                   (update :body (comp #(encoding/transit-decode % :json)
+                   (update :body (comp #(encoders/transit-decode % :json)
                                        input-stream->byte-array))))))
 
       (testing "+msgpack"
@@ -38,7 +38,7 @@
                (-> ((:enter i) {:request {:body body}
                                 :handler {:consumes ["application/transit+msgpack"]}})
                    :request
-                   (update :body (comp #(encoding/transit-decode % :msgpack)
+                   (update :body (comp #(encoders/transit-decode % :msgpack)
                                        input-stream->byte-array)))))))))
 
 (defn- stub-response [content-type body]
@@ -48,7 +48,7 @@
                                   :headers {:content-type content-type}}))})
 
 (deftest coerce-response-test
-  (let [i (i/coerce-response)
+  (let [i i/default-coerce-response
         body {:the {:wheels ["on" "the" "bus"]}
               :go {:round {:and "round"}}}]
 
@@ -65,20 +65,20 @@
     (testing "transit"
       (testing "+json"
         (let [ctx (tc/enqueue* {} [i (stub-response "application/transit+json"
-                                                    (slurp (encoding/transit-encode body :json)))])]
+                                                    (slurp (encoders/transit-encode body :json)))])]
           (is (= body
                  (-> (tc/execute ctx) :response :body)))))
 
       (testing "+json"
         (let [ctx (tc/enqueue* {} [i (stub-response "application/transit+msgpack"
-                                                    (input-stream->byte-array (encoding/transit-encode body :msgpack)))])]
+                                                    (input-stream->byte-array (encoders/transit-encode body :msgpack)))])]
           (is (= body
                  (-> (tc/execute ctx) :response :body))))))))
 
 (deftest custom-encoding-test
   (testing "a user can support an encoding that martian doesn't know about by default"
     (let [reverse-string #(apply str (reverse %))
-          encoders (assoc (encoding/default-encoders)
+          encoders (assoc (encoders/default-encoders)
                           "text/magical+json" {:encode (comp reverse-string json/encode)
                                                :decode (comp #(json/decode % keyword) reverse-string)
                                                :as :magic})
@@ -116,8 +116,8 @@
                                                   "Accept" "text/magical+json"}}
                               :handler {:consumes ["text/magical+json"]
                                         :produces ["text/magical+json"]}}
-                             [(i/encode-body)
-                              (i/coerce-response)
+                             [i/default-encode-body
+                              i/default-coerce-response
                               (stub-response "text/magical+json" encoded-body)])
             result (tc/execute ctx)]
 
@@ -132,4 +132,3 @@
                (:response result)))))))
 
 ;; 1. write release notes confirming the breaking change
-;; 4. See how much cljs-http can benefit
