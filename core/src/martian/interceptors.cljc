@@ -99,9 +99,8 @@
                                           (encoding/choose-content-type encoders (:produces handler)))
                         {:keys [as] :or {as :text}} (encoding/find-encoder encoders content-type)]
 
-                    (-> ctx
-                        (assoc-in [:request :headers "Accept"] content-type)
-                        (assoc-in [:request :as] as))))
+                    (cond-> (assoc-in ctx [:request :as] as)
+                      content-type (assoc-in [:request :headers "Accept"] content-type))))
 
          :leave (fn [{:keys [request response handler] :as ctx}]
                   (assoc ctx :response

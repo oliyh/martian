@@ -76,28 +76,60 @@
                  (-> (tc/execute ctx) :response :body))))))))
 
 (deftest custom-encoding-test
-  (let [reverse-string #(apply str (reverse %))
-        encoders {"text/magical+json" {:encode (comp reverse-string json/encode)
-                                       :decode (comp #(json/decode % keyword) reverse-string)
-                                       :as :magic}}
-        body {:the {:wheels ["on" "the" "bus"]}
-              :go {:round {:and "round"}}}
-        encoded-body (-> body json/encode reverse-string)]
+  (testing "a user can support an encoding that martian doesn't know about by default"
+    (let [reverse-string #(apply str (reverse %))
+          encoders (assoc (encoding/default-encoders)
+                          "text/magical+json" {:encode (comp reverse-string json/encode)
+                                               :decode (comp #(json/decode % keyword) reverse-string)
+                                               :as :magic})
+          body {:the {:wheels ["on" "the" "bus"]}
+                :go {:round {:and "round"}}}
+          encoded-body (-> body json/encode reverse-string)]
 
-    (let [ctx (tc/enqueue* {:request {:body body}
-                            :handler {:consumes ["text/magical+json"]
-                                      :produces ["text/magical+json"]}}
-                           [(i/encode-body encoders)
-                            (i/coerce-response encoders)
-                            (stub-response "text/magical+json" encoded-body)])
-          result (tc/execute ctx)]
+      (let [ctx (tc/enqueue* {:request {:body body}
+                              :handler {:consumes ["text/magical+json"]
+                                        :produces ["text/magical+json"]}}
+                             [(i/encode-body encoders)
+                              (i/coerce-response encoders)
+                              (stub-response "text/magical+json" encoded-body)])
+            result (tc/execute ctx)]
 
-      (is (= {:body encoded-body
-              :headers {"Content-Type" "text/magical+json"
-                        "Accept" "text/magical+json"}
-              :as :magic}
-             (:request result)))
+        (is (= {:body encoded-body
+                :headers {"Content-Type" "text/magical+json"
+                          "Accept" "text/magical+json"}
+                :as :magic}
+               (:request result)))
 
-      (is (= {:body body
-              :headers {:content-type "text/magical+json"}}
-             (:response result))))))
+        (is (= {:body body
+                :headers {:content-type "text/magical+json"}}
+               (:response result)))))))
+
+(deftest auto-encoder-test
+  (testing "when the server speaks a language martian doesn't understand it leaves it alone"
+    (let [reverse-string #(apply str (reverse %))
+          body {:the {:wheels ["on" "the" "bus"]}
+                :go {:round {:and "round"}}}
+          encoded-body (-> body json/encode reverse-string)]
+
+      (let [ctx (tc/enqueue* {:request {:body encoded-body
+                                        :headers {"Content-Type" "text/magical+json"
+                                                  "Accept" "text/magical+json"}}
+                              :handler {:consumes ["text/magical+json"]
+                                        :produces ["text/magical+json"]}}
+                             [(i/encode-body)
+                              (i/coerce-response)
+                              (stub-response "text/magical+json" encoded-body)])
+            result (tc/execute ctx)]
+
+        (is (= {:body encoded-body
+                :headers {"Content-Type" "text/magical+json"
+                          "Accept" "text/magical+json"}
+                :as :auto}
+               (:request result)))
+
+        (is (= {:body encoded-body
+                :headers {:content-type "text/magical+json"}}
+               (:response result)))))))
+
+;; 1. write release notes confirming the breaking change
+;; 4. See how much cljs-http can benefit
