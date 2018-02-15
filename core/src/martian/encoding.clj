@@ -5,8 +5,7 @@
             [clojure.string :as string]
             [linked.core :as linked]
             [clojure.java.io :as io])
-  (:import [java.io ByteArrayInputStream ByteArrayOutputStream]
-           [java.util.regex Pattern]))
+  (:import [java.io ByteArrayInputStream ByteArrayOutputStream]))
 
 (defn transit-decode [bytes type]
   (transit/read (transit/reader (ByteArrayInputStream. bytes) type)))
@@ -39,21 +38,15 @@
     "application/json"            {:encode json/encode
                                    :decode #(json/decode % key-fn)})))
 
-(defn compile-encoder-matches [encoders]
-  (reduce-kv (fn [acc content-type encoder]
-               (assoc-in acc [content-type :matcher] (re-pattern (Pattern/quote content-type))))
-             encoders
-             encoders))
-
 (defn find-encoder [encoders content-type]
   (if (string/blank? content-type)
     auto-encoder
-    (loop [encoders (vals encoders)]
-      (let [{:keys [matcher] :as encoder} (first encoders)]
+    (loop [encoders encoders]
+      (let [[ct encoder] (first encoders)]
         (cond
           (not encoder) auto-encoder
 
-          (re-find matcher content-type) encoder
+          (string/includes? content-type ct) encoder
 
           :else
           (recur (rest encoders)))))))

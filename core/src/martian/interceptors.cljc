@@ -74,16 +74,15 @@
    (defn encode-body
      ([] (encode-body (encoding/default-encoders)))
      ([encoders]
-      (let [encoders (encoding/compile-encoder-matches encoders)]
-        {:name ::encode-body
-         :enter (fn [{:keys [request handler] :as ctx}]
-                  (let [content-type (and (:body request)
-                                          (not (get-in request [:headers "Content-Type"]))
-                                          (encoding/choose-content-type encoders (:consumes handler)))
-                        {:keys [encode] :as encoder} (encoding/find-encoder encoders content-type)]
-                    (cond-> ctx
-                      (get-in ctx [:request :body]) (update-in [:request :body] encode)
-                      content-type (assoc-in [:request :headers "Content-Type"] content-type))))}))))
+      {:name ::encode-body
+       :enter (fn [{:keys [request handler] :as ctx}]
+                (let [content-type (and (:body request)
+                                        (not (get-in request [:headers "Content-Type"]))
+                                        (encoding/choose-content-type encoders (:consumes handler)))
+                      {:keys [encode] :as encoder} (encoding/find-encoder encoders content-type)]
+                  (cond-> ctx
+                    (get-in ctx [:request :body]) (update-in [:request :body] encode)
+                    content-type (assoc-in [:request :headers "Content-Type"] content-type))))})))
 
 #?(:clj
    (def default-encode-body (encode-body)))
@@ -92,22 +91,21 @@
    (defn coerce-response
      ([] (coerce-response (encoding/default-encoders)))
      ([encoders]
-      (let [encoders (encoding/compile-encoder-matches encoders)]
-        {:name ::coerce-response
-         :enter (fn [{:keys [request handler] :as ctx}]
-                  (let [content-type (and (not (get-in request [:headers "Accept"]))
-                                          (encoding/choose-content-type encoders (:produces handler)))
-                        {:keys [as] :or {as :text}} (encoding/find-encoder encoders content-type)]
+      {:name ::coerce-response
+       :enter (fn [{:keys [request handler] :as ctx}]
+                (let [content-type (and (not (get-in request [:headers "Accept"]))
+                                        (encoding/choose-content-type encoders (:produces handler)))
+                      {:keys [as] :or {as :text}} (encoding/find-encoder encoders content-type)]
 
-                    (cond-> (assoc-in ctx [:request :as] as)
-                      content-type (assoc-in [:request :headers "Accept"] content-type))))
+                  (cond-> (assoc-in ctx [:request :as] as)
+                    content-type (assoc-in [:request :headers "Accept"] content-type))))
 
-         :leave (fn [{:keys [request response handler] :as ctx}]
-                  (assoc ctx :response
-                         (let [content-type (and (:body response)
-                                                 (not-empty (get-in response [:headers :content-type])))
-                               {:keys [matcher decode] :as encoder} (encoding/find-encoder encoders content-type)]
-                           (update response :body decode))))}))))
+       :leave (fn [{:keys [request response handler] :as ctx}]
+                (assoc ctx :response
+                       (let [content-type (and (:body response)
+                                               (not-empty (get-in response [:headers :content-type])))
+                             {:keys [matcher decode] :as encoder} (encoding/find-encoder encoders content-type)]
+                         (update response :body decode))))})))
 
 #?(:clj
    (def default-coerce-response (coerce-response)))
