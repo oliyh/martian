@@ -38,37 +38,3 @@
               :type "Dog"
               :age 3}
              (:body response))))))
-
-(deftest custom-encoders-test
-  ;; todo
-  ;; 1. write release notes confirming the breaking change
-  ;; 2. Move this test into core and use dummy perform-request
-  ;; 3. Test the auto case
-  ;; 4. See how much cljs-http can benefit
-  (testing "proving that you can supply your own encoders and decoders for any content type supported by the api"
-    (let [test-body-json (json/encode {:name "Bob"
-                                       :type "Dog"
-                                       :age 3})
-          my-encoders {"application/json" {:encode (constantly test-body-json)
-                                           :decode (constantly ::test-decode)}}
-          m (martian-http/bootstrap-swagger swagger-url {:interceptors (concat martian/default-interceptors
-                                                                               [(interceptors/encode-body my-encoders)
-                                                                                (interceptors/coerce-response my-encoders)
-                                                                                martian-http/perform-request])})]
-
-      (is (= {:method :post
-              :url "http://localhost:8888/pets/"
-              :body test-body-json
-              :headers {"Accept" "application/json"
-                        "Content-Type" "application/json"}
-              :as :text}
-             (martian/request-for m :create-pet {:pet {:name "Catty McKittenFace"
-                                                       :type "Cat"
-                                                       :age 100}})))
-
-      (let [response @(martian/response-for m :create-pet {:pet {:name "Catty McKittenFace"
-                                                                 :type "Cat"
-                                                                 :age 100}})]
-        (is (= {:status 201
-                :body ::test-decode}
-               (select-keys response [:status :body])))))))
