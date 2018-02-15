@@ -6,8 +6,6 @@
             [martian.test-utils :refer [input-stream->byte-array]]
             [tripod.context :as tc]))
 
-;; todo test custom encoder, run in a chain
-
 (deftest encode-body-test
   (let [i (i/encode-body)
         body {:the {:wheels ["on" "the" "bus"]}
@@ -76,3 +74,30 @@
                                                     (input-stream->byte-array (encoding/transit-encode body :msgpack)))])]
           (is (= body
                  (-> (tc/execute ctx) :response :body))))))))
+
+(deftest custom-encoding-test
+  (let [reverse-string #(apply str (reverse %))
+        encoders {"text/magical+json" {:encode (comp reverse-string json/encode)
+                                       :decode (comp #(json/decode % keyword) reverse-string)
+                                       :as :magic}}
+        body {:the {:wheels ["on" "the" "bus"]}
+              :go {:round {:and "round"}}}
+        encoded-body (-> body json/encode reverse-string)]
+
+    (let [ctx (tc/enqueue* {:request {:body body}
+                            :handler {:consumes ["text/magical+json"]
+                                      :produces ["text/magical+json"]}}
+                           [(i/encode-body encoders)
+                            (i/coerce-response encoders)
+                            (stub-response "text/magical+json" encoded-body)])
+          result (tc/execute ctx)]
+
+      (is (= {:body encoded-body
+              :headers {"Content-Type" "text/magical+json"
+                        "Accept" "text/magical+json"}
+              :as :magic}
+             (:request result)))
+
+      (is (= {:body body
+              :headers {:content-type "text/magical+json"}}
+             (:response result))))))
