@@ -1,17 +1,17 @@
 (ns martian.interceptors-test
   (:require [martian.interceptors :as i]
-            [cheshire.core :as json]
-            [clojure.test :refer :all]
             [martian.encoders :as encoders]
-            [martian.test-utils :refer [input-stream->byte-array]]
-            [tripod.context :as tc]))
+            [tripod.context :as tc]
+            #?(:clj [clojure.test :refer [deftest is testing]]
+               :cljs [cljs.test :refer-macros [deftest testing is]])
+            #?(:clj [martian.test-utils :as tu])))
 
 (deftest encode-body-test
   (let [i i/default-encode-body
         body {:the {:wheels ["on" "the" "bus"]}
               :go {:round {:and "round"}}}]
     (testing "json"
-      (is (= {:body (json/encode body)
+      (is (= {:body (encoders/json-encode body)
               :headers {"Content-Type" "application/json"}}
              (:request ((:enter i) {:request {:body body}
                                     :handler {:consumes ["application/json"]}})))))
@@ -29,17 +29,19 @@
                (-> ((:enter i) {:request {:body body}
                                 :handler {:consumes ["application/transit+json"]}})
                    :request
-                   (update :body (comp #(encoders/transit-decode % :json)
-                                       input-stream->byte-array))))))
+                   (update :body #?(:clj (comp #(encoders/transit-decode % :json)
+                                               tu/input-stream->byte-array)
+                                    :cljs #(encoders/transit-decode % :json)))))))
 
-      (testing "+msgpack"
-        (is (= {:body body
-                :headers {"Content-Type" "application/transit+msgpack"}}
-               (-> ((:enter i) {:request {:body body}
-                                :handler {:consumes ["application/transit+msgpack"]}})
-                   :request
-                   (update :body (comp #(encoders/transit-decode % :msgpack)
-                                       input-stream->byte-array)))))))))
+      #?(:clj
+         (testing "+msgpack"
+           (is (= {:body body
+                   :headers {"Content-Type" "application/transit+msgpack"}}
+                  (-> ((:enter i) {:request {:body body}
+                                   :handler {:consumes ["application/transit+msgpack"]}})
+                      :request
+                      (update :body (comp #(encoders/transit-decode % :msgpack)
+                                          tu/input-stream->byte-array))))))))))
 
 (defn- stub-response [content-type body]
   {:name ::stub-response
@@ -53,7 +55,7 @@
               :go {:round {:and "round"}}}]
 
     (testing "json"
-      (let [ctx (tc/enqueue* {} [i (stub-response "application/json" (json/encode body))])]
+      (let [ctx (tc/enqueue* {} [i (stub-response "application/json" (encoders/json-encode body))])]
         (is (= body
                (-> (tc/execute ctx) :response :body)))))
 
@@ -65,26 +67,28 @@
     (testing "transit"
       (testing "+json"
         (let [ctx (tc/enqueue* {} [i (stub-response "application/transit+json"
-                                                    (slurp (encoders/transit-encode body :json)))])]
+                                                    #?(:clj (slurp (encoders/transit-encode body :json))
+                                                       :cljs (encoders/transit-encode body :json)))])]
           (is (= body
                  (-> (tc/execute ctx) :response :body)))))
 
-      (testing "+json"
-        (let [ctx (tc/enqueue* {} [i (stub-response "application/transit+msgpack"
-                                                    (input-stream->byte-array (encoders/transit-encode body :msgpack)))])]
-          (is (= body
-                 (-> (tc/execute ctx) :response :body))))))))
+      #?(:clj
+         (testing "+msgpack"
+           (let [ctx (tc/enqueue* {} [i (stub-response "application/transit+msgpack"
+                                                       (tu/input-stream->byte-array (encoders/transit-encode body :msgpack)))])]
+             (is (= body
+                    (-> (tc/execute ctx) :response :body)))))))))
 
 (deftest custom-encoding-test
   (testing "a user can support an encoding that martian doesn't know about by default"
     (let [reverse-string #(apply str (reverse %))
           encoders (assoc (encoders/default-encoders)
-                          "text/magical+json" {:encode (comp reverse-string json/encode)
-                                               :decode (comp #(json/decode % keyword) reverse-string)
+                          "text/magical+json" {:encode (comp reverse-string encoders/json-encode)
+                                               :decode (comp #(encoders/json-decode % keyword) reverse-string)
                                                :as :magic})
           body {:the {:wheels ["on" "the" "bus"]}
                 :go {:round {:and "round"}}}
-          encoded-body (-> body json/encode reverse-string)]
+          encoded-body (-> body encoders/json-encode reverse-string)]
 
       (let [ctx (tc/enqueue* {:request {:body body}
                               :handler {:consumes ["text/magical+json"]
@@ -109,7 +113,7 @@
     (let [reverse-string #(apply str (reverse %))
           body {:the {:wheels ["on" "the" "bus"]}
                 :go {:round {:and "round"}}}
-          encoded-body (-> body json/encode reverse-string)]
+          encoded-body (-> body encoders/json-encode reverse-string)]
 
       (let [ctx (tc/enqueue* {:request {:body encoded-body
                                         :headers {"Content-Type" "text/magical+json"
@@ -130,5 +134,3 @@
         (is (= {:body encoded-body
                 :headers {:content-type "text/magical+json"}}
                (:response result)))))))
-
-;; 1. write release notes confirming the breaking change

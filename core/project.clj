@@ -8,6 +8,7 @@
                  [camel-snake-kebab "0.4.0"]
                  [cheshire "5.6.2"]
                  [com.cognitect/transit-clj "0.8.300"]
+                 [com.cognitect/transit-cljs "0.8.243"]
                  [frankiesardo/linked "1.2.9"]]
   :plugins [[lein-cljsbuild "1.1.1"]
             [lein-doo "0.1.6"]]
@@ -28,4 +29,4 @@
                         :source-paths ["src" "test"]
                         :compiler {:output-to "target/unit-test.js"
                                    :main 'martian.runner
-                                   :optimizations :whitespace}}]})
+                                   :optimizations :advanced}}]})
