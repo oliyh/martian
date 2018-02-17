@@ -1,7 +1,7 @@
 (ns martian.clj-http-test
   (:require [martian.clj-http :as martian-http]
             [martian.core :as martian]
-            [martian.encoding :as encoding]
+            [martian.encoders :as encoders]
             [martian.server-stub :refer [with-server swagger-url]]
             [martian.test-utils :refer [input-stream->byte-array]]
             [clojure.test :refer :all]))
@@ -21,7 +21,7 @@
              (-> (martian/request-for m :create-pet {:pet {:name "Doggy McDogFace"
                                                            :type "Dog"
                                                            :age 3}})
-                 (update :body #(encoding/transit-decode (input-stream->byte-array %) :msgpack))))))
+                 (update :body #(encoders/transit-decode (input-stream->byte-array %) :msgpack))))))
 
     (let [response (martian/response-for m :create-pet {:pet {:name "Doggy McDogFace"
                                                               :type "Dog"

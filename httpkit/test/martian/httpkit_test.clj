@@ -3,7 +3,7 @@
             [martian.core :as martian]
             [martian.interceptors :as interceptors]
             [martian.server-stub :refer [with-server swagger-url]]
-            [martian.encoding :as encoding]
+            [martian.encoders :as encoders]
             [martian.test-utils :refer [input-stream->byte-array]]
             [clojure.test :refer :all]
             [clojure.java.io :as io]
@@ -24,7 +24,7 @@
              (-> (martian/request-for m :create-pet {:pet {:name "Doggy McDogFace"
                                                            :type "Dog"
                                                            :age 3}})
-                 (update :body #(encoding/transit-decode (input-stream->byte-array %) :msgpack))))))
+                 (update :body #(encoders/transit-decode (input-stream->byte-array %) :msgpack))))))
 
     (let [response @(martian/response-for m :create-pet {:pet {:name "Doggy McDogFace"
                                                                :type "Dog"
