@@ -27,5 +27,4 @@
                         :compiler {:output-to "target/unit-test.js"
                                    :asset-path "target/unit-test"
                                    :output-dir "target/unit-test"
-                                   :main martian.runner
                                    :optimizations :whitespace}}]})
