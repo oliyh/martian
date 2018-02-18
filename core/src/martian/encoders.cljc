@@ -39,10 +39,14 @@
     #?(:clj
        {"application/transit+msgpack" {:encode #(transit-encode % :msgpack)
                                        :decode #(transit-decode % :msgpack)
-                                       :as :byte-array}})
+                                       :as :byte-array}
+        "application/transit+json"    {:encode #(transit-encode % :json)
+                                       :decode #(transit-decode (.getBytes ^String %) :json)}})
+    #?(:cljs
+       {"application/transit+json"    {:encode #(transit-encode % :json)
+                                       :decode #(transit-decode % :json)}})
     (linked/map
-     "application/transit+json"    {:encode #(transit-encode % :json)
-                                    :decode #(transit-decode (.getBytes ^String %) :json)}
+
      "application/edn"             {:encode pr-str
                                     :decode edn/read-string}
      "application/json"            {:encode json-encode

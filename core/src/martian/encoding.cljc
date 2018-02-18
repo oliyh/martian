@@ -15,6 +15,8 @@
     (loop [encoders encoders]
       (let [[ct encoder] (first encoders)]
         (cond
+          (not content-type) auto-encoder
+
           (not encoder) auto-encoder
 
           (string/includes? content-type ct) encoder
