@@ -1,0 +1,185 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>Remote graphs</title>
+		<meta name="description" content="">
+		<meta name="author" content="Oliver Hine">
+
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-species-style" content="black-translucent" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/moon.css">
+
+		<!-- Theme used for syntax highlighting of code -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+    <link rel="stylesheet" href="css/martian.css">
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+				<section data-background-image="img/curiosity.jpg" style="text-align: left;">
+          <h1>Remote graphs</h1>
+          <p style="color: white;">Oliver Hine</p>
+          <br/><br/><br/><br/><br/><br/><br/>
+          <div style="text-align: center; vertical-align: bottom; bottom: 0;">
+            <a style="color: white" class="github" target="_blank" href="https://github.com/oliyh/martian">
+              <img class="logo" src="img/github.png"/>
+              oliyh/martian
+            </a>
+          </div>
+          <aside class="notes">
+          </aside>
+        </section>
+
+        <section>
+          <h2>Networking</h2>
+          <img class="stretch" src="img/seven-layers.jpg"/>
+          <aside class="notes">
+            I'm not going to talk about networking. All you need to know is that there are seven layers or something, but the important part is that each layer
+            hides the complexities of the layer below. As an app developer I don't really know what they do, and it doesn't really matter.
+          </aside>
+        </section>
+
+
+        <section>
+          <h2>HTTP</h2>
+          <pre><code class="hljs" data-trim>
+(defn create-pet []
+  (http/post "https://api.com/create-pet/dog"))
+          </code></pre>
+          <aside class="notes">
+            I know about HTTP because that's the interface I have to program against to talk to the world. It can look pretty simple...
+          </aside>
+        </section>
+
+        <section>
+          <img class="stretch" src="img/sweet.jpg"/>
+          <aside class="notes">
+          </aside>
+        </section>
+
+        <section>
+          <h2>HTTP</h2>
+          <pre><code class="hljs" data-trim>
+(defn create-pet [metrics host port creds species name age]
+  (timing metrics "create-pet"
+    (http/post (format "https://%s:%s/create-pet/%s" host port species)
+               {:as :json
+                :query-params {:age age}
+                :body (json/encode {:name name))
+                :headers {"Content-Type" "application/json"
+                          "Authorization" (str "Token" creds)}})))
+          </code></pre>
+          <aside class="notes">
+            ... but you pretty rapidly uncover a lot of complexities.
+          </aside>
+        </section>
+
+        <section>
+          <img class="stretch" src="img/i-double-dare-you.jpg"/>
+          <aside class="notes">
+            I don't want this leaking into my application code, the same as I don't want database drivers and credentials either.
+          </aside>
+        </section>
+
+        <section>
+          <h2>Describe</h2>
+          <pre><code class="hljs" data-trim>
+{:route-name :create-pet
+ :produces ["application/xml"]
+ :consumes ["application/xml"]
+ :path-parts ["/pets/" :species]
+ :method :post
+ :path-schema {:species Species}
+ :body-schema {:pet {:id   s/Int
+                     :name s/Str}}
+          </code></pre>
+          <aside class="notes">
+            I want to be able to describe these remote services (or even better, they describe themselves) and let something else handle the details...
+          </aside>
+        </section>
+
+
+        <section>
+          <h2>Call</h2>
+          <pre><code class="hljs" data-trim>
+              (martian/response-for m :create-pet {:name "Charlie"
+                                     :species "Dog"
+                                     :age 3})
+          </code></pre>
+          <aside class="notes">
+            ... so that I can just call them like functions.
+            This is a library called Martian, and like the layers of networking it hides all the complexity that has no relevance to the layer above it.
+          </aside>
+        </section>
+
+        <section>
+          <h2>Call stacks as data</h2>
+          <br/>
+          <img class="stretch" src="img/martian-call-stack-auth-timing.png"/>
+          <aside class="notes">
+            Martian exposes its call stack as a chain of interceptors, meaning adding any aspect - like metrics or authentication - doesn't pollute your business
+            level code either.
+          </aside>
+        </section>
+
+				<section data-background-image="img/curiosity-tracks.jpg" style="text-align: left;">
+          <h1>Thanks</h1>
+          <br/><br/><br/><br/><br/><br/><br/>
+          <div style="text-align: center; vertical-align: bottom; bottom: 0;">
+            <a style="color: white" class="github" target="_blank" href="https://github.com/oliyh/martian">
+              <img class="logo" src="img/github.png"/>
+              oliyh/martian
+            </a>
+          </div>
+          <div style="text-align: center; vertical-align: bottom; bottom: 0;">
+            <a style="color: white" class="github" target="_blank" href="https://github.com/funcool/urania">
+              <img class="logo" src="img/github.png"/>
+              funcool/urania
+            </a>
+          </div>
+
+          <aside class="notes">
+            Thanks
+            Questions?
+          </aside>
+        </section>
+
+			</div>
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.js"></script>
+
+		<script>
+			// More info https://github.com/hakimel/reveal.js#configuration
+			Reveal.initialize({
+			history: true,
+      margin: 0,
+
+				// More info https://github.com/hakimel/reveal.js#dependencies
+				dependencies: [
+					{ src: 'plugin/notes/notes.js', async: true },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
+				]
+			});
+
+      // setTimeout(window.location.reload.bind(window.location), 5000);
+		</script>
+	</body>
+</html>
