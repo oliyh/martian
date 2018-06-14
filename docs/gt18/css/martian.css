@@ -1,6 +1,7 @@
 h1, h2 {
     display: inline-block;
     background-color: orangered;
+    font-style: italic;
 }
 
 .github img.logo, .github:hover img.logo {
