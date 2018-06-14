@@ -4,7 +4,7 @@
   :license {:name "The MIT License"
             :url "http://opensource.org/licenses/MIT"}
   :dependencies [[frankiesardo/tripod "0.2.0"]
-                 [prismatic/schema "1.1.7"]
+                 [prismatic/schema "1.1.9"]
                  [camel-snake-kebab "0.4.0"]
                  [cheshire "5.8.0"]
                  [com.cognitect/transit-clj "0.8.300"]
