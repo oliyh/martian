@@ -34,13 +34,20 @@
 			<div class="slides">
 				<section data-background-image="img/curiosity.jpg" style="text-align: left;">
           <h1>Remote graphs</h1>
-          <p style="color: white;">Oliver Hine</p>
+          <p style="color: white; padding-left: 18px;">Oliver Hine</p>
           <br/><br/><br/><br/><br/><br/><br/>
           <div style="text-align: center; vertical-align: bottom; bottom: 0;">
             <a style="color: white" class="github" target="_blank" href="https://github.com/oliyh/martian">
               <img class="logo" src="img/github.png"/>
               oliyh/martian
             </a>
+            <a style="color: white" class="github" target="_blank" href="https://github.com/funcool/urania">
+              funcool/urania
+            </a>
+            <a style="color: white" class="github" target="_blank" href="https://github.com/walmartlabs/lacinia">
+              walmartlabs/lacinia
+            </a>
+
           </div>
           <aside class="notes">
           </aside>
@@ -48,6 +55,7 @@
 
         <section>
           <h2>Networking</h2>
+          <br/>
           <img class="stretch" src="img/seven-layers.jpg"/>
           <aside class="notes">
             I'm not going to talk about networking. All you need to know is that there are seven layers or something, but the important part is that each layer
@@ -114,6 +122,15 @@
           </aside>
         </section>
 
+        <section>
+          <h2>Call stack</h2>
+          <br/>
+          <img class="stretch" src="img/martian-call-stack-auth-timing.png"/>
+          <aside class="notes">
+            Martian exposes its call stack as a chain of interceptors, meaning adding any aspect - like metrics or authentication - doesn't pollute your business
+            level code either.
+          </aside>
+        </section>
 
         <section>
           <h2>Call</h2>
@@ -125,16 +142,6 @@
           <aside class="notes">
             ... so that I can just call them like functions.
             This is a library called Martian, and like the layers of networking it hides all the complexity that has no relevance to the layer above it.
-          </aside>
-        </section>
-
-        <section>
-          <h2>Call stacks as data</h2>
-          <br/>
-          <img class="stretch" src="img/martian-call-stack-auth-timing.png"/>
-          <aside class="notes">
-            Martian exposes its call stack as a chain of interceptors, meaning adding any aspect - like metrics or authentication - doesn't pollute your business
-            level code either.
           </aside>
         </section>
 
@@ -172,8 +179,16 @@
 
         <section>
           <h2>Muse</h2>
+          <br/>
+          muse the band
+          <img src="img/muse.jpg"/>
+        </section>
+
+        <section>
+          <h2>Muse</h2>
           <pre><code class="hljs" data-trim>
-(->Request :google-credentials {})
+(def google-auth
+  (->Request :google-credentials {}))
           </code></pre>
 
           <aside class="notes">
@@ -185,11 +200,12 @@
         <section>
           <h2>Dependent muse</h2>
           <pre><code class="hljs" data-trim>
-
-(->> (->Request :google-credentials {})
-     (u/mapcat (fn [creds]
-                 (->Request :google-commute {:method "Public"
-                                             :auth creds}))))
+(def public-transport
+  (->> google-auth
+       (u/mapcat (fn [creds]
+                   (->Request :google-commute
+                              {:method "Public"
+                               :auth creds})))))
           </code></pre>
 
           <aside class="notes">
@@ -198,9 +214,44 @@
         </section>
 
         <section>
+          <h2>Dependent muse...</h2>
+          <pre><code class="hljs" data-trim>
+(def commute-durations
+  (->> (u/collect [public-transport walking car])
+       (u/map (fn [[public walking car]]
+                {:public  (:duration public)
+                 :walking (:duration walking)
+                 :car     (:duration car)}))))
+          </code></pre>
+
+          <aside class="notes">
+            We can compose muses declaring only their dependencies.
+            We don't need to worry about transient dependencies.
+          </aside>
+        </section>
+
+        <section>
+          <h2>...dependent muse</h2>
+          <pre><code class="hljs" data-trim>
+(def perfect-podcasts
+  (->> (u/collect [commute-durations podcasts])
+       (u/map (fn [[{:keys [public walking car]} podcasts]]
+                {:public  (of-duration podcasts public)
+                 :walking (of-duration podcasts walking)
+                 :car     (of-duration podcasts car)}))))
+          </code></pre>
+
+          <aside class="notes">
+            Each muse does one thing, making it small and easy to read.
+            You write them "dumb" i.e. no attempt to remove duplicate calls
+            It's all pure "business logic", no mention of HTTP, threads, callbacks
+          </aside>
+        </section>
+
+        <section>
           <h2>Execution</h2>
           <pre><code class="hljs" data-trim>
-              (u/run! muse)
+              (u/run! muse {:env {:martian martian}})
           </code></pre>
 
           <aside class="notes">
@@ -213,26 +264,44 @@
 
         <section>
           <h2>Refactoring</h2>
-          ????
+          ???? refactoring gif
 
           <aside class="notes">
             Urania makes refactoring really easy because you can compose any muse with any other muse.
-            This lets you build reusable building blocks and combine them in any way you wish.
+            This lets you build reusable building blocks and combine them in any way you wish
           </aside>
         </section>
 
         <section>
           <h2>Graphs</h2>
           ????
+          do another draw.io diagram for this to show how the mapping
+          might be different
 
           <aside class="notes">
             The area I'm applying this to is building a GraphQL facade over a large number of midi REST services.
             Currently to build a UI for the system requires talking to at least several of these services and joining the
-            results of many calls together to form a view that makes sense. The aim is for UIs to be very easy and simple to write,
-            and possibly even serverless.
+            results of many calls together to form a view that makes sense - the "canonical" graph.
+
+            The aim is for UIs to be very easy and simple to write,
+            and possibly even serverless. With any part of the full graph available with a simple
+            structured query we can concentrate fully on the display layer and build it faster and better.
           </aside>
         </section>
 
+        <section>
+          <h2>Resolution</h2>
+          Che Guevara?
+
+          <aside class="notes">
+            I want to use Lacinia resolvers to build a Urania AST.
+            Lacinia understands my canonical graph so provides resolvers for each of those nodes,
+            but the backing data services don't necessarily map directly to them.
+            Sometimes I am forced to look ahead or behind - the classic case is a 1+n relationship
+            where I can do a more efficient bulk query for the n children at the parent level
+            rather than letting Lacinia attempt to resolve each child individually.
+          </aside>
+        </section>
 
 				<section data-background-image="img/curiosity-tracks.jpg" style="text-align: left;">
           <h1>Thanks</h1>
@@ -245,10 +314,16 @@
           </div>
           <div style="text-align: center; vertical-align: bottom; bottom: 0;">
             <a style="color: white" class="github" target="_blank" href="https://github.com/funcool/urania">
-              <img class="logo" src="img/github.png"/>
               funcool/urania
             </a>
           </div>
+          <div style="text-align: center; vertical-align: bottom; bottom: 0;">
+            <a style="color: white" class="github" target="_blank" href="https://github.com/walmartlabs/lacinia">
+              walmartlabs/lacinia
+            </a>
+          </div>
+
+
 
           <aside class="notes">
             Thanks

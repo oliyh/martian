@@ -1,7 +1,9 @@
-h1, h2 {
+.reveal h1, .reveal h2 {
     display: inline-block;
-    background-color: orangered;
+    background-color: rgba(0,0,0,0.4);
+    color: cyan;
     font-style: italic;
+    padding: 18px 36px 18px 18px;
 }
 
 .github img.logo, .github:hover img.logo {
