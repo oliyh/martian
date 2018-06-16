@@ -2,7 +2,9 @@
   (:require [martian.core :as martian]
             [schema.core :as s]
             #?(:clj [clojure.test :refer :all]
-               :cljs [cljs.test :refer-macros [deftest testing is run-tests]]))
+               :cljs [cljs.test :refer-macros [deftest testing is run-tests]])
+            #?(:clj [clojure.spec.alpha :as spec]
+               :cljs [cljs.spec.alpha :as spec]))
   #?(:clj (:import [martian Martian])))
 
 #?(:cljs
@@ -396,3 +398,100 @@
        (is (= "https://api.org/pets/" (.urlFor m "all-pets")))
        (is (= "https://api.org/pets/" (.urlFor m "create-pet")))
        (is (= "https://api.org/users/123/orders/456" (.urlFor m "order" {"user-id" 123 "order-id" 456}))))))
+
+(spec/def ::pet-id int?)
+(spec/def ::pet-identifiers (spec/keys :req-un [::pet-id]))
+
+(deftest spec-request-for-test
+  (let [m (martian/bootstrap "https://api.org" [{:route-name :load-pet
+                                                 :path-parts ["/pets/" :pet-id]
+                                                 :method :get
+                                                 :path-schema ::pet-identifiers}
+
+                                                {:route-name :create-pet
+                                                 :produces ["application/xml"]
+                                                 :consumes ["application/xml"]
+                                                 :path-parts ["/pets/"]
+                                                 :method :post
+                                                 :body-schema {:pet {:id ::pet-id
+                                                                     :name s/Str}}}]
+                             {:spec? true})
+        request-for (partial martian/request-for m)]
+
+    (testing "parameter coercion"
+      (is (= {:method :get
+              :url "https://api.org/pets/123"}
+             (request-for :load-pet {:pet-id 123})
+             (request-for :load-pet {:pet-id "123"}))))
+
+    #_(testing "method and url"
+      (is (= {:method :get
+              :url "https://api.org/pets/"}
+             (request-for :all-pets {}))))
+
+    #_(testing "query-params"
+      (is (= {:method :get
+              :url "https://api.org/pets/"
+              :query-params {:sort "asc"}}
+             (request-for :all-pets {:sort "asc"})
+             (request-for :all-pets {:sort :asc}))))
+
+    #_(testing "headers"
+      (is (= {:method :get
+              :url "https://api.org/users/123/orders/234"
+              :headers {"AuthToken" "abc-1234"}}
+             (request-for :order {:user-id 123 :order-id 234 :auth-token "abc-1234"}))))
+
+    #_(testing "body maps"
+      (is (= {:method :post
+              :url "https://api.org/pets/"
+              :body {:id 123 :name "charlie"}}
+
+             ;; these three forms are equivalent, demonstrating destructuring options
+             (request-for :create-pet {:id 123 :name "charlie"})
+             (request-for :create-pet {:pet {:id 123 :name "charlie"}})
+             (request-for :create-pet {::martian/body {:id 123 :name "charlie"}})
+
+             (request-for :create-pet {:pet {:id "123" :name "charlie"}}))))
+
+    #_(testing "body arrays"
+      (is (= {:method :post
+              :url "https://api.org/users/"
+              :body [{:id 1 :name "Bob" :emailAddress "bob@builder.com"}
+                     {:id 2 :name "Barry" :emailAddress "barry@builder.com"}]}
+             (request-for :create-users {:users [{:id 1 :name "Bob" :email-address "bob@builder.com"}
+                                                 {:id 2 :name "Barry" :email-address "barry@builder.com"}]}))))
+
+    #_(testing "primitive body arrays"
+      (is (= {:method :post
+              :url "https://api.org/orders/"
+              :body ["order-number-one"
+                     "order-number-two"]}
+             (request-for :create-orders {:order-ids ["order-number-one" "order-number-two"]}))))
+
+    #_(testing "providing initial request map"
+      (is (= {:method :put
+              :url "https://api.org/pets/"
+              :form-params {:id 123 :name "nigel"}}
+             (request-for :update-pet {:id 123 :name "nigel"})))
+
+      (is (= {:method :get ;; overridden from definition
+              :url "https://api.org/pets/"
+              :form-params {:id 123 :name "nigel"}}
+             (request-for :update-pet {::martian/request {:method :get}
+                                       :id 123
+                                       :name "nigel"}))))
+
+    #_(testing "exceptions"
+      (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema"
+                            (request-for :all-pets {:sort "baa"})))
+
+      (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema"
+                            (request-for :load-pet {:id "one"})))
+
+      (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema"
+                            (request-for :create-pet {:pet {:id "one"
+                                                            :name 1}})))
+
+      (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema: \{:id missing-required-key, :name missing-required-key\}"
+                            (request-for :create-pet))))))

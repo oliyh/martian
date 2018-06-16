@@ -50,18 +50,20 @@
                                  handler))
                              %)))
 
-(defrecord Martian [api-root handlers interceptors])
+(defrecord Martian [api-root handlers interceptors spec?])
 
 (defn url-for
   ([martian route-name] (url-for martian route-name {}))
-  ([{:keys [api-root handlers]} route-name params]
+  ([{:keys [api-root handlers spec?]} route-name params]
    (when-let [handler (find-handler handlers route-name)]
-     (let [params (->> params keywordize-keys (interceptors/coerce-data handler :path-schema))]
+     (let [conformer (if spec? (partial interceptors/conform-data handler :path-schema)
+                         (partial interceptors/coerce-data handler :path-schema))
+           params (->> params keywordize-keys conformer)]
        (str api-root (string/join (map #(get params % %) (:path-parts handler))))))))
 
 (defn request-for
   ([martian route-name] (request-for martian route-name {}))
-  ([{:keys [handlers interceptors] :as martian} route-name params]
+  ([{:keys [handlers interceptors spec?] :as martian} route-name params]
    (when-let [handler (find-handler handlers route-name)]
      (let [params (keywordize-keys params)
            ctx (tc/enqueue* {} (-> (or interceptors default-interceptors) vec (conj interceptors/request-only-handler)))]
@@ -70,7 +72,8 @@
                          :url-for (partial url-for martian)
                          :request (or (::request params) {})
                          :handler handler
-                         :params params)))))))
+                         :params params
+                         :spec? spec?)))))))
 
 (defn response-for
   ([martian route-name] (response-for martian route-name {}))
@@ -98,8 +101,8 @@
                     (map (juxt (comp :v :status) :body))
                     (into {}))})))
 
-(defn- build-instance [api-root handlers {:keys [interceptors]}]
-  (->Martian api-root handlers (or interceptors default-interceptors)))
+(defn- build-instance [api-root handlers {:keys [interceptors spec?]}]
+  (->Martian api-root handlers (or interceptors default-interceptors) spec?))
 
 (defn bootstrap-swagger
   "Creates a martian instance from a swagger spec

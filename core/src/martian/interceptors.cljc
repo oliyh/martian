@@ -1,5 +1,6 @@
 (ns martian.interceptors
   (:require [martian.schema :as schema]
+            [martian.spec :as spec]
             [clojure.walk :refer [stringify-keys]]
             [clojure.string :as string]
             [tripod.context :as tc]
@@ -36,6 +37,10 @@
 
 (defn coerce-data [{:keys [parameter-aliases] :as handler} schema-key params]
   (schema/coerce-data (get handler schema-key) params parameter-aliases))
+
+(defn conform-data [{:keys [parameter-aliases] :as handler} schema-key params]
+  (println "Using spec")
+  (spec/conform-data (get handler schema-key) params parameter-aliases))
 
 (def set-query-params
   {:name ::query-params
