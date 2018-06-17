@@ -400,21 +400,24 @@
        (is (= "https://api.org/pets/" (.urlFor m "create-pet")))
        (is (= "https://api.org/users/123/orders/456" (.urlFor m "order" {"user-id" 123 "order-id" 456}))))))
 
-(spec/def ::pet-id sts/int?)
-(spec/def ::pet-identifiers (spec/keys :req-un [::pet-id]))
+(spec/def :pet/id sts/int?)
+(spec/def :pet/identifiers (spec/keys :req-un [:pet/id]))
+
+;; todo
 
 (deftest spec-request-for-test
   (let [m (martian/bootstrap "https://api.org" [{:route-name :load-pet
-                                                 :path-parts ["/pets/" :pet-id]
+                                                 :path-parts ["/pets/" :id]
                                                  :method :get
-                                                 :path-schema ::pet-identifiers}
+                                                 :path-schema :pet/identifiers
+                                                }
 
                                                 {:route-name :create-pet
                                                  :produces ["application/xml"]
                                                  :consumes ["application/xml"]
                                                  :path-parts ["/pets/"]
                                                  :method :post
-                                                 :body-schema {:pet {:id ::pet-id
+                                                 :body-schema {:pet {:id :pet/id
                                                                      :name s/Str}}}]
                              {:spec? true})
         request-for (partial martian/request-for m)]
@@ -422,13 +425,8 @@
     (testing "parameter coercion"
       (is (= {:method :get
               :url "https://api.org/pets/123"}
-             (request-for :load-pet {:pet-id 123})
-             (request-for :load-pet {:pet-id "123"}))))
-
-    #_(testing "method and url"
-      (is (= {:method :get
-              :url "https://api.org/pets/"}
-             (request-for :all-pets {}))))
+             (request-for :load-pet {:id 123})
+             (request-for :load-pet {:id "123"}))))
 
     #_(testing "query-params"
       (is (= {:method :get
