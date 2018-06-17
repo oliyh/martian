@@ -403,23 +403,42 @@
 (spec/def :pet/id sts/int?)
 (spec/def :pet/identifiers (spec/keys :req-un [:pet/id]))
 
+(spec/def :pet/sort #{"asc" "desc"})
+(spec/def :pet/sorting (spec/keys :req-un [:pet/sort]))
+
+(spec/def :pet/type #{"cat" "dog"})
+(spec/def :pet/taxonomy (spec/keys :req-un [:pet/type]))
+
+(spec/def :pet-service/AuthToken string?)
+(spec/def :pet-service/auth (spec/keys :req-un [:pet-service/AuthToken]))
+
 ;; todo
+;; use :path-spec instead of :path-schema to describe as spec
+;; and remove the :spec? option
+
+;; does it make sense to have both spec and schema? should use schema first then pass to spec?
 
 (deftest spec-request-for-test
   (let [m (martian/bootstrap "https://api.org" [{:route-name :load-pet
                                                  :path-parts ["/pets/" :id]
                                                  :method :get
-                                                 :path-schema :pet/identifiers
-                                                }
+                                                 :path-schema :pet/identifiers}
 
                                                 {:route-name :create-pet
                                                  :produces ["application/xml"]
                                                  :consumes ["application/xml"]
-                                                 :path-parts ["/pets/"]
+                                                 :path-parts ["/pets/" :type]
+                                                 :path-schema :pet/taxonomy
+                                                 :query-schema :pet/sorting
+                                                 :headers-schema :pet-service/auth
                                                  :method :post
                                                  :body-schema {:pet {:id :pet/id
-                                                                     :name s/Str}}}]
-                             {:spec? true})
+                                                                     :name s/Str}}}
+
+                                                {:route-name :all-pets
+                                                 :path-parts ["/pets/"]
+                                                 :method :get
+                                                 :query-schema :pet/sorting}])
         request-for (partial martian/request-for m)]
 
     (testing "parameter coercion"
@@ -428,12 +447,16 @@
              (request-for :load-pet {:id 123})
              (request-for :load-pet {:id "123"}))))
 
-    #_(testing "query-params"
-      (is (= {:method :get
-              :url "https://api.org/pets/"
-              :query-params {:sort "asc"}}
-             (request-for :all-pets {:sort "asc"})
-             (request-for :all-pets {:sort :asc}))))
+    (testing "all the params"
+      (is (= {:method :post
+              :url "https://api.org/pets/cat"
+              :query-params {:sort "asc"}
+              :headers {"AuthToken" "abc-1234"}}
+             (request-for :create-pet {:sort "asc"
+                                       :type "cat"
+                                       :auth-token "abc-1234"})
+             ;; (request-for :all-pets {:sort :asc}) ;; should this work?
+             )))
 
     #_(testing "headers"
       (is (= {:method :get

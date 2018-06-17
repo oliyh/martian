@@ -5,8 +5,11 @@
             [clojure.walk :refer [keywordize-keys postwalk-replace]]
             [martian.interceptors :as interceptors]
             [martian.schema :as schema]
+            [martian.spec :as m-spec]
             [martian.swagger :as swagger]
-            [schema.core :as s]))
+            [schema.core :as s]
+            #?(:clj [clojure.spec.alpha :as spec]
+               :cljs [cljs.spec.alpha :as spec])))
 
 (def default-interceptors
   [interceptors/set-method
@@ -19,9 +22,14 @@
 
 (def ^:private parameter-schemas [:path-schema :query-schema :body-schema :form-schema :headers-schema])
 
+(defn- parameter-keys [schema-or-spec]
+  (if (spec/get-spec schema-or-spec)
+    (m-spec/parameter-keys schema-or-spec)
+    (schema/parameter-keys schema-or-spec)))
+
 (defn- enrich-handler [handler]
   (-> handler
-      (assoc :parameter-aliases (let [ks (schema/parameter-keys (map handler parameter-schemas))]
+      (assoc :parameter-aliases (let [ks (parameter-keys (map handler parameter-schemas))]
                                   (zipmap (map ->kebab-case-keyword ks) ks)))))
 
 (defn- concise->handlers [concise-handlers global-produces global-consumes]
@@ -50,20 +58,19 @@
                                  handler))
                              %)))
 
-(defrecord Martian [api-root handlers interceptors spec?])
+(defrecord Martian [api-root handlers interceptors])
 
 (defn url-for
   ([martian route-name] (url-for martian route-name {}))
-  ([{:keys [api-root handlers spec?]} route-name params]
+  ([{:keys [api-root handlers]} route-name params]
    (when-let [handler (find-handler handlers route-name)]
-     (let [conformer (if spec? (partial interceptors/conform-data handler :path-schema)
-                         (partial interceptors/coerce-data handler :path-schema))
+     (let [conformer (partial interceptors/coerce-data handler :path-schema)
            params (->> params keywordize-keys conformer)]
        (str api-root (string/join (map #(get params % %) (:path-parts handler))))))))
 
 (defn request-for
   ([martian route-name] (request-for martian route-name {}))
-  ([{:keys [handlers interceptors spec?] :as martian} route-name params]
+  ([{:keys [handlers interceptors] :as martian} route-name params]
    (when-let [handler (find-handler handlers route-name)]
      (let [params (keywordize-keys params)
            ctx (tc/enqueue* {} (-> (or interceptors default-interceptors) vec (conj interceptors/request-only-handler)))]
@@ -72,8 +79,7 @@
                          :url-for (partial url-for martian)
                          :request (or (::request params) {})
                          :handler handler
-                         :params params
-                         :spec? spec?)))))))
+                         :params params)))))))
 
 (defn response-for
   ([martian route-name] (response-for martian route-name {}))
@@ -101,8 +107,8 @@
                     (map (juxt (comp :v :status) :body))
                     (into {}))})))
 
-(defn- build-instance [api-root handlers {:keys [interceptors spec?]}]
-  (->Martian api-root handlers (or interceptors default-interceptors) spec?))
+(defn- build-instance [api-root handlers {:keys [interceptors]}]
+  (->Martian api-root handlers (or interceptors default-interceptors)))
 
 (defn bootstrap-swagger
   "Creates a martian instance from a swagger spec

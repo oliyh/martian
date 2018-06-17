@@ -3,17 +3,38 @@
    #?(:clj [clojure.spec.alpha :as spec]
       :cljs [cljs.spec.alpha :as spec])
    [spec-tools.core :as st]
-   [spec-tools.spec :as sts]))
+   [spec-tools.spec :as sts]
+   [spec-tools.parse :as stp]
+   [clojure.walk :refer [postwalk-replace]]))
+
+(defn unalias-keys [parameter-aliases data]
+  (if (map? data)
+    (postwalk-replace parameter-aliases data)
+    data))
 
 (defn conform-data
   "Extracts the data referred to by the spec's keys and coerces it"
   [spec data & [parameter-aliases]]
-  (let [result (st/decode spec data st/string-transformer)]
-    result))
+  (as-> data %
+    (unalias-keys parameter-aliases %)
+    (st/decode spec % st/string-transformer)
+    (st/decode spec % st/strip-extra-keys-transformer)))
+
+(defn parameter-keys [spec]
+  (:keys (stp/parse-spec (spec/form spec))))
+
+(parameter-keys ::y)
 
 (spec/def ::x sts/int?)
 (spec/def ::y (spec/keys :req-un [::x]))
 
+(stp/parse-spec (spec/form ::y))
+
+(spec/def :pet/sort #{"asc" "desc"})
+(spec/def :pet/sorting (spec/keys :req-un [:pet/sort]))
+
+(spec/valid? (spec/keys :req-un [::x]) {:x 1})
+
 ;; strip-extra-keys
 ;; fail-on-extra-keys
-(st/decode ::y {:x "123"} st/string-transformer)
+(st/encode :pet/sorting {:sort "asc"} st/string-transformer)

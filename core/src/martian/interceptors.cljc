@@ -1,13 +1,15 @@
 (ns martian.interceptors
-  (:require [martian.schema :as schema]
-            [martian.spec :as spec]
+  (:require [martian.schema :as m-schema]
+            [martian.spec :as m-spec]
             [clojure.walk :refer [stringify-keys]]
             [clojure.string :as string]
             [tripod.context :as tc]
-            [schema.core :as s]
+            [schema.core :as schema]
             [camel-snake-kebab.core :refer [->kebab-case-keyword]]
             [martian.encoding :as encoding]
-            [martian.encoders :as encoders]))
+            [martian.encoders :as encoders]
+            #?(:clj [clojure.spec.alpha :as spec]
+               :cljs [cljs.spec.alpha :as spec])))
 
 (def request-only-handler
   {:name ::request-only-handler
@@ -35,12 +37,18 @@
    :enter (fn [{:keys [params url-for handler] :as ctx}]
             (update ctx :request create-only :url (url-for (:route-name handler) params)))})
 
-(defn coerce-data [{:keys [parameter-aliases] :as handler} schema-key params]
-  (schema/coerce-data (get handler schema-key) params parameter-aliases))
+(defn- coerce-data-schema [{:keys [parameter-aliases] :as handler} schema params]
+  (m-schema/coerce-data schema params parameter-aliases))
 
-(defn conform-data [{:keys [parameter-aliases] :as handler} schema-key params]
+(defn- coerce-data-spec [{:keys [parameter-aliases] :as handler} spec params]
   (println "Using spec")
-  (spec/conform-data (get handler schema-key) params parameter-aliases))
+  (m-spec/conform-data spec params parameter-aliases))
+
+(defn coerce-data [handler schema-key params]
+  (let [spec-or-schema (get handler schema-key)]
+    (if (spec/get-spec spec-or-schema)
+      (coerce-data-spec handler spec-or-schema params)
+      (coerce-data-schema handler spec-or-schema params))))
 
 (def set-query-params
   {:name ::query-params
@@ -53,10 +61,10 @@
             (if-let [[body-key body-schema] (first (:body-schema handler))]
               (let [parameter-aliases (:parameter-aliases handler)
                     body-params (or (:martian.core/body params)
-                                    (get params (s/explicit-schema-key body-key))
-                                    (get params (->kebab-case-keyword (s/explicit-schema-key body-key)))
+                                    (get params (schema/explicit-schema-key body-key))
+                                    (get params (->kebab-case-keyword (schema/explicit-schema-key body-key)))
                                     params)]
-                (update ctx :request insert-or-merge :body (schema/coerce-data body-schema body-params parameter-aliases)))
+                (update ctx :request insert-or-merge :body (coerce-data body-schema body-params parameter-aliases)))
               ctx))})
 
 (def set-form-params
