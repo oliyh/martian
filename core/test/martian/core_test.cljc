@@ -4,7 +4,8 @@
             #?(:clj [clojure.test :refer :all]
                :cljs [cljs.test :refer-macros [deftest testing is run-tests]])
             #?(:clj [clojure.spec.alpha :as spec]
-               :cljs [cljs.spec.alpha :as spec]))
+               :cljs [cljs.spec.alpha :as spec])
+            [spec-tools.spec :as sts])
   #?(:clj (:import [martian Martian])))
 
 #?(:cljs
@@ -399,7 +400,7 @@
        (is (= "https://api.org/pets/" (.urlFor m "create-pet")))
        (is (= "https://api.org/users/123/orders/456" (.urlFor m "order" {"user-id" 123 "order-id" 456}))))))
 
-(spec/def ::pet-id int?)
+(spec/def ::pet-id sts/int?)
 (spec/def ::pet-identifiers (spec/keys :req-un [::pet-id]))
 
 (deftest spec-request-for-test
