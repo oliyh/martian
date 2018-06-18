@@ -16,9 +16,13 @@
   "Extracts the data referred to by the spec's keys and coerces it"
   [spec data & [parameter-aliases]]
   (let [conformed (as-> data %
-                    (unalias-keys parameter-aliases %)
+                    (cond (map? %) (unalias-keys parameter-aliases %)
+                          (coll? %) (map (partial unalias-keys parameter-aliases) %)
+                          :else %)
                     (st/decode spec % st/string-transformer)
-                    (st/decode spec % st/strip-extra-keys-transformer))]
+                    (if (map? %)
+                      (st/decode spec % st/strip-extra-keys-transformer)
+                      %))]
     (if (spec/invalid? conformed)
       (throw (ex-info "Value cannot be coerced to match spec"
                       (spec/explain-data spec data)))
@@ -26,6 +30,8 @@
 
 (defn parameter-keys [spec]
   (:keys (stp/parse-spec (spec/form spec))))
+
+
 
 (spec/def ::a sts/int?)
 (spec/def ::z sts/int?)
