@@ -459,9 +459,24 @@
                                        :type "cat"
                                        :auth-token "abc-1234"
                                        :pet {:id 123
-                                             :name "Charlie"}})
-             ;; (request-for :all-pets {:sort :asc}) ;; should this work?
-             )))
+                                             :name "Charlie"}}))))
+
+    (testing "more body params"
+      (let [req {:sort "asc"
+                 :type "cat"
+                 :auth-token "abc-1234"}]
+
+        (is (= {:method :post
+                :url "https://api.org/pets/cat"
+                :query-params {:sort "asc"}
+                :headers {"AuthToken" "abc-1234"}
+                :body {:id 123
+                       :name "Charlie"}}
+
+               ;; these three forms are equivalent, demonstrating destructuring options
+               (request-for :create-pet (merge req {:id 123 :name "Charlie"}))
+               (request-for :create-pet (assoc req :pet {:id 123 :name "Charlie"}))
+               (request-for :create-pet (assoc req ::martian/body {:id 123 :name "Charlie"}))))))
 
     (testing "exceptions"
       (is (thrown-with-msg? Throwable #"Value cannot be coerced to match spec"
@@ -511,31 +526,4 @@
               :url "https://api.org/orders/"
               :body ["order-number-one"
                      "order-number-two"]}
-             (request-for :create-orders {:order-ids ["order-number-one" "order-number-two"]}))))
-
-    #_(testing "providing initial request map"
-      (is (= {:method :put
-              :url "https://api.org/pets/"
-              :form-params {:id 123 :name "nigel"}}
-             (request-for :update-pet {:id 123 :name "nigel"})))
-
-      (is (= {:method :get ;; overridden from definition
-              :url "https://api.org/pets/"
-              :form-params {:id 123 :name "nigel"}}
-             (request-for :update-pet {::martian/request {:method :get}
-                                       :id 123
-                                       :name "nigel"}))))
-
-    #_(testing "exceptions"
-      (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema"
-                            (request-for :all-pets {:sort "baa"})))
-
-      (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema"
-                            (request-for :load-pet {:id "one"})))
-
-      (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema"
-                            (request-for :create-pet {:pet {:id "one"
-                                                            :name 1}})))
-
-      (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema: \{:id missing-required-key, :name missing-required-key\}"
-                            (request-for :create-pet))))))
+             (request-for :create-orders {:order-ids ["order-number-one" "order-number-two"]}))))))
