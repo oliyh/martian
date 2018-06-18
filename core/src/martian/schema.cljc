@@ -52,20 +52,17 @@
       :else
       ((sc/coercer! schema coercion-matchers) data))))
 
-(defn parameter-keys [schemas]
-  (mapcat
-   (fn [schema]
-     (when-let [s (from-maybe schema)]
-       (cond
-         (and (map? s) (not (record? s)))
-         (concat (map s/explicit-schema-key (keys s)) (parameter-keys (vals s)))
+(defn parameter-keys [schema]
+  (when-let [s (from-maybe schema)]
+    (cond
+      (and (map? s) (not (record? s)))
+      (concat (map s/explicit-schema-key (keys s)) (mapcat parameter-keys (vals s)))
 
-         (coll? s)
-         (parameter-keys s)
+      (coll? s)
+      (mapcat parameter-keys s)
 
-         :else
-         nil)))
-   schemas))
+      :else
+      nil)))
 
 (declare make-schema)
 

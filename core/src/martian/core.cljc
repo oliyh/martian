@@ -24,11 +24,10 @@
 
 (defn- parameter-keys [schemas-or-specs]
   (reduce (fn [ks schema-or-spec]
-            (concat ks
-                    (if (spec/get-spec schema-or-spec)
-                      (m-spec/parameter-keys schema-or-spec)
-                      (schema/parameter-keys schema-or-spec))))
-          []
+            (into ks (if (spec/get-spec schema-or-spec)
+                       (m-spec/parameter-keys schema-or-spec)
+                       (schema/parameter-keys schema-or-spec))))
+          #{}
           schemas-or-specs))
 
 (defn- enrich-handler [handler]

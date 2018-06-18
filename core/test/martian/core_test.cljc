@@ -434,7 +434,7 @@
                                                  :query-schema :pet/sorting
                                                  :headers-schema :pet-service/auth
                                                  :method :post
-                                                 #_#_:body-schema :pet/pet}
+                                                 :body-schema :pet/pet}
 
                                                 {:route-name :all-pets
                                                  :path-parts ["/pets/"]
@@ -452,11 +452,13 @@
       (is (= {:method :post
               :url "https://api.org/pets/cat"
               :query-params {:sort "asc"}
-              :headers {"AuthToken" "abc-1234"}}
+              :headers {"AuthToken" "abc-1234"}
+              :body {:id 123
+                     :name "Charlie"}}
              (request-for :create-pet {:sort "asc"
                                        :type "cat"
                                        :auth-token "abc-1234"
-                                       #_#_:pet {:id 123
+                                       :pet {:id 123
                                              :name "Charlie"}})
              ;; (request-for :all-pets {:sort :asc}) ;; should this work?
              )))

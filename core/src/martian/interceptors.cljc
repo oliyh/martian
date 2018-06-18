@@ -41,7 +41,6 @@
   (m-schema/coerce-data schema params parameter-aliases))
 
 (defn- coerce-data-spec [{:keys [parameter-aliases] :as handler} spec params]
-  (println "Using spec")
   (m-spec/conform-data spec params parameter-aliases))
 
 (defn coerce-data [handler schema-key params]
@@ -55,16 +54,24 @@
    :enter (fn [{:keys [params handler] :as ctx}]
             (update ctx :request insert-or-merge :query-params (coerce-data handler :query-schema params)))})
 
+(defn body-keys [body-spec-or-schema]
+  (let [aliases (juxt identity ->kebab-case-keyword)]
+    (if (spec/get-spec body-spec-or-schema)
+      (set (mapcat aliases [body-spec-or-schema (keyword (name body-spec-or-schema))]))
+      (-> body-spec-or-schema ffirst schema/explicit-schema-key aliases set))))
+
+
 (def set-body-params
   {:name ::body-params
    :enter (fn [{:keys [params handler] :as ctx}]
-            (if-let [[body-key body-schema] (first (:body-schema handler))]
-              (let [parameter-aliases (:parameter-aliases handler)
-                    body-params (or (:martian.core/body params)
-                                    (get params (schema/explicit-schema-key body-key))
-                                    (get params (->kebab-case-keyword (schema/explicit-schema-key body-key)))
-                                    params)]
-                (update ctx :request insert-or-merge :body (coerce-data body-schema body-params parameter-aliases)))
+            (if-let [body-spec-or-schema (:body-schema handler)]
+              (let [body-params (or (some params (cons :martian.core/body (body-keys body-spec-or-schema)))
+                                    params)
+                    parameter-aliases (:parameter-aliases handler)]
+                (update ctx :request insert-or-merge :body
+                        (if (spec/get-spec body-spec-or-schema)
+                          (coerce-data-spec handler body-spec-or-schema body-params)
+                          (coerce-data-schema handler (val (first body-spec-or-schema)) body-params))))
               ctx))})
 
 (def set-form-params

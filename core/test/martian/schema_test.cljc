@@ -157,15 +157,11 @@
 
 (deftest parameter-keys-test
   (is (= [:foo]
-         (schema/parameter-keys [{:foo s/Int}])))
+         (schema/parameter-keys {:foo s/Int})))
 
-  (is (= [:foo :bar]
-         (schema/parameter-keys [{:foo s/Int}
-                                 {:bar s/Str}])))
+  (is (= [:baz :quu :quux]
+         (schema/parameter-keys {:baz {:quu s/Bool
+                                       :quux s/Num}})))
 
-  (is (= [:foo :bar :baz :quu :quux :fizz :buzz]
-         (schema/parameter-keys [{:foo s/Int}
-                                 {:bar s/Str}
-                                 {:baz {:quu s/Bool
-                                        :quux s/Num}}
-                                 {:fizz [{:buzz s/Str}]}]))))
+  (is (= [:fizz :buzz]
+         (schema/parameter-keys {:fizz [{:buzz s/Str}]}))))
