@@ -25,7 +25,6 @@
   :plugins [[lein-cljsbuild "1.1.7"]
             [lein-doo "0.1.8"]]
   :java-source-paths ["src"]
-  :jvm-opts ["--add-modules" "java.xml.bind"]
   :javac-options ["-target" "1.8" "-source" "1.8"]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.9.0"]
                                        [org.clojure/clojurescript "1.9.946"]]}
@@ -37,7 +36,8 @@
                                   [org.clojure/tools.reader "1.2.2"]
                                   [cider/piggieback "0.3.6"]
                                   [org.clojure/tools.nrepl "0.2.13"]]
-                   :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}}}
+                   :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}
+                   :jvm-opts ["-Djdk.launcher.addmods=java.xml.bind"]}}
   :aliases {"test" ["do" ["clean"] ["test"] ["doo" "nashorn" "test" "once"]]}
   :cljsbuild {:builds [{:id "test"
                         :source-paths ["src" "test"]

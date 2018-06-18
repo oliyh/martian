@@ -1,0 +1,31 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: clojure:lein-2.8.1
+    steps:
+      - run: which java
+      - run: lein --version
+
+      - checkout
+      - restore_cache:
+          key: v2-phantomjs-1.9.8
+
+      - run:
+          name: Install phantomjs
+          command: |
+            if ! [ $(which phantomjs) ]; then
+              wget https://github.com/Medium/phantomjs/releases/download/v1.9.19/phantomjs-1.9.8-linux-x86_64.tar.bz2
+              tar xvjf phantomjs-1.9.8-linux-x86_64.tar.bz2
+              mv phantomjs-1.9.8-linux-x86_64/bin/phantomjs /usr/local/bin/phantomjs
+            fi
+            chmod ugo+x /usr/local/bin/phantomjs
+
+      - save_cache:
+          key: v2-phantomjs-1.9.8
+          paths:
+            - /usr/local/bin/phantomjs
+
+      - run: phantomjs --version
+
+      - run: lein test
