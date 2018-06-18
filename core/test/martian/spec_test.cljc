@@ -1,5 +1,5 @@
 (ns martian.spec-test
-  (:require [martian.spec :refer [conform-data]]
+  (:require [martian.spec :refer [conform-data parameter-keys]]
             [spec-tools.spec :as sts]
             #?(:clj [clojure.spec.alpha :as spec]
                :cljs [cljs.spec.alpha :as spec])
@@ -47,3 +47,17 @@
                                                                   {:int "2" :baz "quu"}]))
       (is (thrown-with-msg? Throwable #"Value cannot be coerced to match spec"
                             (conform-data ::coll-of-map-of-int 1))))))
+
+(deftest parameter-keys-test
+  (testing "primitives"
+    (is (nil? (parameter-keys ::int))))
+
+  (testing "maps"
+    (is (= #{:int} (parameter-keys ::map-of-int))))
+
+  (testing "arrays"
+    (testing "of primitives"
+      (is (nil? (parameter-keys ::coll-of-int))))
+
+    (testing "of maps"
+      (is (= #{:int} (parameter-keys ::coll-of-map-of-int))))))

@@ -29,24 +29,16 @@
       conformed)))
 
 (defn parameter-keys [spec]
-  (:keys (stp/parse-spec (spec/form spec))))
+  (let [{:keys [type keys] :as s} (stp/parse-spec (spec/form spec))]
+    (condp = type
+      :vector (parameter-keys (second (spec/form spec)))
+      :map keys
+      nil)))
 
+(spec/def ::int sts/int?)
+(spec/def ::map-of-int (spec/keys :req-un [::int]))
+(spec/def ::coll-of-int (spec/coll-of ::int))
+(spec/def ::coll-of-map-of-int (spec/coll-of ::map-of-int))
 
-
-(spec/def ::a sts/int?)
-(spec/def ::z sts/int?)
-(spec/def ::x sts/int?)
-(spec/def ::y (spec/keys :req-un [::x] :opt-un [::z] :req [::a]))
-
-(parameter-keys ::y)
-
-(stp/parse-spec (spec/form ::y))
-
-(spec/def :pet/sort #{"asc" "desc"})
-(spec/def :pet/sorting (spec/keys :req-un [:pet/sort]))
-
-(spec/valid? (spec/keys :req-un [::x]) {:x 1})
-
-;; strip-extra-keys
-;; fail-on-extra-keys
-(st/encode :pet/sorting {:sort "asc"} st/string-transformer)
+(second (spec/form ::coll-of-map-of-int))
+(parameter-keys ::coll-of-map-of-int)
