@@ -414,6 +414,9 @@
 (spec/def :pet-service/AuthToken string?)
 (spec/def :pet-service/auth (spec/keys :req-un [:pet-service/AuthToken]))
 
+(spec/def :pet/order (spec/keys :req-un [:pet/id :pet/name :pet-service/AuthToken]))
+(spec/def :pet/orders (spec/coll-of :pet/order))
+
 ;; todo
 ;; use :path-spec instead of :path-schema to describe as spec
 ;; and remove the :spec? option
@@ -439,7 +442,12 @@
                                                 {:route-name :all-pets
                                                  :path-parts ["/pets/"]
                                                  :method :get
-                                                 :query-schema :pet/sorting}])
+                                                 :query-schema :pet/sorting}
+
+                                                {:route-name :create-orders
+                                                 :path-parts ["/orders/"]
+                                                 :method :post
+                                                 :body-schema :pet/orders}])
         request-for (partial martian/request-for m)]
 
     (testing "parameter coercion"
@@ -478,6 +486,14 @@
                (request-for :create-pet (assoc req :pet {:id 123 :name "Charlie"}))
                (request-for :create-pet (assoc req ::martian/body {:id 123 :name "Charlie"}))))))
 
+    (testing "body arrays"
+      (is (= {:method :post
+              :url "https://api.org/orders/"
+              :body [{:id 1 :name "Bob" :AuthToken "foo"}
+                     {:id 2 :name "Barry" :AuthToken "bar"}]}
+             (request-for :create-orders {:orders [{:id 1 :name "Bob" :auth-token "foo"}
+                                                   {:id 2 :name "Barry" :auth-token "bar"}]}))))
+
     (testing "exceptions"
       (is (thrown-with-msg? Throwable #"Value cannot be coerced to match spec"
                             (request-for :all-pets {:sort "baa"})))
@@ -496,30 +512,12 @@
                             (request-for :load-pet)))
 
       (try (request-for :load-pet)
-           (catch Exception e
+           (catch Throwable e
              (def ex e)
              (is (= [:pet/identifiers]
                     (-> e ex-data ::spec/problems first :via))))))
 
-    #_(testing "body maps"
-      (is (= {:method :post
-              :url "https://api.org/pets/"
-              :body {:id 123 :name "charlie"}}
 
-             ;; these three forms are equivalent, demonstrating destructuring options
-             (request-for :create-pet {:id 123 :name "charlie"})
-             (request-for :create-pet {:pet {:id 123 :name "charlie"}})
-             (request-for :create-pet {::martian/body {:id 123 :name "charlie"}})
-
-             (request-for :create-pet {:pet {:id "123" :name "charlie"}}))))
-
-    #_(testing "body arrays"
-      (is (= {:method :post
-              :url "https://api.org/users/"
-              :body [{:id 1 :name "Bob" :emailAddress "bob@builder.com"}
-                     {:id 2 :name "Barry" :emailAddress "barry@builder.com"}]}
-             (request-for :create-users {:users [{:id 1 :name "Bob" :email-address "bob@builder.com"}
-                                                 {:id 2 :name "Barry" :email-address "barry@builder.com"}]}))))
 
     #_(testing "primitive body arrays"
       (is (= {:method :post
