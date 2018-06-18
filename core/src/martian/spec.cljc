@@ -15,10 +15,14 @@
 (defn conform-data
   "Extracts the data referred to by the spec's keys and coerces it"
   [spec data & [parameter-aliases]]
-  (as-> data %
-    (unalias-keys parameter-aliases %)
-    (st/decode spec % st/string-transformer)
-    (st/decode spec % st/strip-extra-keys-transformer)))
+  (let [conformed (as-> data %
+                    (unalias-keys parameter-aliases %)
+                    (st/decode spec % st/string-transformer)
+                    (st/decode spec % st/strip-extra-keys-transformer))]
+    (if (spec/invalid? conformed)
+      (throw (ex-info "Value cannot be coerced to match spec"
+                      (spec/explain-data spec data)))
+      conformed)))
 
 (defn parameter-keys [spec]
   (:keys (stp/parse-spec (spec/form spec))))

@@ -463,6 +463,29 @@
              ;; (request-for :all-pets {:sort :asc}) ;; should this work?
              )))
 
+    (testing "exceptions"
+      (is (thrown-with-msg? Throwable #"Value cannot be coerced to match spec"
+                            (request-for :all-pets {:sort "baa"})))
+
+      (is (thrown-with-msg? Throwable #"Value cannot be coerced to match spec"
+                            (request-for :load-pet {:id "one"})))
+
+      (is (thrown-with-msg? Throwable #"Value cannot be coerced to match spec"
+                            (request-for :create-pet {:sort "asc"
+                                                      :type "cat"
+                                                      :auth-token "abc-1234"
+                                                      :pet {:id "one"
+                                                            :name 1}})))
+
+      (is (thrown-with-msg? Throwable #"Value cannot be coerced to match spec"
+                            (request-for :load-pet)))
+
+      (try (request-for :load-pet)
+           (catch Exception e
+             (def ex e)
+             (is (= [:pet/identifiers]
+                    (-> e ex-data ::spec/problems first :via))))))
+
     #_(testing "body maps"
       (is (= {:method :post
               :url "https://api.org/pets/"
