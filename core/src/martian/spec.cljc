@@ -15,18 +15,23 @@
 (defn conform-data
   "Extracts the data referred to by the spec's keys and coerces it"
   [spec data & [parameter-aliases]]
-  (as-> data %
-    (unalias-keys parameter-aliases %)
-    (st/decode spec % st/string-transformer)
-    (st/decode spec % st/strip-extra-keys-transformer)))
+  (let [new-data (as-> data %
+               (unalias-keys parameter-aliases %)
+               (st/decode spec % st/string-transformer)
+               (st/decode spec % st/strip-extra-keys-transformer))]
+    (println "Conforming" data "to" spec "with" parameter-aliases)
+    (println "Result" new-data)
+    new-data))
 
 (defn parameter-keys [spec]
   (:keys (stp/parse-spec (spec/form spec))))
 
-(parameter-keys ::y)
-
+(spec/def ::a sts/int?)
+(spec/def ::z sts/int?)
 (spec/def ::x sts/int?)
-(spec/def ::y (spec/keys :req-un [::x]))
+(spec/def ::y (spec/keys :req-un [::x] :opt-un [::z] :req [::a]))
+
+(parameter-keys ::y)
 
 (stp/parse-spec (spec/form ::y))
 

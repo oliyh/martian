@@ -408,6 +408,8 @@
 
 (spec/def :pet/type #{"cat" "dog"})
 (spec/def :pet/taxonomy (spec/keys :req-un [:pet/type]))
+(spec/def :pet/name sts/string?)
+(spec/def :pet/pet (spec/keys :req-un [:pet/id :pet/name]))
 
 (spec/def :pet-service/AuthToken string?)
 (spec/def :pet-service/auth (spec/keys :req-un [:pet-service/AuthToken]))
@@ -432,8 +434,7 @@
                                                  :query-schema :pet/sorting
                                                  :headers-schema :pet-service/auth
                                                  :method :post
-                                                 :body-schema {:pet {:id :pet/id
-                                                                     :name s/Str}}}
+                                                 #_#_:body-schema :pet/pet}
 
                                                 {:route-name :all-pets
                                                  :path-parts ["/pets/"]
@@ -454,15 +455,11 @@
               :headers {"AuthToken" "abc-1234"}}
              (request-for :create-pet {:sort "asc"
                                        :type "cat"
-                                       :auth-token "abc-1234"})
+                                       :auth-token "abc-1234"
+                                       #_#_:pet {:id 123
+                                             :name "Charlie"}})
              ;; (request-for :all-pets {:sort :asc}) ;; should this work?
              )))
-
-    #_(testing "headers"
-      (is (= {:method :get
-              :url "https://api.org/users/123/orders/234"
-              :headers {"AuthToken" "abc-1234"}}
-             (request-for :order {:user-id 123 :order-id 234 :auth-token "abc-1234"}))))
 
     #_(testing "body maps"
       (is (= {:method :post

@@ -22,10 +22,14 @@
 
 (def ^:private parameter-schemas [:path-schema :query-schema :body-schema :form-schema :headers-schema])
 
-(defn- parameter-keys [schema-or-spec]
-  (if (spec/get-spec schema-or-spec)
-    (m-spec/parameter-keys schema-or-spec)
-    (schema/parameter-keys schema-or-spec)))
+(defn- parameter-keys [schemas-or-specs]
+  (reduce (fn [ks schema-or-spec]
+            (concat ks
+                    (if (spec/get-spec schema-or-spec)
+                      (m-spec/parameter-keys schema-or-spec)
+                      (schema/parameter-keys schema-or-spec))))
+          []
+          schemas-or-specs))
 
 (defn- enrich-handler [handler]
   (-> handler
