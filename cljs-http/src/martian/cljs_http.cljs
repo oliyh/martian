@@ -3,7 +3,8 @@
             [cljs.core.async :refer [<!]]
             [martian.core :as martian]
             [martian.interceptors :as i]
-            [tripod.context :as tc])
+            [tripod.context :as tc]
+            [clojure.string :as str])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
 (defn- go-async [ctx]
@@ -24,12 +25,15 @@
 (defn bootstrap [api-root concise-handlers & [opts]]
   (martian/bootstrap api-root concise-handlers (merge {:interceptors default-interceptors} opts)))
 
-(defn bootstrap-swagger [url & [{:keys [interceptors] :as params}]]
+(defn bootstrap-swagger [url & [{:keys [interceptors trim-base-url?] :as params}]]
   (go (let [swagger-definition (:body (<! (http/get url {:as :json})))
             {:keys [scheme server-name server-port]} (http/parse-url url)
-            base-url (str (when-not (re-find #"^/" url)
-                            (str (name scheme) "://" server-name (when server-port (str ":" server-port))))
-                          (get swagger-definition :basePath ""))]
+            raw-base-url (str (when-not (re-find #"^/" url)
+                                (str (name scheme) "://" server-name (when server-port (str ":" server-port))))
+                              (get swagger-definition :basePath ""))
+            base-url (if trim-base-url?
+                       (str/replace raw-base-url #"/$" "")
+                       raw-base-url)]
         (martian/bootstrap-swagger
          base-url
          swagger-definition
