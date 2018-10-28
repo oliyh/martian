@@ -29,13 +29,18 @@ ensuring that your response handling code is also correct. Examples are below.
 
 `martian-re-frame` integrates martian event handlers into `re-frame`, simplifying connecting your UI to data sources.
 
-## Latest versions
-[![Clojars Project](https://img.shields.io/clojars/v/martian.svg)](https://clojars.org/martian)
-[![Clojars Project](https://img.shields.io/clojars/v/martian-clj-http.svg)](https://clojars.org/martian-clj-http)
-[![Clojars Project](https://img.shields.io/clojars/v/martian-httpkit.svg)](https://clojars.org/martian-httpkit)
-[![Clojars Project](https://img.shields.io/clojars/v/martian-cljs-http.svg)](https://clojars.org/martian-cljs-http)
+## Latest versions & API docs
+[![Clojars Project](https://img.shields.io/clojars/v/martian.svg)](https://clojars.org/martian) [![cljdoc badge](https://cljdoc.org/badge/martian/martian)](https://cljdoc.org/d/martian/martian/CURRENT)
+
+[![Clojars Project](https://img.shields.io/clojars/v/martian-clj-http.svg)](https://clojars.org/martian-clj-http) [![cljdoc badge](https://cljdoc.org/badge/martian-clj-http/martian-clj-http)](https://cljdoc.org/d/martian-clj-http/martian-clj-http/CURRENT)
+
+[![Clojars Project](https://img.shields.io/clojars/v/martian-httpkit.svg)](https://clojars.org/martian-httpkit) [![cljdoc badge](https://cljdoc.org/badge/martian-httpkit/martian-httpkit)](https://cljdoc.org/d/martian-httpkit/martian-httpkit/CURRENT)
+
+[![Clojars Project](https://img.shields.io/clojars/v/martian-cljs-http.svg)](https://clojars.org/martian-cljs-http) [![cljdoc badge](https://cljdoc.org/badge/martian-cljs-http/martian-cljs-http)](https://cljdoc.org/d/martian-cljs-http/martian-cljs-http/CURRENT)
+
 [![Clojars Project](https://img.shields.io/clojars/v/martian-test.svg)](https://clojars.org/martian-test)
-[![Clojars Project](https://img.shields.io/clojars/v/martian-re-frame.svg)](https://clojars.org/martian-re-frame)
+
+[![Clojars Project](https://img.shields.io/clojars/v/martian-re-frame.svg)](https://clojars.org/martian-re-frame) [![cljdoc badge](https://cljdoc.org/badge/martian-re-frame/martian-re-frame)](https://cljdoc.org/d/martian-re-frame/martian-re-frame/CURRENT)
 
 ## Features
 - Bootstrap an instance from just a Swagger url or provide your own API mapping
