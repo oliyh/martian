@@ -1,16 +1,18 @@
 (ns martian.schema
-  (:require [schema.core :as s]
+  (:require #?(:clj [schema.core :as s]
+               :cljs [schema.core :as s :refer [AnythingSchema Maybe EnumSchema EqSchema]])
             [schema.coerce :as sc]
-            [clojure.walk :refer [postwalk-replace]]))
+            [clojure.walk :refer [postwalk-replace]])
+  #?(:clj (:import [schema.core AnythingSchema Maybe EnumSchema EqSchema])))
 
 (defn- keyword->string [s]
   (if (keyword? s) (name s) s))
 
 (defn- string-enum-matcher [schema]
-  (when (or (and (instance? schema.core.EnumSchema schema)
-                 (every? string? (.-vs ^schema.core.EnumSchema schema)))
-            (and (instance? schema.core.EqSchema schema)
-                 (string? (.-v ^schema.core.EqSchema schema))))
+  (when (or (and (instance? EnumSchema schema)
+                 (every? string? (.-vs ^EnumSchema schema)))
+            (and (instance? EqSchema schema)
+                 (string? (.-v ^EqSchema schema))))
     keyword->string))
 
 (defn coercion-matchers [schema]
@@ -18,7 +20,7 @@
       (string-enum-matcher schema)))
 
 (defn- from-maybe [s]
-  (if (instance? schema.core.Maybe s)
+  (if (instance? Maybe s)
     (:schema s)
     s))
 
@@ -30,7 +32,7 @@
   [schema data & [parameter-aliases]]
   (when-let [s (from-maybe schema)]
     (cond
-      (instance? schema.core.AnythingSchema s)
+      (instance? AnythingSchema s)
       ((sc/coercer! schema coercion-matchers) data)
 
       (map? s)
