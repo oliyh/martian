@@ -26,6 +26,9 @@ jobs:
           paths:
             - /usr/local/bin/phantomjs
 
+      # Validate docs/cljdoc.edn
+      - run: curl -fsSL https://raw.githubusercontent.com/cljdoc/cljdoc/master/script/verify-cljdoc-edn | bash -s docs/cljdoc.edn
+
       - run: phantomjs --version
 
       - run: lein test
