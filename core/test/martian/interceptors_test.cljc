@@ -2,8 +2,9 @@
   (:require [martian.interceptors :as i]
             [martian.encoders :as encoders]
             [tripod.context :as tc]
-            #?(:clj [clojure.test :refer [deftest is testing]]
-               :cljs [cljs.test :refer-macros [deftest testing is]])
+            [schema.core :as s]
+            #?(:clj [clojure.test :refer [deftest is testing are]]
+               :cljs [cljs.test :refer-macros [deftest testing is are]])
             #?(:clj [martian.test-utils :as tu])))
 
 (deftest encode-body-test
@@ -134,3 +135,24 @@
         (is (= {:body encoded-body
                 :headers {:content-type "text/magical+json"}}
                (:response result)))))))
+
+(deftest query-params-test
+  (let [i i/set-query-params
+        ctx {:request {}
+             :params {:foo [1 2 3]}
+             :handler {:query-schema {:foo [s/Int]}}}
+        result (fn [collection-format]
+                 (->> (assoc-in ctx [:handler :query-collection-formats :foo] collection-format)
+                      ((:enter i))
+                      :request
+                      :query-params
+                      :foo))]
+
+  (are [fmt expected]
+      (= expected (result fmt))
+
+    nil [1 2 3]
+    :csv "1,2,3"
+    :ssv "1 2 3"
+    :tsv "1\t2\t3"
+    :pipes "1|2|3")))

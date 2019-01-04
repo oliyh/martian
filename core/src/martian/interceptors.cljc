@@ -40,7 +40,18 @@
 (def set-query-params
   {:name ::query-params
    :enter (fn [{:keys [params handler] :as ctx}]
-            (update ctx :request insert-or-merge :query-params (coerce-data handler :query-schema params)))})
+            (let [query-params (coerce-data handler :query-schema params)
+                  query-params (reduce-kv (fn [qp k collection-format]
+                                            (update qp k (fn [v]
+                                                           (condp = collection-format
+                                                             :csv (string/join "," v)
+                                                             :ssv (string/join " " v)
+                                                             :tsv (string/join "\t" v)
+                                                             :pipes (string/join "|" v)
+                                                             v))))
+                                          query-params
+                                          (:query-collection-formats handler))]
+              (update ctx :request insert-or-merge :query-params query-params)))})
 
 (def set-body-params
   {:name ::body-params

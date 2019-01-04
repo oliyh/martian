@@ -22,6 +22,15 @@
   (when-let [query-params (not-empty (filter #(= "query" (:in %)) swagger-params))]
     (schema/schemas-for-parameters definitions query-params)))
 
+(defn- query-collection-formats [swagger-params]
+  (when-let [query-params (not-empty (filter #(= "query" (:in %)) swagger-params))]
+    (reduce (fn [acc {:keys [name collectionFormat]}]
+              (if collectionFormat
+                (assoc acc (keyword name) (keyword collectionFormat))
+                acc))
+     {}
+     query-params)))
+
 (defn- headers-schema [definitions swagger-params]
   (when-let [header-params (not-empty (filter #(= "header" (:in %)) swagger-params))]
     (schema/schemas-for-parameters definitions header-params)))
@@ -56,6 +65,7 @@
        :method method
        :path-schema (path-schema definitions parameters)
        :query-schema (query-schema definitions parameters)
+       :query-collection-formats (query-collection-formats parameters)
        :body-schema (body-schema definitions parameters)
        :form-schema (form-schema definitions parameters)
        :headers-schema (headers-schema definitions parameters)
