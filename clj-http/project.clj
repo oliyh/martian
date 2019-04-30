@@ -1,10 +1,10 @@
-(defproject martian-clj-http "0.1.10-SNAPSHOT"
+(defproject swirrl/martian-clj-http "0.1.10-SNAPSHOT"
   :description "clj-http implementation for martian"
   :url "https://github.com/oliyh/martian"
   :license {:name "The MIT License"
             :url "http://opensource.org/licenses/MIT"}
   :plugins [[lein-modules "0.3.11"]]
-  :dependencies [[martian :version]
+  :dependencies [[swirrl/martian :version]
                  [clj-http "3.7.0"]
                  [cheshire "5.8.0"]]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.8.0"]]}

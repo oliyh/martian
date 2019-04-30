@@ -1,4 +1,4 @@
-(defproject martian-re-frame "0.1.10-SNAPSHOT"
+(defproject swirrl/martian-re-frame "0.1.10-SNAPSHOT"
   :description "re-frame bindings for martian"
   :url "https://github.com/oliyh/martian"
   :license {:name "The MIT License"
@@ -6,8 +6,8 @@
   :plugins [[lein-modules "0.3.11"]
             [lein-cljsbuild "1.1.7"]
             [lein-doo "0.1.8"]]
-  :dependencies [[martian :version]
-                 [martian-cljs-http :version]
+  :dependencies [[swirrl/martian :version]
+                 [swirrl/martian-cljs-http :version]
                  [org.clojure/core.async "0.4.474"]]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.9.0"]
                                        [org.clojure/clojurescript "1.9.946"]
