@@ -92,8 +92,9 @@
 (defn- schema-type [definitions {:keys [type enum format $ref] :as param}]
   (cond
     enum (apply s/enum enum)
-    (= "string" type) (if (= "uuid" format)
-                        (s/cond-pre s/Str s/Uuid)
+    (= "string" type) (case format
+                        "uuid" (s/cond-pre s/Str s/Uuid)
+                        "uri" (s/cond-pre s/Str java.net.URI)
                         s/Str)
     (= "integer" type) s/Int
     (= "boolean" type) s/Bool
