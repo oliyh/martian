@@ -396,3 +396,10 @@
        (is (= "https://api.org/pets/" (.urlFor m "all-pets")))
        (is (= "https://api.org/pets/" (.urlFor m "create-pet")))
        (is (= "https://api.org/users/123/orders/456" (.urlFor m "order" {"user-id" 123 "order-id" 456}))))))
+
+(defrecord TestRecord [x y z])
+
+(deftest keywordize-keys-test
+  (let [params {:params (-> (->TestRecord 1 2 3) (assoc "thing" 4 :five 5))}]
+    (is (= {:params (map->TestRecord {:x 1 :y 2 :z 3 :five 5 :thing 4})}
+           (martian/keywordize-keys params)))))

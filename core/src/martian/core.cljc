@@ -2,7 +2,7 @@
   (:require [tripod.context :as tc]
             [camel-snake-kebab.core :refer [->kebab-case-keyword]]
             [clojure.string :as string]
-            [clojure.walk :refer [keywordize-keys postwalk-replace]]
+            [clojure.walk :refer [postwalk postwalk-replace]]
             [martian.interceptors :as interceptors]
             [martian.schema :as schema]
             [martian.swagger :as swagger]
@@ -18,6 +18,18 @@
    interceptors/enqueue-route-specific-interceptors])
 
 (def ^:private parameter-schemas [:path-schema :query-schema :body-schema :form-schema :headers-schema])
+
+(defn keywordize-keys
+  "Recursively transforms all map keys from strings to keywords."
+  [m]
+  (let [f (fn [[k v]] (if (string? k) [(keyword k) v] [k v]))]
+    (postwalk (fn [x]
+                (cond (record? x)
+                      (let [ks (filter string? (keys x))]
+                        (into (apply dissoc x ks) (map f x)))
+                      (map? x) (into {} (map f x))
+                      :else x))
+              m)))
 
 (defn- enrich-handler [handler]
   (-> handler
