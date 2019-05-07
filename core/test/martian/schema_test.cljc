@@ -43,7 +43,7 @@
                                  :format "uuid"}))))
 
 (deftest uri-test
-  (is (= (s/cond-pre s/Str java.net.URI)
+  (is (= (s/cond-pre s/Str schema/URI)
          (schema/make-schema {} {:name "uri"
                                  :in "path"
                                  :required true
