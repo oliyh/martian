@@ -9,7 +9,8 @@
             [schema.core :as s]))
 
 (def default-interceptors
-  [interceptors/set-method
+  [interceptors/keywordize-params
+   interceptors/set-method
    interceptors/set-url
    interceptors/set-query-params
    interceptors/set-body-params
@@ -63,8 +64,7 @@
   ([martian route-name] (request-for martian route-name {}))
   ([{:keys [handlers interceptors] :as martian} route-name params]
    (when-let [handler (find-handler handlers route-name)]
-     (let [params (keywordize-keys params)
-           ctx (tc/enqueue* {} (-> (or interceptors default-interceptors) vec (conj interceptors/request-only-handler)))]
+     (let [ctx (tc/enqueue* {} (-> (or interceptors default-interceptors) vec (conj interceptors/request-only-handler)))]
        (:request (tc/execute
                   (assoc ctx
                          :url-for (partial url-for martian)
@@ -76,8 +76,7 @@
   ([martian route-name] (response-for martian route-name {}))
   ([{:keys [handlers interceptors] :as martian} route-name params]
    (when-let [handler (find-handler handlers route-name)]
-     (let [params (keywordize-keys params)
-           ctx (tc/enqueue* {} (or interceptors default-interceptors))]
+     (let [ctx (tc/enqueue* {} (or interceptors default-interceptors))]
        (:response (tc/execute
                    (assoc ctx
                           :url-for (partial url-for martian)

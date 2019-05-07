@@ -1,6 +1,6 @@
 (ns martian.interceptors
   (:require [martian.schema :as schema]
-            [clojure.walk :refer [stringify-keys]]
+            [clojure.walk :refer [keywordize-keys stringify-keys]]
             [clojure.string :as string]
             [tripod.context :as tc]
             [schema.core :as s]
@@ -36,6 +36,10 @@
 
 (defn coerce-data [{:keys [parameter-aliases] :as handler} schema-key params]
   (schema/coerce-data (get handler schema-key) params parameter-aliases))
+
+(def keywordize-params
+  {:name ::keywordize-params
+   :enter (fn [ctx] (update ctx :params keywordize-keys))})
 
 (def set-query-params
   {:name ::query-params
