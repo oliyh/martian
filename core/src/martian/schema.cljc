@@ -1,6 +1,7 @@
 (ns martian.schema
   (:require #?(:clj [schema.core :as s]
                :cljs [schema.core :as s :refer [AnythingSchema Maybe EnumSchema EqSchema]])
+            #?(:cljs [goog.Uri])
             [schema.coerce :as sc]
             [clojure.walk :refer [postwalk-replace]])
   #?(:clj (:import [schema.core AnythingSchema Maybe EnumSchema EqSchema])))
@@ -89,11 +90,16 @@
            keyword
            definitions))
 
+(def URI
+  #?(:clj java.net.URI
+     :cljs goog.Uri))
+
 (defn- schema-type [definitions {:keys [type enum format $ref] :as param}]
   (cond
     enum (apply s/enum enum)
-    (= "string" type) (if (= "uuid" format)
-                        (s/cond-pre s/Str s/Uuid)
+    (= "string" type) (case format
+                        "uuid" (s/cond-pre s/Str s/Uuid)
+                        "uri" (s/cond-pre s/Str URI)
                         s/Str)
     (= "integer" type) s/Int
     (= "boolean" type) s/Bool

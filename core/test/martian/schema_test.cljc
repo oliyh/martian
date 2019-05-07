@@ -42,6 +42,14 @@
                                  :type "string"
                                  :format "uuid"}))))
 
+(deftest uri-test
+  (is (= (s/cond-pre s/Str schema/URI)
+         (schema/make-schema {} {:name "uri"
+                                 :in "path"
+                                 :required true
+                                 :type "string"
+                                 :format "uri"}))))
+
 (deftest arrays-test
   (is (= [s/Str]
          (schema/make-schema {} {:name "tags"
