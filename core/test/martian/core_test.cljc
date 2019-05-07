@@ -396,3 +396,21 @@
        (is (= "https://api.org/pets/" (.urlFor m "all-pets")))
        (is (= "https://api.org/pets/" (.urlFor m "create-pet")))
        (is (= "https://api.org/users/123/orders/456" (.urlFor m "order" {"user-id" 123 "order-id" 456}))))))
+
+(defrecord TestRecord [x y z])
+
+(deftest keywordize-keys-test
+  (let [swagger-definition {:paths {"/pets" {:post {:operationId "create-pet"
+                                                    :parameters [{:name "record" :in "body"}]}}}}
+        default (martian/bootstrap-swagger "https://api.org" swagger-definition)
+        without (martian/bootstrap-swagger "https://api.org" swagger-definition {:interceptors (rest martian/default-interceptors)})
+        record (-> (->TestRecord 1 2 3) (assoc "thing" 4 :five 5))
+        params {:record record}
+        actual-default (martian/request-for default :create-pet params)
+        actual-without (martian/request-for without :create-pet params)]
+    (is (= actual-default
+           {:method :post, :url "https://api.org/pets", :body {:x 1, :y 2, :z 3, :thing 4, :five 5}}))
+    (is (not (instance? TestRecord (:body actual-default))))
+    (is (= actual-without
+           {:method :post, :url "https://api.org/pets", :body record}))
+    (is (instance? TestRecord (:body actual-without)))))
