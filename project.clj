@@ -16,4 +16,5 @@
                   ["vcs" "commit"]
                   ["vcs" "push"]]
   :aliases {"test" ["modules" "do" "test," "install"]
+            "install" ["do" ["modules" "install"]]
             "deploy" ["do" ["modules" "deploy" "clojars"]]})

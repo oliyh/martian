@@ -5,6 +5,9 @@
             [re-frame.core :as re-frame])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
+(defn- ->event [handler & args]
+  (into (if (vector? handler) handler [handler]) args))
+
 (re-frame/reg-fx
  ::request
  (fn [[m operation-id params on-success on-failure]]
@@ -13,11 +16,11 @@
        (if-let [response-chan (martian/response-for m operation-id params)]
          (let [{:keys [error-code] :as response} (<! response-chan)]
            (if (= :no-error error-code)
-             (re-frame/dispatch [on-success response operation-id params])
-             (re-frame/dispatch [on-failure response operation-id params])))
-         (re-frame/dispatch [on-failure :unknown-route operation-id params]))
+             (re-frame/dispatch (->event on-success response operation-id params))
+             (re-frame/dispatch (->event on-failure response operation-id params))))
+         (re-frame/dispatch (->event on-failure :unknown-route operation-id params)))
        (catch js/Error e
-         (re-frame/dispatch [on-failure e operation-id params]))
+         (re-frame/dispatch (->event on-failure e operation-id params)))
        (finally
          (re-frame/dispatch [::on-complete [operation-id params on-success on-failure]]))))))
 

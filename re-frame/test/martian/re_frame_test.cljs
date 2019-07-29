@@ -43,11 +43,11 @@
                            :type "Dog"
                            :age 3}
                           ::create-pet-success
-                          ::http-failure]))
+                          ::http-failure])
 
-    (rf-test/wait-for
-     [#{::create-pet-success ::http-failure}]
-     (is (= 123 (:pet-id @rdb/app-db)))))))
+      (rf-test/wait-for
+       [#{::create-pet-success ::http-failure}]
+       (is (= 123 (:pet-id @rdb/app-db))))))))
 
 (deftest re-frame-failure-test
   (rf-test/run-test-async
