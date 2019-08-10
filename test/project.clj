@@ -9,13 +9,13 @@
   :dependencies [[martian :version]
                  [prismatic/schema-generators "0.1.2"]
                  [org.clojure/test.check "0.9.0"]
-                 [org.clojure/core.async "0.4.474"]]
-  :profiles {:provided {:dependencies [[org.clojure/clojure "1.9.0"]
-                                       [org.clojure/clojurescript "1.9.946"]]}
+                 [org.clojure/core.async "0.4.500"]]
+  :profiles {:provided {:dependencies [[org.clojure/clojure "1.10.1"]
+                                       [org.clojure/clojurescript "1.10.520"]]}
              :dev {:exclusions [[org.clojure/tools.reader]]
                    :resource-paths ["test-resources"]
-                   :dependencies [[org.clojure/clojure "1.9.0"]
-                                  [org.clojure/clojurescript "1.9.946"]
+                   :dependencies [[org.clojure/clojure "1.10.1"]
+                                  [org.clojure/clojurescript "1.10.520"]
                                   [prismatic/schema "1.1.9"]
                                   [org.clojure/tools.reader "1.2.2"]
                                   [com.cemerick/piggieback "0.2.2"]
