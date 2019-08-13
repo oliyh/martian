@@ -2,12 +2,9 @@
   (:require [martian.re-frame :as martian]
             [martian.core :as mc]
             [cljs.test :refer-macros [deftest testing is run-tests async]]
-            [cljs.core.async :refer [<! timeout]]
             [re-frame.core :as re-frame]
             [re-frame.db :as rdb]
-            [re-frame.subs :as subs]
-            [day8.re-frame.test :as rf-test])
-  (:require-macros [cljs.core.async.macros :refer [go]]))
+            [day8.re-frame.test :as rf-test]))
 
 (def interceptors [re-frame/trim-v])
 
