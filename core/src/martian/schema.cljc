@@ -110,7 +110,7 @@
 
 (defn make-schema
   "Takes a swagger parameter and returns a schema"
-  [definitions {:keys [name required type enum schema properties $ref items] :as param}]
+  [definitions {:keys [name required type enum schema properties $ref items additionalProperties] :as param}]
 
   (cond
     $ref
@@ -130,7 +130,8 @@
               [(schema-type definitions (assoc (:items schema) :required true))]
 
               (= "object" type)
-              (schemas-for-parameters definitions (map (fn [[name p]] (assoc p :name name)) properties))
+              (cond-> (schemas-for-parameters definitions (map (fn [[name p]] (assoc p :name name)) properties))
+                (or additionalProperties (= additionalProperties {})) (assoc (s/optional-key s/Any) s/Any))
 
               :else
               (schema-type definitions param))

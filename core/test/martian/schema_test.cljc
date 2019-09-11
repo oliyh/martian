@@ -5,6 +5,26 @@
             #?(:clj [clojure.test :refer :all]
                :cljs [cljs.test :refer-macros [deftest testing is run-tests]])))
 
+(deftest free-form-object-test
+  (let [schema (schema/make-schema {:Body55523       {:type                 "object"
+                                                      :properties           {:age    {:$ref "#/definitions/Body55523Age"}
+                                                                             :name   {:$ref "#/definitions/Body55523Name"}
+                                                                             :colour {:$ref "#/definitions/Body55523Colour"}}
+                                                      :additionalProperties false
+                                                      :required             ["name"]}
+                                    :Body55523Age    {:type "object" :additionalProperties {}}
+                                    :Body55523Name   {:type "object" :additionalProperties {}}
+                                    :Body55523Colour {:type "object" :additionalProperties {}}}
+                                   {:in          "body"
+                                    :name        "Body55523"
+                                    :description ""
+                                    :required    true
+                                    :schema      {:$ref "#/definitions/Body55523"}})]
+    (is (= {(s/optional-key :name)   (s/maybe {(s/optional-key s/Any) s/Any})
+            (s/optional-key :age)    (s/maybe {(s/optional-key s/Any) s/Any})
+            (s/optional-key :colour) (s/maybe {(s/optional-key s/Any) s/Any})}
+           schema))))
+
 (deftest enum-test
   (is (= (s/enum "desc" "asc")
          (schema/make-schema {} {:name "sort"
@@ -112,6 +132,25 @@
               :in "path"
               :required true
               :type "integer"}]))))
+  (testing "object with additional properties"
+    (is (= {:Pet {(s/optional-key s/Any) s/Any}}
+           (schema/schemas-for-parameters
+            {:Pet {:type       "object"
+                   :additionalProperties true
+                   :properties {}}}
+            [{:name "Pet"
+              :in "path"
+              :required true
+              :schema {:$ref "#/definitions/Pet"}}]))))
+  (testing "object with empty properties"
+    (is (= {:Pet {}}
+           (schema/schemas-for-parameters
+            {:Pet {:type       "object"
+                   :properties {}}}
+            [{:name "Pet"
+              :in "path"
+              :required true
+              :schema {:$ref "#/definitions/Pet"}}]))))
 
   (testing "body params"
     (is (= {:Pet {:CamelBodyKey s/Int}}
