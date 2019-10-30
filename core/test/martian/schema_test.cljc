@@ -133,25 +133,26 @@
               :required true
               :type "integer"}]))))
   (testing "object with additional properties"
-    (is (= {:Pet {(s/optional-key s/Any) s/Any}}
+    (is (= {:Pet {:CamelBodyKey          s/Int
+                  (s/optional-key s/Any) s/Any}}
            (schema/schemas-for-parameters
-            {:Pet {:type       "object"
+            {:Pet {:type                 "object"
                    :additionalProperties true
-                   :properties {}}}
-            [{:name "Pet"
-              :in "path"
+                   :properties           {:CamelBodyKey {:type     "integer"
+                                                         :required true}}}}
+            [{:name     "Pet"
+              :in       "path"
               :required true
-              :schema {:$ref "#/definitions/Pet"}}]))))
+              :schema   {:$ref "#/definitions/Pet"}}]))))
   (testing "object with empty properties"
     (is (= {:Pet {}}
            (schema/schemas-for-parameters
             {:Pet {:type       "object"
                    :properties {}}}
-            [{:name "Pet"
-              :in "path"
+            [{:name     "Pet"
+              :in       "path"
               :required true
-              :schema {:$ref "#/definitions/Pet"}}]))))
-
+              :schema   {:$ref "#/definitions/Pet"}}]))))
   (testing "body params"
     (is (= {:Pet {:CamelBodyKey s/Int}}
 
