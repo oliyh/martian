@@ -22,7 +22,9 @@
 
 (defn- enrich-handler [handler]
   (-> handler
-      (assoc :parameter-aliases (let [ks (schema/parameter-keys (map handler parameter-schemas))]
+      (assoc :parameter-aliases (let [ks (->> (map handler parameter-schemas)
+                                              schema/parameter-keys
+                                              (remove #(= % s/Any)))]
                                   (zipmap (map ->kebab-case-keyword ks) ks)))))
 
 (defn- concise->handlers [concise-handlers global-produces global-consumes]

@@ -26,7 +26,7 @@
                    :dependencies [[org.clojure/clojure "1.10.1"]
                                   [org.clojure/clojurescript "1.10.520"]
                                   [org.clojure/tools.reader "1.2.2"]
-                                  [cider/piggieback "0.3.6"]
+                                  [cider/piggieback "0.4.1"]
                                   [org.clojure/tools.nrepl "0.2.13"]]
                    :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}}}
   :aliases {"test" ["do" ["clean"] ["test"] ["doo" "nashorn" "test" "once"]]}
