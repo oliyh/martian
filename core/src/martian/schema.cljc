@@ -131,7 +131,7 @@
 
               (= "object" type)
               (cond-> (schemas-for-parameters definitions (map (fn [[name p]] (assoc p :name name)) properties))
-                (or additionalProperties (= additionalProperties {})) (assoc (s/optional-key s/Any) s/Any))
+                additionalProperties (assoc (s/optional-key s/Any) s/Any))
 
               :else
               (schema-type definitions param))
