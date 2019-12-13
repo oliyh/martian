@@ -108,18 +108,35 @@
     :else
     s/Any))
 
+(def ^:dynamic *visited-definitions* nil)
+
+(defmacro read-through! [visited-definitions ref make-schema-body]
+  `(if ~visited-definitions
+     (or (when-let [r# (get @~visited-definitions ~ref)]
+           (println "Hit!" ~ref r#)
+           r#)
+         (let [schema# ~make-schema-body]
+           (swap! ~visited-definitions assoc ~ref schema#)
+           schema#))
+     ~make-schema-body))
+
 (defn make-schema
   "Takes a swagger parameter and returns a schema"
   [definitions {:keys [name required type enum schema properties $ref items additionalProperties] :as param}]
+  (println "Visited defs is" (count @*visited-definitions*))
 
   (cond
     $ref
-    (make-schema definitions (-> (dissoc param :$ref)
-                                 (merge (resolve-ref definitions $ref))))
+    (read-through! *visited-definitions*
+                   $ref
+                   (make-schema definitions (-> (dissoc param :$ref)
+                                                (merge (resolve-ref definitions $ref)))))
 
     (:$ref schema)
-    (make-schema definitions (-> (dissoc param :schema)
-                                 (merge (resolve-ref definitions (:$ref schema)))))
+    (read-through! *visited-definitions*
+                   (:$ref schema)
+                   (make-schema definitions (-> (dissoc param :schema)
+                                                (merge (resolve-ref definitions (:$ref schema))))))
 
     :else
     (cond-> (cond
