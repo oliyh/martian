@@ -108,32 +108,41 @@
     :else
     s/Any))
 
+(def ^:dynamic *visited-refs* #{})
+
 (defn make-schema
   "Takes a swagger parameter and returns a schema"
   [definitions {:keys [name required type enum schema properties $ref items additionalProperties] :as param}]
 
-  (cond
-    $ref
-    (make-schema definitions (-> (dissoc param :$ref)
-                                 (merge (resolve-ref definitions $ref))))
 
-    (:$ref schema)
-    (make-schema definitions (-> (dissoc param :schema)
-                                 (merge (resolve-ref definitions (:$ref schema)))))
+  (if (let [ref (or $ref (:$ref schema))]
+        (and ref (contains? *visited-refs* ref)))
+    s/Any ;; avoid potential recursive loops
 
-    :else
-    (cond-> (cond
-              (= "array" type)
-              [(schema-type definitions (assoc items :required true))]
+    (cond
+      $ref
+      (binding [*visited-refs* (conj *visited-refs* $ref)]
+        (make-schema definitions (-> (dissoc param :$ref)
+                                     (merge (resolve-ref definitions $ref)))))
 
-              (= "array" (:type schema))
-              [(schema-type definitions (assoc (:items schema) :required true))]
+      (:$ref schema)
+      (binding [*visited-refs* (conj *visited-refs* (:$ref schema))]
+        (make-schema definitions (-> (dissoc param :schema)
+                                     (merge (resolve-ref definitions (:$ref schema))))))
 
-              (= "object" type)
-              (cond-> (schemas-for-parameters definitions (map (fn [[name p]] (assoc p :name name)) properties))
-                additionalProperties (assoc (s/optional-key s/Any) s/Any))
+      :else
+      (cond-> (cond
+                (= "array" type)
+                [(schema-type definitions (assoc items :required true))]
 
-              :else
-              (schema-type definitions param))
-      (and (not required) (not= "array" type) (not= "array" (:type schema)))
-      s/maybe)))
+                (= "array" (:type schema))
+                [(schema-type definitions (assoc (:items schema) :required true))]
+
+                (= "object" type)
+                (cond-> (schemas-for-parameters definitions (map (fn [[name p]] (assoc p :name name)) properties))
+                  additionalProperties (assoc (s/optional-key s/Any) s/Any))
+
+                :else
+                (schema-type definitions param))
+        (and (not required) (not= "array" type) (not= "array" (:type schema)))
+        s/maybe))))

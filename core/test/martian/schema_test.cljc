@@ -217,3 +217,17 @@
                                  {:baz {:quu s/Bool
                                         :quux s/Num}}
                                  {:fizz [{:buzz s/Str}]}]))))
+
+(deftest recursive-schema-test
+  (let [schema (schema/make-schema {:A {:type       "object"
+                                        :properties {:b {:$ref "#/definitions/B"}}}
+                                    :B {:type "object"
+                                        :properties {:a {:$ref "#/definitions/A"}}}}
+                                   {:in          "body"
+                                    :name        "A"
+                                    :description "A -> B -> A -> B"
+                                    :required    false
+                                    :schema      {:$ref "#/definitions/A"}})]
+
+    (is (= (s/maybe {(s/optional-key :b) (s/maybe {(s/optional-key :a) s/Any})})
+           schema))))
