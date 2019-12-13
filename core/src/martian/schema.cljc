@@ -70,9 +70,9 @@
          nil)))
    schemas))
 
-(declare make-schema)
+(declare make-schema*)
 
-(defn schemas-for-parameters
+(defn schemas-for-parameters*
   "Given a collection of swagger parameters returns a schema map"
   [definitions parameters]
   (->> parameters
@@ -80,8 +80,11 @@
               {(cond-> (keyword name)
                  (not required)
                  s/optional-key)
-               (make-schema definitions param)}))
+               (trampoline make-schema* definitions param)}))
        (into {})))
+
+(defn schemas-for-parameters [definitions parameters]
+  (trampoline schemas-for-parameters* definitions parameters))
 
 (defn- resolve-ref [definitions ref]
   (some->> ref
@@ -103,54 +106,51 @@
                         s/Str)
     (= "integer" type) s/Int
     (= "boolean" type) s/Bool
-    (or (= "object" type) $ref) (make-schema definitions param)
+    (or (= "object" type) $ref) #(make-schema* definitions param)
 
     :else
     s/Any))
+
 
 (def ^:dynamic *visited-definitions* nil)
 
 (defmacro read-through! [visited-definitions ref make-schema-body]
   `(if ~visited-definitions
-     (or (when-let [r# (get @~visited-definitions ~ref)]
-           (println "Hit!" ~ref r#)
-           r#)
+     (or (get @~visited-definitions ~ref)
          (let [schema# ~make-schema-body]
            (swap! ~visited-definitions assoc ~ref schema#)
            schema#))
      ~make-schema-body))
 
-(defn make-schema
+(defn make-schema*
   "Takes a swagger parameter and returns a schema"
   [definitions {:keys [name required type enum schema properties $ref items additionalProperties] :as param}]
-  (println "Visited defs is" (count @*visited-definitions*))
 
   (cond
     $ref
-    (read-through! *visited-definitions*
-                   $ref
-                   (make-schema definitions (-> (dissoc param :$ref)
-                                                (merge (resolve-ref definitions $ref)))))
+    #(make-schema* definitions (-> (dissoc param :$ref)
+                                   (merge (resolve-ref definitions $ref))))
 
     (:$ref schema)
-    (read-through! *visited-definitions*
-                   (:$ref schema)
-                   (make-schema definitions (-> (dissoc param :schema)
-                                                (merge (resolve-ref definitions (:$ref schema))))))
+    #(make-schema* definitions (-> (dissoc param :schema)
+                                   (merge (resolve-ref definitions (:$ref schema)))))
 
     :else
     (cond-> (cond
               (= "array" type)
-              [(schema-type definitions (assoc items :required true))]
+              [(trampoline schema-type definitions (assoc items :required true))]
 
               (= "array" (:type schema))
-              [(schema-type definitions (assoc (:items schema) :required true))]
+              [(trampoline schema-type definitions (assoc (:items schema) :required true))]
 
               (= "object" type)
               (cond-> (schemas-for-parameters definitions (map (fn [[name p]] (assoc p :name name)) properties))
                 additionalProperties (assoc (s/optional-key s/Any) s/Any))
 
               :else
-              (schema-type definitions param))
+              (trampoline schema-type definitions param))
       (and (not required) (not= "array" type) (not= "array" (:type schema)))
       s/maybe)))
+
+(defn make-schema [definitions param]
+  (trampoline make-schema* definitions param))
