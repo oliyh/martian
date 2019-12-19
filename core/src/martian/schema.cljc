@@ -140,7 +140,7 @@
 
                 (= "object" type)
                 (cond-> (schemas-for-parameters definitions (map (fn [[name p]] (assoc p :name name)) properties))
-                  additionalProperties (assoc (s/optional-key s/Any) s/Any))
+                  additionalProperties (assoc s/Any s/Any))
 
                 :else
                 (schema-type definitions param))
