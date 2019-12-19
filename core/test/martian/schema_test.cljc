@@ -20,9 +20,9 @@
                                     :description ""
                                     :required    true
                                     :schema      {:$ref "#/definitions/Body55523"}})]
-    (is (= {(s/optional-key :name)   (s/maybe {(s/optional-key s/Any) s/Any})
-            (s/optional-key :age)    (s/maybe {(s/optional-key s/Any) s/Any})
-            (s/optional-key :colour) (s/maybe {(s/optional-key s/Any) s/Any})}
+    (is (= {(s/optional-key :name)   (s/maybe {s/Any s/Any})
+            (s/optional-key :age)    (s/maybe {s/Any s/Any})
+            (s/optional-key :colour) (s/maybe {s/Any s/Any})}
            schema))))
 
 (deftest enum-test
