@@ -46,11 +46,15 @@
             (keyword param-name)
             %) parts)))
 
-(defn- ->handler [{:keys [definitions] :as swagger-map} url-pattern [method swagger-definition]]
+(defn- ->handler
+  [{:keys [definitions] :as swagger-map}
+   path-item-parameters
+   url-pattern
+   [method swagger-definition]]
   (when-let [route-name (some-> (:operationId swagger-definition) ->kebab-case-keyword)]
     (let [path-parts (tokenise-path url-pattern)
           uri (string/join (map str path-parts))
-          parameters (:parameters swagger-definition)]
+          parameters (concat path-item-parameters (:parameters swagger-definition))]
       {:path uri
        :path-parts path-parts
        :method method
@@ -75,6 +79,7 @@
      (fn [handlers url-pattern swagger-handlers]
        (into handlers (keep (partial ->handler
                                      swagger-spec
+                                     (:parameters swagger-handlers)
                                      url-pattern)
                             swagger-handlers)))
      []
