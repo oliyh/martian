@@ -55,13 +55,18 @@
       :else
       ((sc/coercer! schema coercion-matchers) data))))
 
+(defn- extract-keys-from-map-schema [schema]
+  (->> (keys schema)
+       (filter s/specific-key?)
+       (map s/explicit-schema-key)))
+
 (defn parameter-keys [schemas]
   (mapcat
    (fn [schema]
      (when-let [s (from-maybe schema)]
        (cond
          (and (map? s) (not (record? s)))
-         (concat (map s/explicit-schema-key (keys s)) (parameter-keys (vals s)))
+         (concat (extract-keys-from-map-schema s) (parameter-keys (vals s)))
 
          (coll? s)
          (parameter-keys s)

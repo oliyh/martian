@@ -209,6 +209,10 @@
   (is (= [:foo]
          (schema/parameter-keys [{:foo s/Int}])))
 
+  (is (= [:foo]
+         (schema/parameter-keys [{:foo s/Int
+                                  s/Any s/Any}])))
+
   (is (= [:foo :bar]
          (schema/parameter-keys [{:foo s/Int}
                                  {:bar s/Str}])))
