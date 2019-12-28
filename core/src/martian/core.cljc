@@ -6,7 +6,9 @@
             [martian.interceptors :as interceptors]
             [martian.schema :as schema]
             [martian.swagger :as swagger]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [clojure.spec.alpha :as spec]
+            [martian.spec :as mspec]))
 
 (def default-interceptors
   [interceptors/keywordize-params
@@ -101,6 +103,11 @@
 
 (defn- build-instance [api-root handlers {:keys [interceptors]}]
   (->Martian api-root handlers (or interceptors default-interceptors)))
+
+(spec/fdef build-instance
+  :args (spec/cat :api-root ::mspec/api-root
+                  :handlers (spec/coll-of ::mspec/handler)
+                  :opts ::mspec/opts))
 
 (defn bootstrap-swagger
   "Creates a martian instance from a swagger spec

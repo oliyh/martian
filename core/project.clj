@@ -7,7 +7,7 @@
                  [prismatic/schema "1.1.9"]
                  [metosin/spec-tools "0.7.0"
                   :exclusions [com.fasterxml.jackson.core/jackson-databind]]
-                 [org.clojure/spec.alpha "0.1.143"]
+                 [org.clojure/spec.alpha "0.2.176"]
                  [camel-snake-kebab "0.4.0"]
                  [cheshire "5.9.0"]
 
