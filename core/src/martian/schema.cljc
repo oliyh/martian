@@ -119,7 +119,6 @@
   "Takes a swagger parameter and returns a schema"
   [definitions {:keys [name required type enum schema properties $ref items additionalProperties] :as param}]
 
-
   (if (let [ref (or $ref (:$ref schema))]
         (and ref (contains? *visited-refs* ref)))
     s/Any ;; avoid potential recursive loops
