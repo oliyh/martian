@@ -5,8 +5,7 @@
             [clojure.test.check.generators :as tcg]
             [schema.core :as s]
             [tripod.context :as tc]
-            #?(:clj [martian.httpkit :refer [go-async]]
-               :cljs [cljs.core.async :as a])))
+            #?(:cljs [cljs.core.async :as a])))
 
 (defn- status-range [from to]
   (fn [{:keys [status]}]
@@ -61,7 +60,7 @@
      {:name ::httpkit-responder
       :leave (fn [ctx]
                (-> ctx
-                   go-async
+                   interceptors/remove-stack
                    (assoc :response (future (:response (tc/execute ctx))))))}))
 
 #?(:clj

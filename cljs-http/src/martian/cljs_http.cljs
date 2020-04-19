@@ -7,8 +7,8 @@
             [clojure.string :as str])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
-(defn- go-async [ctx]
-  (-> ctx tc/terminate (dissoc ::tc/stack)))
+(def ^:private go-async
+  i/remove-stack)
 
 (def perform-request
   {:name ::perform-request

@@ -8,10 +8,12 @@
             [martian.encoding :as encoding]
             [martian.encoders :as encoders]))
 
+(defn remove-stack [ctx]
+  (-> ctx tc/terminate (dissoc ::tc/stack)))
+
 (def request-only-handler
   {:name ::request-only-handler
-   :leave (fn [ctx]
-            (-> ctx tc/terminate (dissoc ::tc/stack)))})
+   :leave remove-stack})
 
 (defn- create-only [m k v]
   (if (get m k)
