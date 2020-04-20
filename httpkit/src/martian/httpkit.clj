@@ -15,8 +15,7 @@
      :server-port (let [port (.getPort url-parsed)]
                     (when (pos? port) port))}))
 
-(defn go-async [ctx]
-  (-> ctx tc/terminate (dissoc ::tc/stack)))
+(def go-async interceptors/remove-stack)
 
 (def perform-request
   {:name ::perform-request
