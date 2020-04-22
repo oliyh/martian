@@ -19,7 +19,7 @@ You can bootstrap it in one line and start calling the server:
   ;; => {:status 200 :body {:name "Doggy McDogFace" :type "Dog" :age 3}}
 ```
 
-Implementations using `clj-http`, `httpkit` and `cljs-http` are supplied as modules,
+Implementations using `clj-http`, `clj-http-lite`, `httpkit` and `cljs-http` are supplied as modules,
 but any other HTTP library can be used due to the extensibility of Martian's interceptor chain.
 It also allows custom behaviour to be injected in a uniform and powerful way.
 
@@ -33,6 +33,8 @@ ensuring that your response handling code is also correct. Examples are below.
 [![Clojars Project](https://img.shields.io/clojars/v/martian.svg)](https://clojars.org/martian) [![cljdoc badge](https://cljdoc.org/badge/martian/martian)](https://cljdoc.org/d/martian/martian/CURRENT)
 
 [![Clojars Project](https://img.shields.io/clojars/v/martian-clj-http.svg)](https://clojars.org/martian-clj-http) [![cljdoc badge](https://cljdoc.org/badge/martian-clj-http/martian-clj-http)](https://cljdoc.org/d/martian-clj-http/martian-clj-http/CURRENT)
+
+[![Clojars Project](https://img.shields.io/clojars/v/martian-clj-http-lite.svg)](https://clojars.org/martian-clj-http-lite) [![cljdoc badge](https://cljdoc.org/badge/martian-clj-http-lite/martian-clj-http-lite)](https://cljdoc.org/d/martian-clj-http-lite/martian-clj-http-lite/CURRENT)
 
 [![Clojars Project](https://img.shields.io/clojars/v/martian-httpkit.svg)](https://clojars.org/martian-httpkit) [![cljdoc badge](https://cljdoc.org/badge/martian-httpkit/martian-httpkit)](https://cljdoc.org/d/martian-httpkit/martian-httpkit/CURRENT)
 
