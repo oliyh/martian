@@ -1,4 +1,4 @@
-(defproject martian-test "0.1.12-SNAPSHOT"
+(defproject martian-test "0.1.12"
   :description "Testing tools for martian"
   :url "https://github.com/oliyh/martian"
   :license {:name "The MIT License"
