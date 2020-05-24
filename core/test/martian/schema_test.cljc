@@ -6,15 +6,16 @@
                :cljs [cljs.test :refer-macros [deftest testing is run-tests]])))
 
 (deftest free-form-object-test
-  (let [schema (schema/make-schema {:Body55523       {:type                 "object"
-                                                      :properties           {:age    {:$ref "#/definitions/Body55523Age"}
-                                                                             :name   {:$ref "#/definitions/Body55523Name"}
-                                                                             :colour {:$ref "#/definitions/Body55523Colour"}}
-                                                      :additionalProperties false
-                                                      :required             ["name"]}
-                                    :Body55523Age    {:type "object" :additionalProperties {}}
-                                    :Body55523Name   {:type "object" :additionalProperties {}}
-                                    :Body55523Colour {:type "object" :additionalProperties {}}}
+  (let [schema (schema/make-schema {:definitions
+                                    {:Body55523       {:type                 "object"
+                                                       :properties           {:age    {:$ref "#/definitions/Body55523Age"}
+                                                                              :name   {:$ref "#/definitions/Body55523Name"}
+                                                                              :colour {:$ref "#/definitions/Body55523Colour"}}
+                                                       :additionalProperties false
+                                                       :required             ["name"]}
+                                     :Body55523Age    {:type "object" :additionalProperties {}}
+                                     :Body55523Name   {:type "object" :additionalProperties {}}
+                                     :Body55523Colour {:type "object" :additionalProperties {}}}}
                                    {:in          "body"
                                     :name        "Body55523"
                                     :description ""
@@ -27,10 +28,10 @@
 
 (deftest enum-test
   (is (= (s/enum "desc" "asc")
-         (schema/make-schema {} {:name "sort"
-                                 :in "query"
-                                 :enum ["desc","asc"]
-                                 :required true}))))
+         (schema/make-schema {:definitions {}} {:name "sort"
+                                                :in "query"
+                                                :enum ["desc","asc"]
+                                                :required true}))))
 
 (deftest primitives-test
   (is (= {:id s/Int
@@ -56,27 +57,27 @@
 
 (deftest uuid-test
   (is (= (s/cond-pre s/Str s/Uuid)
-         (schema/make-schema {} {:name "uuid"
-                                 :in "path"
-                                 :required true
-                                 :type "string"
-                                 :format "uuid"}))))
+         (schema/make-schema {:definitions {}} {:name "uuid"
+                                                :in "path"
+                                                :required true
+                                                :type "string"
+                                                :format "uuid"}))))
 
 (deftest uri-test
   (is (= (s/cond-pre s/Str schema/URI)
-         (schema/make-schema {} {:name "uri"
-                                 :in "path"
-                                 :required true
-                                 :type "string"
-                                 :format "uri"}))))
+         (schema/make-schema {:definitions {}} {:name "uri"
+                                                :in "path"
+                                                :required true
+                                                :type "string"
+                                                :format "uri"}))))
 
 (deftest arrays-test
   (is (= [s/Str]
-         (schema/make-schema {} {:name "tags"
-                                 :in "body"
-                                 :required true
-                                 :type "array"
-                                 :items {:type "string"}}))))
+         (schema/make-schema {:definitions {}} {:name "tags"
+                                                :in "body"
+                                                :required true
+                                                :type "array"
+                                                :items {:type "string"}}))))
 
 (deftest objects-test
   (let [body-param {:name "Pet"
@@ -95,7 +96,26 @@
     (is (= {:id s/Int
             :name s/Str
             :tags [s/Str]}
-           (schema/make-schema definitions body-param)))))
+           (schema/make-schema {:definitions definitions} body-param)))))
+
+(deftest objects-test-with-parameter-ref
+  (let [body-param {:name "Pet"
+                    :in "body"
+                    :required true
+                    :schema {:$ref "#/parameters/Pet"}}
+        parameters {:Pet {:type "object"
+                           :properties {:id {:type "integer"
+                                             :required true}
+                                        :name {:type "string"
+                                               :required true}
+                                        :tags {:type "array"
+                                               :required true
+                                               :items {:type "string"}}}}}]
+
+    (is (= {:id s/Int
+            :name s/Str
+            :tags [s/Str]}
+           (schema/make-schema {:parameters parameters} body-param)))))
 
 (deftest optionality-test
   (is (= {(s/optional-key :id) (s/maybe s/Int)}
@@ -121,7 +141,7 @@
             (s/maybe {(s/optional-key :id) (s/maybe s/Int)
                       :name s/Str
                       (s/optional-key :tags) [s/Str]})}
-           (schema/schemas-for-parameters definitions [body-param])))))
+           (schema/schemas-for-parameters {:definitions definitions} [body-param])))))
 
 (deftest keys-test
   (testing "default params"
@@ -134,14 +154,15 @@
               :type "integer"}]))))
   (testing "object with additional properties"
     (let [schema (:Pet (schema/schemas-for-parameters
+                        {:definitions
                          {:Pet {:type                 "object"
                                 :additionalProperties true
                                 :properties           {:CamelBodyKey {:type     "integer"
-                                                                      :required true}}}}
-                         [{:name     "Pet"
-                           :in       "path"
-                           :required true
-                           :schema   {:$ref "#/definitions/Pet"}}]))]
+                                                                      :required true}}}}}
+                        [{:name     "Pet"
+                          :in       "path"
+                          :required true
+                          :schema   {:$ref "#/definitions/Pet"}}]))]
       (is (= {:CamelBodyKey s/Int
               s/Any         s/Any} schema))
       (is (s/validate schema {:CamelBodyKey 42
@@ -149,19 +170,20 @@
   (testing "object with empty properties"
     (is (= {:Pet {}}
            (schema/schemas-for-parameters
-            {:Pet {:type       "object"
-                   :properties {}}}
+            {:definitions
+             {:Pet {:type       "object"
+                    :properties {}}}}
             [{:name     "Pet"
               :in       "path"
               :required true
               :schema   {:$ref "#/definitions/Pet"}}]))))
   (testing "body params"
     (is (= {:Pet {:CamelBodyKey s/Int}}
-
            (schema/schemas-for-parameters
-            {:Pet {:type "object"
-                   :properties {:CamelBodyKey {:type "integer"
-                                               :required true}}}}
+            {:definitions
+             {:Pet {:type "object"
+                    :properties {:CamelBodyKey {:type "integer"
+                                                :required true}}}}}
             [{:name "Pet"
               :in "path"
               :required true
@@ -225,10 +247,10 @@
                                  {:fizz [{:buzz s/Str}]}]))))
 
 (deftest recursive-schema-test
-  (let [schema (schema/make-schema {:A {:type       "object"
-                                        :properties {:b {:$ref "#/definitions/B"}}}
-                                    :B {:type "object"
-                                        :properties {:a {:$ref "#/definitions/A"}}}}
+  (let [schema (schema/make-schema {:definitions {:A {:type       "object"
+                                                      :properties {:b {:$ref "#/definitions/B"}}}
+                                                  :B {:type "object"
+                                                      :properties {:a {:$ref "#/definitions/A"}}}}}
                                    {:in          "body"
                                     :name        "A"
                                     :description "A -> B -> A -> B"

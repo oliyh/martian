@@ -79,27 +79,24 @@
 
 (defn schemas-for-parameters
   "Given a collection of swagger parameters returns a schema map"
-  [definitions parameters]
+  [ref-lookup parameters]
   (->> parameters
        (map (fn [{:keys [name required] :as param}]
               {(cond-> (keyword name)
                  (not required)
                  s/optional-key)
-               (make-schema definitions param)}))
+               (make-schema ref-lookup param)}))
        (into {})))
 
-(defn- resolve-ref [definitions ref]
-  (some->> ref
-           (re-find #"#/definitions/(.*)")
-           second
-           keyword
-           definitions))
+(defn- resolve-ref [ref-lookup ref]
+  (let [[_ category k] (re-find #"#/(definitions|parameters)/(.*)" ref)]
+    (get-in ref-lookup [(keyword category) (keyword k)])))
 
 (def URI
   #?(:clj java.net.URI
      :cljs goog.Uri))
 
-(defn- schema-type [definitions {:keys [type enum format $ref] :as param}]
+(defn- schema-type [ref-lookup {:keys [type enum format $ref] :as param}]
   (cond
     enum (apply s/enum enum)
     (= "string" type) (case format
@@ -108,7 +105,7 @@
                         s/Str)
     (= "integer" type) s/Int
     (= "boolean" type) s/Bool
-    (or (= "object" type) $ref) (make-schema definitions param)
+    (or (= "object" type) $ref) (make-schema ref-lookup param)
 
     :else
     s/Any))
@@ -117,7 +114,7 @@
 
 (defn make-schema
   "Takes a swagger parameter and returns a schema"
-  [definitions {:keys [name required type enum schema properties $ref items additionalProperties] :as param}]
+  [ref-lookup {:keys [name required type enum schema properties $ref items additionalProperties] :as param}]
 
   (if (let [ref (or $ref (:$ref schema))]
         (and ref (contains? *visited-refs* ref)))
@@ -126,27 +123,27 @@
     (cond
       $ref
       (binding [*visited-refs* (conj *visited-refs* $ref)]
-        (make-schema definitions (-> (dissoc param :$ref)
-                                     (merge (resolve-ref definitions $ref)))))
+        (make-schema ref-lookup (-> (dissoc param :$ref)
+                                    (merge (resolve-ref ref-lookup $ref)))))
 
       (:$ref schema)
       (binding [*visited-refs* (conj *visited-refs* (:$ref schema))]
-        (make-schema definitions (-> (dissoc param :schema)
-                                     (merge (resolve-ref definitions (:$ref schema))))))
+        (make-schema ref-lookup (-> (dissoc param :schema)
+                                    (merge (resolve-ref ref-lookup (:$ref schema))))))
 
       :else
       (cond-> (cond
                 (= "array" type)
-                [(schema-type definitions (assoc items :required true))]
+                [(schema-type ref-lookup (assoc items :required true))]
 
                 (= "array" (:type schema))
-                [(schema-type definitions (assoc (:items schema) :required true))]
+                [(schema-type ref-lookup (assoc (:items schema) :required true))]
 
                 (= "object" type)
-                (cond-> (schemas-for-parameters definitions (map (fn [[name p]] (assoc p :name name)) properties))
+                (cond-> (schemas-for-parameters ref-lookup (map (fn [[name p]] (assoc p :name name)) properties))
                   additionalProperties (assoc s/Any s/Any))
 
                 :else
-                (schema-type definitions param))
+                (schema-type ref-lookup param))
         (and (not required) (not= "array" type) (not= "array" (:type schema)))
         s/maybe))))
