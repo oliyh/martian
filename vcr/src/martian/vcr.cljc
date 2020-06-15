@@ -1,9 +1,10 @@
 (ns martian.vcr
   (:require [clojure.java.io :as io]
-            [clojure.edn :as edn]))
+            [clojure.edn :as edn]
+            #?(:clj [fipp.clojure :as fipp])))
 
-(defmulti persist-response! (fn [opts _ctx] (:store-type opts)))
-(defmulti load-response (fn [opts _ctx] (:store-type opts)))
+(defmulti persist-response! (fn [opts _ctx] (get-in opts [:store :kind])))
+(defmulti load-response (fn [opts _ctx] (get-in opts [:store :kind])))
 
 (defn- request-op [ctx]
   (get-in ctx [:handler :route-name]))
@@ -12,14 +13,16 @@
   (:params ctx))
 
 #?(:clj
-   (defn- response-file [{:keys [root-dir]} ctx]
-     (io/file root-dir (name (request-op ctx)) (str (hash (request-key ctx)) ".edn"))))
+   (defn- response-file [{:keys [store]} ctx]
+     (io/file (:root-dir store) (name (request-op ctx)) (str (hash (request-key ctx)) ".edn"))))
 
 #?(:clj
-   (defmethod persist-response! :file [opts {:keys [response] :as ctx}]
+   (defmethod persist-response! :file [{:keys [store] :as opts} {:keys [response] :as ctx}]
      (let [file (response-file opts ctx)]
        (io/make-parents file)
-       (spit file (pr-str response)))))
+       (spit file (if (:pprint? store)
+                    (with-out-str (fipp/pprint response))
+                    (pr-str response))))))
 
 #?(:clj
    (defmethod load-response :file [opts ctx]
@@ -28,10 +31,10 @@
          (edn/read-string (slurp file))))))
 
 (defmethod persist-response! :atom [{:keys [store]} {:keys [response] :as ctx}]
-  (swap! store assoc-in [(request-op ctx) (request-key ctx)] response))
+  (swap! (:store store) assoc-in [(request-op ctx) (request-key ctx)] response))
 
 (defmethod load-response :atom [{:keys [store]} ctx]
-  (get-in @store [(request-op ctx) (request-key ctx)]))
+  (get-in @(:store store) [(request-op ctx) (request-key ctx)]))
 
 (defn record [opts]
   {:name ::record
@@ -39,16 +42,14 @@
             (persist-response! opts ctx)
             ctx)})
 
-(defn playback [opts]
+(defn playback [{:keys [on-missing-response] :as opts}]
   {:name ::playback
    :enter (fn [ctx]
             (if-let [response (load-response opts ctx)]
               (assoc ctx :response response)
-              ctx))})
-
-;; options
-;; - pprint? maybe use fipp?
-;; - select-keys on response?
-;; - supply own file hash?
-;; ---- is current hash even good enough? test with maps in different order
-;; how should playback behave if file is missing?
+              (condp = on-missing-response
+                :throw-error (let [message (str "No response stored for request " (request-op ctx) " " (request-key ctx))]
+                               (throw #?(:clj (Exception. message)
+                                         :cljs (js/Error. message))))
+                :generate-404 (assoc ctx :response {:status 404})
+                ctx)))})

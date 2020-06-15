@@ -24,8 +24,9 @@
 (deftest vcr-test
   #?(:clj
      (testing "file store"
-       (let [opts {:store-type :file
-                   :root-dir "target"}]
+       (let [opts {:store {:kind :file
+                           :root-dir "target"
+                           :pprint? true}}]
 
          (testing "recording"
            (let [m (m/bootstrap "http://foo.com" routes {:interceptors (into m/default-interceptors
@@ -41,8 +42,8 @@
 
   (testing "atom store"
     (let [store (atom {})
-          opts {:store-type :atom
-                :store store}]
+          opts {:store {:kind :atom
+                        :store store}}]
 
       (testing "recording"
         (let [m (m/bootstrap "http://foo.com" routes {:interceptors (into m/default-interceptors
@@ -55,3 +56,36 @@
           (let [m (m/bootstrap "http://foo.com" routes {:interceptors (into m/default-interceptors
                                                                             [(vcr/playback opts)])})]
             (is (= dummy-response (m/response-for m :load-pet {:id 123})))))))))
+
+(deftest playback-interceptor-test
+  (let [store (atom {:load-pet {{:id 123} {:status 200 :body "Hello"}}})
+        opts {:store {:kind :atom
+                      :store store}}]
+
+    (testing "entry present"
+      (is (= {:status 200, :body "Hello"}
+             (:response
+              ((:enter (vcr/playback opts))
+               {:params {:id 123}
+                :handler {:route-name :load-pet}})))))
+
+    (testing "entry missing"
+
+      (testing "default behaviour (do nothing)"
+        (is (nil? (:response
+                   ((:enter (vcr/playback opts))
+                    {:params {:id 999}
+                     :handler {:route-name :load-pet}})))))
+
+      (testing "throw error"
+        (is (thrown-with-msg? Exception #"No response stored for request \:load-pet \{\:id 999\}"
+                              ((:enter (vcr/playback (assoc opts :on-missing-response :throw-error)))
+                               {:params {:id 999}
+                                :handler {:route-name :load-pet}}))))
+
+      (testing "generate 404"
+        (is (= {:status 404}
+               (:response
+                ((:enter (vcr/playback (assoc opts :on-missing-response :generate-404)))
+                 {:params {:id 999}
+                  :handler {:route-name :load-pet}}))))))))
