@@ -118,3 +118,41 @@
           {:encodes #{}
            :decodes #{}}
           interceptors))
+
+;; borrowed from https://github.com/walmartlabs/lacinia-pedestal/blob/master/src/com/walmartlabs/lacinia/pedestal.clj#L40
+(defn inject
+  "Locates the named interceptor in the list of interceptors and adds (or replaces)
+  the new interceptor to the list.
+  relative-position may be :before, :after, or :replace.
+  For :replace, the new interceptor may be nil, in which case the interceptor is removed.
+  The named interceptor must exist, or an exception is thrown."
+  [interceptors new-interceptor relative-position interceptor-name]
+  (let [*found? (volatile! false)
+        final-result (reduce (fn [result interceptor]
+                               ;; An interceptor can also be a bare handler function, which is 'nameless'
+                               (if-not (= interceptor-name (when (map? interceptor)
+                                                             (:name interceptor)))
+                                 (conj result interceptor)
+                                 (do
+                                   (vreset! *found? true)
+                                   (case relative-position
+                                     :before
+                                     (conj result new-interceptor interceptor)
+
+                                     :after
+                                     (conj result interceptor new-interceptor)
+
+                                     :replace
+                                     (if new-interceptor
+                                       (conj result new-interceptor)
+                                       result)))))
+                             []
+                             interceptors)]
+    (when-not @*found?
+      (throw (ex-info "Could not find existing interceptor."
+                      {:interceptors interceptors
+                       :new-interceptor new-interceptor
+                       :relative-position relative-position
+                       :interceptor-name interceptor-name})))
+
+    final-result))
