@@ -1,7 +1,7 @@
 (ns martian.vcr
-  (:require [clojure.java.io :as io]
-            [clojure.edn :as edn]
-            #?(:clj [fipp.clojure :as fipp])))
+  (:require #?@(:clj [[clojure.java.io :as io]
+                      [clojure.edn :as edn]
+                      [fipp.clojure :as fipp]])))
 
 (defmulti persist-response! (fn [opts _ctx] (get-in opts [:store :kind])))
 (defmulti load-response (fn [opts _ctx] (get-in opts [:store :kind])))

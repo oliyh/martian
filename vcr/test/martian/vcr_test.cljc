@@ -6,6 +6,8 @@
             [schema.core :as s]
             #?(:clj [clojure.java.io :as io])))
 
+#?(:cljs (def Exception js/Error))
+
 (def dummy-response
   {:status 200
    :headers {"Content-Type" "application/json"}
