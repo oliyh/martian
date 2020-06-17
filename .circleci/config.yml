@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/clojure:lein-2.9.1-browsers
+      - image: circleci/clojure:lein-2.9.0-browsers
     steps:
       - run: which java
       - run: lein --version
