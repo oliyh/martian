@@ -1,0 +1,9 @@
+^{:watch-dirs ["test" "src"]
+  :open-url false
+  :auto-testing true}
+{:main "martian.core"
+ :output-to "target/public/martian-core.js"
+ :preloads [devtools.preload]
+ :external-config {:devtools/config {:features-to-install    [:formatters :hints]
+                                     :fn-symbol              "F"
+                                     :print-config-overrides true}}}
