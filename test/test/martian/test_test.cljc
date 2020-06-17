@@ -2,13 +2,12 @@
   (:require [martian.core :as martian]
             [martian.test :as martian-test]
             [clojure.test.check :as tc]
-            [clojure.test.check.generators :as gen #?@(:cljs [:include-macros true])]
             [clojure.test.check.properties :as prop #?@(:cljs [:include-macros true])]
             [clojure.test.check.clojure-test :as tct]
             [schema.core :as s]
             #?(:clj [martian.httpkit :as martian-http])
-            #?(:clj [clojure.test :refer :all]
-               :cljs [cljs.test :refer-macros [deftest testing is run-tests async]])
+            #?(:clj [clojure.test :refer [deftest testing is]]
+               :cljs [cljs.test :refer-macros [deftest testing is async]])
             #?(:cljs [cljs.core.async :as a]))
   #?(:cljs (:require-macros [cljs.core.async.macros :refer [go]])))
 
@@ -113,7 +112,7 @@
      ;; this is an example of how to take a real martian, bootstrapped from a real source, and use it in testing
      ;; the respond-with fn removes http interceptors and replaces them with the test interceptors
 
-     (let [real-martian (-> (martian-http/bootstrap-swagger "https://pedestal-api.herokuapp.com/swagger.json"))]
+     (let [real-martian (martian-http/bootstrap-swagger "https://pedestal-api.herokuapp.com/swagger.json")]
 
        (let [test-martian (martian-test/respond-with-generated real-martian {:get-pet :success})]
 
