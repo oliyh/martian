@@ -331,28 +331,16 @@ martian.urlFor("get-pet", new HashMap<String, Object> {{ put("id", 123); }});
 ```
 
 ## Caveats
-- You need `:operationId` in the Swagger spec to name routes
+- You need `:operationId` in the Swagger spec to name routes when using `bootstrap-swagger`
   - [pedestal-api](https://github.com/oliyh/pedestal-api) automatically generates these from the route name
 
 ## Development
 [![Circle CI](https://circleci.com/gh/oliyh/martian.svg?style=svg)](https://circleci.com/gh/oliyh/martian)
 
-You need phantom 1.9.8 to run the tests for the `cljs-http` module.
-
-For cljs-http development step in to the Clojurescript REPL as follows:
-```clojure
-user> (dev)
-;; => #namespace[dev]
-dev> (cljs-repl)
-To quit, type: :cljs/quit
-;; => nil
-cljs.user>
-```
+Use `cider-jack-in-clj` or `cider-jack-in-clj&cljs` to start Clojure (and Clojurescript where appropriate) REPLs for development.
 
 ## Issues and features
-Please feel free to raise issues on Github or send pull requests. There are more features in the pipeline, including:
-- Support for Server Sent Events (SSE)
-- Async support
+Please feel free to raise issues on Github or send pull requests.
 
 ## Acknowledgements
 Martian uses [tripod](https://github.com/frankiesardo/tripod) for routing, inspired by [pedestal](https://github.com/pedestal/pedestal).
