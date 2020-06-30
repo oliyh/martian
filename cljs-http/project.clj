@@ -30,4 +30,4 @@
   :aliases {"fig"       ["trampoline" "run" "-m" "figwheel.main"]
             "fig:build" ["trampoline" "run" "-m" "figwheel.main" "-b" "dev" "-r"]
             "fig:min"   ["run" "-m" "figwheel.main" "-O" "advanced" "-bo" "dist"]
-            "test" ["do" ["clean"] ["run" "-m" "martian.runner"]]})
+            "test"      ["do" ["clean"] ["run" "-m" "martian.runner"]]})

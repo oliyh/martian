@@ -11,7 +11,7 @@
                                        [org.clojure/clojurescript "1.10.520"]
                                        [re-frame "0.10.8"]]}
              :dev {:source-paths ["../test-common"]
-                   :resource-paths ["test-resources"]
+                   :resource-paths ["test-resources" "../test-common"]
                    :exclusions [[org.clojure/tools.reader]]
                    :dependencies [[org.clojure/clojure "1.10.1"]
                                   [com.bhauman/figwheel-main "0.2.1"
@@ -24,7 +24,7 @@
                                   [io.pedestal/pedestal.service "0.5.7"]
                                   [io.pedestal/pedestal.jetty "0.5.7"]
                                   [day8.re-frame/test "0.1.5"]]}}
-  :aliases {"test"      ["do" ["clean"] ["run" "-m" "martian.runner"]]
-            "fig"       ["trampoline" "run" "-m" "figwheel.main"]
+  :aliases {"fig"       ["trampoline" "run" "-m" "figwheel.main"]
             "fig:build" ["trampoline" "run" "-m" "figwheel.main" "-b" "dev" "-r"]
-            "fig:min"   ["run" "-m" "figwheel.main" "-O" "advanced" "-bo" "test"]})
+            "fig:min"   ["run" "-m" "figwheel.main" "-O" "advanced" "-bo" "test"]
+            "test"      ["do" ["clean"] ["run" "-m" "martian.runner"]]})
