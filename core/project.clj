@@ -19,7 +19,7 @@
                                        [org.clojure/clojurescript "1.10.520"]]}
              :dev {:source-paths ["../test-common"]
                    :exclusions [[org.clojure/tools.reader]]
-                   :resource-paths ["test-resources"]
+                   :resource-paths ["test-resources" "../test-common"]
                    :dependencies [[org.clojure/clojure "1.10.1"]
                                   [org.clojure/clojurescript "1.10.520"]
                                   [binaryage/devtools "1.0.0"]
