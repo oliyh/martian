@@ -1,0 +1,9 @@
+^{:watch-dirs ["test" "src"]
+  :open-url false
+  :auto-testing true}
+{:main "martian.cljs-http"
+ :output-to "target/public/martian-cljs-http.js"
+ :preloads [devtools.preload]
+ :external-config {:devtools/config {:features-to-install    [:formatters :hints]
+                                     :fn-symbol              "F"
+                                     :print-config-overrides true}}}

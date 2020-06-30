@@ -3,9 +3,7 @@
   :url "https://github.com/oliyh/martian"
   :license {:name "The MIT License"
             :url "http://opensource.org/licenses/MIT"}
-  :plugins [[lein-modules "0.3.11"]
-            [lein-cljsbuild "1.1.7"]
-            [lein-doo "0.1.8"]]
+  :plugins [[lein-modules "0.3.11"]]
   :dependencies [[martian :version]
                  [prismatic/schema-generators "0.1.2"]
                  [org.clojure/test.check "0.9.0"]
