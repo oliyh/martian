@@ -1,4 +1,4 @@
-(ns martian.figwheel-runner
+(ns martian.test-runner
   (:require
    [martian.re-frame-test]
    [figwheel.main.testing :refer [run-tests-async]]))

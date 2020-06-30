@@ -1,15 +1,10 @@
 (ns martian.runner
-  (:require [doo.core :as doo]
+  (:require [figwheel.main :as fig]
             [martian.server-stub :refer [with-server]]))
 
 (defn- run-tests []
   (with-server
-    #(doo/run-script :phantom {:output-to "target/unit-test.js"
-                               :asset-path "target/unit-test"
-                               :output-dir "target/unit-test"
-                               :main 'martian.doo-runner
-                               :optimizations :whitespace})))
+    #(fig/-main "-co" "test.cljs.edn" "-m" "martian.test-runner")))
 
 (defn -main [& args]
-  (let [out (run-tests)]
-    (System/exit (:exit out))))
+  (run-tests))

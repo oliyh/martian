@@ -2,24 +2,12 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/clojure:lein-2.9.0-browsers
+      - image: circleci/clojure:lein-2.9.1-browsers
     steps:
       - run: which java
       - run: lein --version
 
       - checkout
-
-      - run:
-          name: Install phantomjs
-          command: |
-            if ! [ $(which phantomjs) ]; then
-              wget https://github.com/Medium/phantomjs/releases/download/v1.9.19/phantomjs-1.9.8-linux-x86_64.tar.bz2
-              tar xvjf phantomjs-1.9.8-linux-x86_64.tar.bz2
-              sudo mv phantomjs-1.9.8-linux-x86_64/bin/phantomjs /usr/local/bin/phantomjs
-              sudo chmod ugo+x /usr/local/bin/phantomjs
-            fi
-
-      - run: phantomjs --version
 
       # Validate docs/cljdoc.edn
       - run: curl -fsSL https://raw.githubusercontent.com/cljdoc/cljdoc/master/script/verify-cljdoc-edn | bash -s docs/cljdoc.edn
