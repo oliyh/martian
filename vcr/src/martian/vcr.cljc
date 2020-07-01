@@ -13,10 +13,21 @@
   (:params ctx))
 
 #?(:clj
-   (defn- response-file [{:keys [store]} ctx]
+   (defn- response-dir [{:keys [store]} ctx]
      (io/file (:root-dir store)
               (name (request-op ctx))
-              (str (hash (request-key ctx)))
+              (str (hash (request-key ctx))))))
+
+#?(:clj
+   (defn- last-response [opts ctx]
+     (let [response-dir (response-dir opts ctx)]
+       (when (.exists response-dir)
+         (let [last-index (count (.listFiles response-dir))]
+           (io/file response-dir (str last-index ".edn")))))))
+
+#?(:clj
+   (defn- response-file [opts ctx]
+     (io/file (response-dir opts ctx)
               (str (::request-count ctx) ".edn"))))
 
 #?(:clj
@@ -28,16 +39,21 @@
                     (pr-str response))))))
 
 #?(:clj
-   (defmethod load-response :file [opts ctx]
+   (defmethod load-response :file [{:keys [extra-requests] :as opts} ctx]
      (let [file (response-file opts ctx)]
-       (when (.exists file)
-         (edn/read-string (slurp file))))))
+       (if (.exists file)
+         (edn/read-string (slurp file))
+         (when (= :repeat-last extra-requests)
+           (some-> (last-response opts ctx) slurp edn/read-string))))))
 
 (defmethod persist-response! :atom [{:keys [store]} {:keys [response] :as ctx}]
   (swap! (:store store) assoc-in [(request-op ctx) (request-key ctx) (::request-count ctx)] response))
 
-(defmethod load-response :atom [{:keys [store]} ctx]
-  (get-in @(:store store) [(request-op ctx) (request-key ctx) (::request-count ctx)]))
+(defmethod load-response :atom [{:keys [store extra-requests]} ctx]
+  (let [responses (get-in @(:store store) [(request-op ctx) (request-key ctx)])]
+    (or (get responses (::request-count ctx))
+        (when (= :repeat-last extra-requests)
+          (get responses (count responses))))))
 
 (defn- inc-counter! [counters ctx]
   (let [k [(request-op ctx) (request-key ctx)]

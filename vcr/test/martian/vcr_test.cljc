@@ -28,7 +28,8 @@
      (testing "file store"
        (let [opts {:store {:kind :file
                            :root-dir "target"
-                           :pprint? true}}]
+                           :pprint? true}
+                   :extra-requests :repeat-last}]
 
          (testing "recording"
            (let [m (m/bootstrap "http://foo.com" routes {:interceptors (into m/default-interceptors
@@ -40,12 +41,16 @@
            (testing "and playback"
              (let [m (m/bootstrap "http://foo.com" routes {:interceptors (into m/default-interceptors
                                                                                [(vcr/playback opts)])})]
-               (is (= dummy-response (m/response-for m :load-pet {:id 123})))))))))
+               (is (= dummy-response (m/response-for m :load-pet {:id 123})))
+
+               (testing "repeating last response"
+                 (is (= dummy-response (m/response-for m :load-pet {:id 123}))))))))))
 
   (testing "atom store"
     (let [store (atom {})
           opts {:store {:kind :atom
-                        :store store}}]
+                        :store store}
+                :extra-requests :repeat-last}]
 
       (testing "recording"
         (let [m (m/bootstrap "http://foo.com" routes {:interceptors (into m/default-interceptors
@@ -57,7 +62,11 @@
         (testing "and playback"
           (let [m (m/bootstrap "http://foo.com" routes {:interceptors (into m/default-interceptors
                                                                             [(vcr/playback opts)])})]
-            (is (= dummy-response (m/response-for m :load-pet {:id 123})))))))))
+
+            (is (= dummy-response (m/response-for m :load-pet {:id 123})))
+
+            (testing "repeating last response"
+              (is (= dummy-response (m/response-for m :load-pet {:id 123}))))))))))
 
 (deftest playback-interceptor-test
   (let [store (atom {:load-pet {{:id 123} {1 {:status 200 :body "Hello"}}}})
@@ -68,30 +77,38 @@
       (is (= {:status 200, :body "Hello"}
              (:response
               ((:enter (vcr/playback opts))
-               {::vcr/request-count 1
-                :params {:id 123}
+               {:params {:id 123}
                 :handler {:route-name :load-pet}})))))
 
     (testing "entry missing"
 
+      (testing "repeat-last strategy"
+        (let [playback (vcr/playback (assoc opts :extra-requests :repeat-last))]
+          (is (= {:status 200, :body "Hello"}
+                 (:response
+                  ((:enter playback)
+                   {:params {:id 123}
+                    :handler {:route-name :load-pet}}))
+                 (:response
+                  ((:enter playback)
+                   {:params {:id 123}
+                    :handler {:route-name :load-pet}}))))))
+
       (testing "default behaviour (do nothing)"
         (is (nil? (:response
                    ((:enter (vcr/playback opts))
-                    {::vcr/request-count 1
-                     :params {:id 999}
+                    {:params {:id 999}
                      :handler {:route-name :load-pet}})))))
 
       (testing "throw error"
         (is (thrown-with-msg? Exception #"No response stored for request \:load-pet \{\:id 999\}"
                               ((:enter (vcr/playback (assoc opts :on-missing-response :throw-error)))
-                               {::vcr/request-count 1
-                                :params {:id 999}
+                               {:params {:id 999}
                                 :handler {:route-name :load-pet}}))))
 
       (testing "generate 404"
         (is (= {:status 404}
                (:response
                 ((:enter (vcr/playback (assoc opts :on-missing-response :generate-404)))
-                 {::vcr/request-count 1
-                  :params {:id 999}
+                 {:params {:id 999}
                   :handler {:route-name :load-pet}}))))))))
