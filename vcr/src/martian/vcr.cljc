@@ -14,7 +14,10 @@
 
 #?(:clj
    (defn- response-file [{:keys [store]} ctx]
-     (io/file (:root-dir store) (name (request-op ctx)) (str (hash (request-key ctx)) ".edn"))))
+     (io/file (:root-dir store)
+              (name (request-op ctx))
+              (str (hash (request-key ctx)))
+              (str (::request-count ctx) ".edn"))))
 
 #?(:clj
    (defmethod persist-response! :file [{:keys [store] :as opts} {:keys [response] :as ctx}]
@@ -31,25 +34,34 @@
          (edn/read-string (slurp file))))))
 
 (defmethod persist-response! :atom [{:keys [store]} {:keys [response] :as ctx}]
-  (swap! (:store store) assoc-in [(request-op ctx) (request-key ctx)] response))
+  (swap! (:store store) assoc-in [(request-op ctx) (request-key ctx) (::request-count ctx)] response))
 
 (defmethod load-response :atom [{:keys [store]} ctx]
-  (get-in @(:store store) [(request-op ctx) (request-key ctx)]))
+  (get-in @(:store store) [(request-op ctx) (request-key ctx) (::request-count ctx)]))
+
+(defn- inc-counter! [counters ctx]
+  (let [k [(request-op ctx) (request-key ctx)]
+        new-counters (swap! counters update k (fnil inc 0))]
+    (get new-counters k)))
 
 (defn record [opts]
-  {:name ::record
-   :leave (fn [ctx]
-            (persist-response! opts ctx)
-            ctx)})
+  (let [counters (atom {})]
+    {:name ::record
+     :leave (fn [ctx]
+              (let [request-count (inc-counter! counters ctx)]
+                (persist-response! opts (assoc ctx ::request-count request-count)))
+              ctx)}))
 
 (defn playback [{:keys [on-missing-response] :as opts}]
-  {:name ::playback
-   :enter (fn [ctx]
-            (if-let [response (load-response opts ctx)]
-              (assoc ctx :response response)
-              (condp = on-missing-response
-                :throw-error (let [message (str "No response stored for request " (request-op ctx) " " (request-key ctx))]
-                               (throw #?(:clj (Exception. message)
-                                         :cljs (js/Error. message))))
-                :generate-404 (assoc ctx :response {:status 404})
-                ctx)))})
+  (let [counters (atom {})]
+    {:name ::playback
+     :enter (fn [ctx]
+              (let [request-count (inc-counter! counters ctx)]
+                (if-let [response (load-response opts (assoc ctx ::request-count request-count))]
+                  (assoc ctx :response response)
+                  (condp = on-missing-response
+                    :throw-error (let [message (str "No response stored for request " (request-op ctx) " " (request-key ctx))]
+                                   (throw #?(:clj (Exception. message)
+                                             :cljs (js/Error. message))))
+                    :generate-404 (assoc ctx :response {:status 404})
+                    ctx))))}))

@@ -35,7 +35,7 @@
                                                                              [(vcr/record opts)
                                                                               dummy-responder])})]
              (is (= dummy-response (m/response-for m :load-pet {:id 123})))
-             (is (.exists (io/file "target" "load-pet" (str (hash {:id 123}) ".edn")))))
+             (is (.exists (io/file "target" "load-pet" (str (hash {:id 123})) "1.edn"))))
 
            (testing "and playback"
              (let [m (m/bootstrap "http://foo.com" routes {:interceptors (into m/default-interceptors
@@ -52,7 +52,7 @@
                                                                           [(vcr/record opts)
                                                                            dummy-responder])})]
           (is (= dummy-response (m/response-for m :load-pet {:id 123})))
-          (is (= dummy-response (get-in @store [:load-pet {:id 123}]))))
+          (is (= dummy-response (get-in @store [:load-pet {:id 123} 1]))))
 
         (testing "and playback"
           (let [m (m/bootstrap "http://foo.com" routes {:interceptors (into m/default-interceptors
@@ -60,7 +60,7 @@
             (is (= dummy-response (m/response-for m :load-pet {:id 123})))))))))
 
 (deftest playback-interceptor-test
-  (let [store (atom {:load-pet {{:id 123} {:status 200 :body "Hello"}}})
+  (let [store (atom {:load-pet {{:id 123} {1 {:status 200 :body "Hello"}}}})
         opts {:store {:kind :atom
                       :store store}}]
 
@@ -68,7 +68,8 @@
       (is (= {:status 200, :body "Hello"}
              (:response
               ((:enter (vcr/playback opts))
-               {:params {:id 123}
+               {::vcr/request-count 1
+                :params {:id 123}
                 :handler {:route-name :load-pet}})))))
 
     (testing "entry missing"
@@ -76,18 +77,21 @@
       (testing "default behaviour (do nothing)"
         (is (nil? (:response
                    ((:enter (vcr/playback opts))
-                    {:params {:id 999}
+                    {::vcr/request-count 1
+                     :params {:id 999}
                      :handler {:route-name :load-pet}})))))
 
       (testing "throw error"
         (is (thrown-with-msg? Exception #"No response stored for request \:load-pet \{\:id 999\}"
                               ((:enter (vcr/playback (assoc opts :on-missing-response :throw-error)))
-                               {:params {:id 999}
+                               {::vcr/request-count 1
+                                :params {:id 999}
                                 :handler {:route-name :load-pet}}))))
 
       (testing "generate 404"
         (is (= {:status 404}
                (:response
                 ((:enter (vcr/playback (assoc opts :on-missing-response :generate-404)))
-                 {:params {:id 999}
+                 {::vcr/request-count 1
+                  :params {:id 999}
                   :handler {:route-name :load-pet}}))))))))
