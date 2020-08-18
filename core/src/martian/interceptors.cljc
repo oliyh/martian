@@ -1,7 +1,6 @@
 (ns martian.interceptors
   (:require [martian.schema :as schema]
             [clojure.walk :refer [keywordize-keys stringify-keys]]
-            [clojure.string :as string]
             [tripod.context :as tc]
             [schema.core :as s]
             [camel-snake-kebab.core :refer [->kebab-case-keyword]]
@@ -79,11 +78,12 @@
 
 (defn encode-body [encoders]
   {:name ::encode-body
+   :encodes (keys encoders)
    :enter (fn [{:keys [request handler] :as ctx}]
             (let [content-type (and (:body request)
                                     (not (get-in request [:headers "Content-Type"]))
                                     (encoding/choose-content-type encoders (:consumes handler)))
-                  {:keys [encode] :as encoder} (encoding/find-encoder encoders content-type)]
+                  {:keys [encode]} (encoding/find-encoder encoders content-type)]
               (cond-> ctx
                 (get-in ctx [:request :body]) (update-in [:request :body] encode)
                 content-type (assoc-in [:request :headers "Content-Type"] content-type))))})
@@ -92,6 +92,7 @@
 
 (defn coerce-response [encoders]
   {:name ::coerce-response
+   :decodes (keys encoders)
    :enter (fn [{:keys [request handler] :as ctx}]
             (let [content-type (and (not (get-in request [:headers "Accept"]))
                                     (encoding/choose-content-type encoders (:produces handler)))
@@ -100,11 +101,20 @@
               (cond-> (assoc-in ctx [:request :as] as)
                 content-type (assoc-in [:request :headers "Accept"] content-type))))
 
-   :leave (fn [{:keys [request response handler] :as ctx}]
+   :leave (fn [{:keys [response] :as ctx}]
             (assoc ctx :response
                    (let [content-type (and (:body response)
                                            (not-empty (get-in response [:headers :content-type])))
-                         {:keys [matcher decode] :as encoder} (encoding/find-encoder encoders content-type)]
+                         {:keys [decode]} (encoding/find-encoder encoders content-type)]
                      (update response :body decode))))})
 
 (def default-coerce-response (coerce-response (encoders/default-encoders)))
+
+(defn supported-content-types
+  "Return the full set of supported content-types as declared by any encoding/decoding interceptors"
+  [interceptors]
+  (reduce (fn [acc interceptor]
+            (merge-with into acc (select-keys interceptor [:encodes :decodes])))
+          {:encodes #{}
+           :decodes #{}}
+          interceptors))

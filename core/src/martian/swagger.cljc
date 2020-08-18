@@ -1,5 +1,6 @@
 (ns martian.swagger
-  (:require [camel-snake-kebab.core :refer [->kebab-case-keyword]]
+  (:require [martian.openapi :refer [tokenise-path]]
+            [camel-snake-kebab.core :refer [->kebab-case-keyword]]
             [clojure.string :as string]
             [clojure.walk :refer [keywordize-keys]]
             [martian.schema :as schema]
@@ -31,20 +32,6 @@
         :let [status-code (if (number? status) status (read-string (name status)))]]
     {:status (s/eq status-code)
      :body (schema/make-schema ref-lookup (assoc (:schema response) :required true))}))
-
-(defn- sanitise [x]
-  (if (string? x)
-    x
-    ;; consistent across clj and cljs
-    (-> (str x)
-        (string/replace-first ":" ""))))
-
-(defn- tokenise-path [url-pattern]
-  (let [url-pattern (sanitise url-pattern)
-        parts (map first (re-seq #"([^{}]+|\{.+?\})" url-pattern))]
-    (map #(if-let [param-name (second (re-matches #"^\{(.*)\}" %))]
-            (keyword param-name)
-            %) parts)))
 
 (defn- ->handler
   [swagger-map

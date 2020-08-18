@@ -1,17 +1,19 @@
 (ns martian.openapi
   (:require [camel-snake-kebab.core :refer [->kebab-case-keyword]]
             [clojure.string :as string]
-            [schema.core :as s]))
+            [clojure.walk :refer [keywordize-keys]]
+            [schema.core :as s]
+            #?(:cljs [cljs.reader :refer [read-string]])))
 
-(defn- tokenise-path [url-pattern]
-  (for [part (re-seq #"[^{]+|\{[^}]+?\}" url-pattern)]
-    (if-let [param (re-matches #"^\{(.*)\}$" part)]
-      (keyword (second param))
-      part)))
+(defn openapi-schema? [json]
+  (some #(get json %) [:openapi "openapi"]))
+
+(defn base-url [json]
+  (get-in json [:servers 0 :url] ""))
 
 (defn- lookup-ref [components reference]
   (if (string/starts-with? reference "#/components/")
-    (or (get-in components (drop 2 (string/split reference #"/")))
+    (or (get-in components (drop 2 (map keyword (string/split reference #"/"))))
         (throw (ex-info "Cannot find reference"
                         {:reference reference})))
     (throw (ex-info "References start with something other than #/components/ aren't supported yet. :("
@@ -22,51 +24,51 @@
      :cljs goog.Uri))
 
 (defn- openapi->schema
-  ([schema components]
-   (openapi->schema schema components #{}))
+  ([schema components] (openapi->schema schema components #{}))
   ([schema components seen-set]
-   (if-let [reference (get schema "$ref")]
+   (if-let [reference (:$ref schema)]
      (if (contains? seen-set reference)
        s/Any ; If we've already seen this, then we're in a loop. Rather than
              ; trying to solve for the fixpoint, just return Any.
        (recur (lookup-ref components reference)
               components
               (conj seen-set reference)))
-     (let [wrap (if (get schema "nullable") s/maybe identity)]
+     (let [wrap (if (:nullable schema) s/maybe identity)]
        (wrap
-        (condp = (get schema "type")
-          "string"  (if-let [enum (get schema "enum")]
+        (condp = (:type schema)
+          "string"  (if-let [enum (:enum schema)]
                       (apply s/enum enum)
-                      (condp = (get schema "format")
+                      (condp = (:format schema)
                         "uuid" s/Uuid
                         "uri" URI
                         s/Str))
           "integer" s/Int
           "number"  s/Num
           "boolean" s/Bool
-          "array"   [(openapi->schema (get schema "items") components seen-set)]
-          "object"  (let [required? (set (get schema "required"))]
+          "array"   [(openapi->schema (:items schema) components seen-set)]
+          "object"  (let [required? (set (:required schema))]
                       (into {}
                             (map (fn [[k v]]
-                                   {(if (required? k)
+                                   {(if (required? (name k))
                                       (keyword k)
                                       (s/optional-key (keyword k)))
                                     (openapi->schema v components seen-set)}))
-                            (get schema "properties")))
+                            (:properties schema)))
           (throw (ex-info "Cannot convert OpenAPI type to schema" {:definition schema}))))))))
 
 (defn- get-matching-schema [object content-types]
-  (if-let [content-type (first (filter #(get-in object ["content" % "schema"]) content-types))]
-    [(get-in object ["content" content-type "schema"])
+  (if-let [content-type (first (filter #(get-in object [:content (keyword %) :schema]) content-types))]
+    [(get-in object [:content (keyword content-type) :schema])
      content-type]
-    (when (seq (get object "content"))
-      (throw (ex-info "No matching content-type available"
-                      {:allowed-content-types  content-types
-                       :response-content-types (keys (get object "content"))})))))
+    (when (seq (:content object))
+      #?(:clj (println "No matching content-type available" {:supported-content-types content-types
+                                                             :available-content-types (map name (keys (:content object)))})
+         :cljs (js/console.warn "No matching content-type available" {:supported-content-types content-types
+                                                                      :available-content-types (keys (get object "content"))})))))
 
 (defn- process-body [body components content-types]
   (when-let [[json-schema content-type] (get-matching-schema body content-types)]
-    (let [required (get body "required")]
+    (let [required (:required body)]
       {:schema       {(if required :body (s/optional-key :body))
                       (openapi->schema json-schema components)}
        :content-type content-type})))
@@ -74,43 +76,59 @@
 (defn- process-parameters [parameters components]
   (into {}
         (map (fn [param]
-               {(if (get param "required")
-                  (keyword (get param "name"))
-                  (s/optional-key (keyword (get param "name"))))
-                (openapi->schema (get param "schema") components)}))
+               {(if (:required param)
+                  (keyword (:name param))
+                  (s/optional-key (keyword (:name param))))
+                (openapi->schema (:schema param) components)}))
         parameters))
 
 (defn- process-responses [responses components content-types]
-  (for [[code value] responses
-        :let         [[json-schema content-type] (get-matching-schema value content-types)]]
-    {:status       (if (= code "default")
+  (for [[status-code value] responses
+        :let                [status-code (name status-code)
+                             [json-schema content-type] (get-matching-schema value content-types)]]
+    {:status       (if (= status-code "default")
                      s/Any
-                     (s/eq (Long/parseLong code)))
+                     (s/eq (if (number? status-code) status-code (read-string (name status-code)))))
      :body         (and json-schema (openapi->schema json-schema components))
      :content-type content-type}))
 
-(defn openapi->handlers [swagger-json content-types]
-  (let [components (get swagger-json "components")]
-    (for [[url methods] (get swagger-json "paths")
+(defn- sanitise [x]
+  (if (string? x)
+    x
+    ;; consistent across clj and cljs
+    (-> (str x)
+        (string/replace-first ":" ""))))
+
+(defn tokenise-path [url-pattern]
+  (let [url-pattern (sanitise url-pattern)
+        parts (map first (re-seq #"([^{}]+|\{.+?\})" url-pattern))]
+    (map #(if-let [param-name (second (re-matches #"^\{(.*)\}" %))]
+            (keyword param-name)
+            %) parts)))
+
+(defn openapi->handlers [openapi-json content-types]
+  (let [openapi-spec (keywordize-keys openapi-json)
+        components (:components openapi-spec)]
+    (for [[url methods] (:paths openapi-spec)
           [method definition] methods
           ;; We only care about things which have a defined operationId, and
           ;; which aren't the associated OPTIONS call.
-          :when (and (get definition "operationId")
-                     (not= method "options"))
-          :let [parameters (group-by #(get % "in") (get definition "parameters"))
-                body       (process-body (get definition "requestBody") components content-types)
-                responses  (process-responses (get definition "responses") components content-types)]]
+          :when (and (:operationId definition)
+                     (not= :options method))
+          :let [parameters (group-by :in (:parameters definition))
+                body       (process-body (:requestBody definition) components (:encodes content-types))
+                responses  (process-responses (:responses definition) components (:decodes content-types))]]
       {:path-parts         (vec (tokenise-path url))
-       :method             (keyword method)
-       :path-schema        (process-parameters (get parameters "path") components)
-       :query-schema       (process-parameters (get parameters "query") components)
+       :method             method
+       :path-schema        (process-parameters (:path parameters) components)
+       :query-schema       (process-parameters (:query parameters) components)
        :body-schema        (:schema body)
-       :form-schema        (process-parameters (get parameters "form") components)
-       :headers-schema     (process-parameters (get parameters "header") components)
+       :form-schema        (process-parameters (:form parameters) components)
+       :headers-schema     (process-parameters (:header parameters) components)
        :response-schemas   (vec (keep #(dissoc % :content-type) responses))
        :produces           (vec (keep :content-type responses))
        :consumes           [(:content-type body)]
-       :summary            (get definition "summary")
-       :description        (get definition "description")
+       :summary            (:summary definition)
+       :description        (:description definition)
        :openapi-definition definition
-       :route-name         (->kebab-case-keyword (get definition "operationId"))})))
+       :route-name         (->kebab-case-keyword (:operationId definition))})))

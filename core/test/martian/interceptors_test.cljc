@@ -134,3 +134,17 @@
         (is (= {:body encoded-body
                 :headers {:content-type "text/magical+json"}}
                (:response result)))))))
+
+(deftest supported-content-types-test
+  (testing "picks up the supported content-types from the encoding/decoding interceptors"
+    (let [encode-body i/default-encode-body
+          coerce-response (i/coerce-response (assoc (encoders/default-encoders)
+                                                    "text/magical+json" {:encode encoders/json-encode
+                                                                         :decode #(encoders/json-decode % keyword)
+                                                                         :as :magic}))]
+
+      (is (= {:encodes #?(:clj #{"application/json" "application/transit+msgpack" "application/transit+json" "application/edn"}
+                          :cljs #{"application/json" "application/transit+json" "application/edn"})
+              :decodes #?(:clj #{"application/json" "text/magical+json" "application/transit+msgpack" "application/transit+json" "application/edn"}
+                          :cljs #{"application/json" "text/magical+json" "application/transit+json" "application/edn"})}
+             (i/supported-content-types [encode-body coerce-response]))))))

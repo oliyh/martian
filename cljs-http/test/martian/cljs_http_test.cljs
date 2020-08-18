@@ -5,7 +5,7 @@
             [cljs.core.async :refer [<! timeout]])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
-(deftest http-test
+(deftest swagger-http-test
   (async done
          (go (let [m (<! (martian-http/bootstrap-swagger "http://localhost:8888/swagger.json"))]
 
@@ -22,3 +22,14 @@
                          :age 3}
                         (:body response)))))
              (done))))
+
+(deftest openapi-bootstrap-test
+  (async done
+         (go (let [m (<! (martian-http/bootstrap-openapi "http://localhost:8888/openapi.json"))]
+
+               (is (= "http://localhost:8888/openapi/v3"
+                      (:api-root m)))
+
+               (is (contains? (set (map first (martian/explore m)))
+                              :get-order-by-id))))
+         (done)))
