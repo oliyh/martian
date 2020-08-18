@@ -5,7 +5,8 @@
             [clojure.walk :refer [keywordize-keys postwalk-replace]]
             [martian.interceptors :as interceptors]
             [martian.schema :as schema]
-            [martian.swagger :as swagger]
+            [martian.swagger :refer [swagger->handlers]]
+            [martian.openapi :refer [openapi->handlers openapi-schema?]]
             [schema.core :as s]
             [clojure.spec.alpha :as spec]
             [martian.spec :as mspec]))
@@ -48,7 +49,7 @@
   "Update a handler in the martian record with the provided route-name
    e.g. add route-specific interceptors:
    (update-handler m :load-pet assoc :interceptors [an-interceptor])"
-  [{:keys [handlers] :as m} route-name update-fn & update-args]
+  [m route-name update-fn & update-args]
   (update m :handlers #(mapv (fn [handler]
                                (if (= (keyword route-name) (:route-name handler))
                                  (apply update-fn handler update-args)
@@ -109,15 +110,17 @@
                   :handlers (spec/coll-of ::mspec/handler)
                   :opts ::mspec/opts))
 
-(defn bootstrap-swagger
-  "Creates a martian instance from a swagger spec
+(defn bootstrap-openapi
+  "Creates a martian instance from an openapi/swagger spec based on the schema provided"
+  [api-root json & [opts]]
+  (let [{:keys [interceptors] :or {interceptors default-interceptors} :as opts} (keywordize-keys opts)]
+    (build-instance api-root
+                    (map enrich-handler (if (openapi-schema? json)
+                                          (openapi->handlers json (interceptors/supported-content-types interceptors))
+                                          (swagger->handlers json)))
+                    opts)))
 
-   (let [m (bootstrap-swagger \"https://api.org\" swagger-spec)]
-     (url-for m :load-pet {:id 123}))
-
-   ;; => https://api.org/pets/123"
-  [api-root swagger-json & [opts]]
-  (build-instance api-root (map enrich-handler (swagger/swagger->handlers swagger-json)) (keywordize-keys opts)))
+(def bootstrap-swagger bootstrap-openapi)
 
 (defn bootstrap
   "Creates a martian instance from a martian description"

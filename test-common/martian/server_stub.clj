@@ -1,7 +1,5 @@
 (ns martian.server-stub
   (:require [io.pedestal.http :as bootstrap]
-            [io.pedestal.interceptor.chain :refer [terminate]]
-            [io.pedestal.interceptor :refer [interceptor]]
             [pedestal-api
              [core :as api]
              [helpers :refer [before defbefore defhandler handler]]]
@@ -65,6 +63,7 @@
                                 :allowed-origins (constantly true)}})
 
 (def swagger-url (format "http://localhost:%s/swagger.json" (::bootstrap/port service)))
+(def openapi-url (format "http://localhost:%s/openapi.json" (::bootstrap/port service)))
 
 (def with-server
   (fn [f]

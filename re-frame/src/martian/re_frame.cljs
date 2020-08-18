@@ -60,5 +60,5 @@
    (get-in db [::martian :pending])))
 
 (defn init [swagger-url & [params]]
-  (go (let [martian (<! (martian-http/bootstrap-swagger swagger-url params))]
+  (go (let [martian (<! (martian-http/bootstrap-openapi swagger-url params))]
         (re-frame/dispatch-sync [::init martian]))))

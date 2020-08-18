@@ -2,7 +2,7 @@
 Calling HTTP endpoints can be complicated. You have to construct the right URL with the right route parameters, remember
 what the query parameters are, what method to use, how to encode the body and many other things that leak into your codebase.
 
-**Martian** takes a description of these details (either from your [Swagger](http://swagger.io/) server,
+**Martian** takes a description of these details (either from your [OpenAPI/Swagger](http://swagger.io/) server,
 or just as lovely Clojure data) and provides a client interface to the API that abstracts you away from HTTP and lets you
 simply call operations with parameters, keeping your codebase clean.
 
@@ -11,7 +11,7 @@ You can bootstrap it in one line and start calling the server:
 (require '[martian.core :as martian]
          '[martian.clj-http :as martian-http])
 
-(let [m (martian-http/bootstrap-swagger "https://pedestal-api.herokuapp.com/swagger.json")]
+(let [m (martian-http/bootstrap-openapi "https://pedestal-api.herokuapp.com/swagger.json")]
   (martian/response-for m :create-pet {:name "Doggy McDogFace" :type "Dog" :age 3})
   ;; => {:status 201 :body {:id 123}}
 
@@ -24,7 +24,7 @@ but any other HTTP library can be used due to the extensibility of Martian's int
 It also allows custom behaviour to be injected in a uniform and powerful way.
 
 The `martian-test` library allows you to assert that your code constructs valid requests to remote servers without ever
-actually calling them, using the Swagger spec to validate the parameters. It can also generate responses in the same way,
+actually calling them, using the OpenApi spec to validate the parameters. It can also generate responses in the same way,
 ensuring that your response handling code is also correct. Examples are below.
 
 `martian-re-frame` integrates martian event handlers into `re-frame`, simplifying connecting your UI to data sources.
@@ -45,7 +45,7 @@ ensuring that your response handling code is also correct. Examples are below.
 [![Clojars Project](https://img.shields.io/clojars/v/martian-re-frame.svg)](https://clojars.org/martian-re-frame) [![cljdoc badge](https://cljdoc.org/badge/martian-re-frame/martian-re-frame)](https://cljdoc.org/d/martian-re-frame/martian-re-frame/CURRENT)
 
 ## Features
-- Bootstrap an instance from just a Swagger url or provide your own API mapping
+- Bootstrap an instance from just a OpenAPI/Swagger url or provide your own API mapping
 - Modular with support for `clj-http` and `httpkit` (Clojure) and `cljs-http` (ClojureScript)
 - Build urls and request maps from code or generate and perform the request, returning the response
 - Explore an API from your REPL
@@ -53,7 +53,7 @@ ensuring that your response handling code is also correct. Examples are below.
 - Negotiates the most efficient content-type and handles serialisation and deserialisation including `transit`, `edn` and `json`
 - Easy to add support for any other content-type
 - Support for integration testing without requiring external HTTP stubs
-- Routes are named as idiomatic kebab-case keywords of the `operationId` of the endpoint in the Swagger definition
+- Routes are named as idiomatic kebab-case keywords of the `operationId` of the endpoint in the OpenAPI/Swagger definition
 - Parameters are aliased to kebab-case keywords so that your code remains idiomatic, neat and clean
 - Simple, data driven behaviour with low coupling using libraries and patterns you already know
 - Pure client code, no server code or modifications required
@@ -62,15 +62,15 @@ For more details and rationale you can [watch the talk given at ClojureX Bytes](
 
 ## Clojure / ClojureScript
 
-Given a [Swagger API definition](https://pedestal-api.herokuapp.com/swagger.json)
+Given an [OpenAPI/Swagger API definition](https://pedestal-api.herokuapp.com/swagger.json)
 like that provided by [pedestal-api](https://github.com/oliyh/pedestal-api):
 
 ```clojure
 (require '[martian.core :as martian]
          '[martian.clj-http :as martian-http])
 
-;; bootstrap the martian instance by simply providing the url serving the swagger description
-(let [m (martian-http/bootstrap-swagger "https://pedestal-api.herokuapp.com/swagger.json")]
+;; bootstrap the martian instance by simply providing the url serving the openapi/swagger description
+(let [m (martian-http/bootstrap-openapi "https://pedestal-api.herokuapp.com/swagger.json")]
 
   ;; explore the endpoints
   (martian/explore m)
@@ -116,9 +116,9 @@ like that provided by [pedestal-api](https://github.com/oliyh/pedestal-api):
 
 ## No Swagger, no problem
 
-Although bootstrapping against a remote Swagger API using `bootstrap-swagger` is simplest
+Although bootstrapping against a remote OpenAPI or Swagger API using `bootstrap-openapi` is simplest
 and allows you to use the golden source to define the API, you may likely find yourself
-needing to integrate with an API beyond your control which does not use Swagger.
+needing to integrate with an API beyond your control which does not use OpenAPI or Swagger.
 
 Martian offers a separate `bootstrap` function which you can provide with handlers defined as data.
 Here's an example:
@@ -154,7 +154,7 @@ The following example shows how exceptions will be thrown by bad code and how re
          '[martian.httpkit :as martian-http]
          '[martian.test :as martian-test])
 
-(let [m (-> (martian-http/bootstrap-swagger "https://pedestal-api.herokuapp.com/swagger.json")
+(let [m (-> (martian-http/bootstrap-openapi "https://pedestal-api.herokuapp.com/swagger.json")
             (martian-test/respond-with-generated {:get-pet :random}))]
 
   (martian/response-for m :get-pet {})
@@ -234,7 +234,7 @@ For example, if you wish to add an authentication header and a timer to all requ
                  (println))
             ctx)})
 
-(let [m (martian-http/bootstrap-swagger
+(let [m (martian-http/bootstrap-openapi
                "https://pedestal-api.herokuapp.com/swagger.json"
                {:interceptors (concat martian/default-interceptors
                                       [add-authentication-header
@@ -264,10 +264,10 @@ option exists using `bootstrap` and providing `:interceptors` as follows:
                                      :enter #(assoc-in % [:request :method] :xget)}]}])
 ```
 
-Alternatively you can use the helpers like `update-handler` to update a martian created from `bootstrap-swagger`:
+Alternatively you can use the helpers like `update-handler` to update a martian created from `bootstrap-openapi`:
 
 ```clojure
-(-> (martian/bootstrap-swagger "https://api.org" swagger-definition)
+(-> (martian/bootstrap-openapi "https://api.org" openapi-definition)
     (martian/update-handler :load-pet assoc :interceptors [{:name ::override-load-pet-method
                                                             :enter #(assoc-in % [:request :method] :xget)}]))
 ```
@@ -306,7 +306,7 @@ Martian allows you to add support for content-types in addition to those support
                       "application/magical" {:encode magic-encoder
                                              :decode magic-decoder
                                              :as :magic})]
-  (http/bootstrap-swagger
+  (http/bootstrap-openapi
    "https://example-api.com"
    {:interceptors (concat m/default-interceptors
                           [(i/encode-body encoders)
@@ -331,17 +331,17 @@ martian.urlFor("get-pet", new HashMap<String, Object> {{ put("id", 123); }});
 ```
 
 ## Caveats
-- You need `:operationId` in the Swagger spec to name routes when using `bootstrap-swagger`
+- You need `:operationId` in the OpenAPI/Swagger spec to name routes when using `bootstrap-openapi`
   - [pedestal-api](https://github.com/oliyh/pedestal-api) automatically generates these from the route name
 
 ## Development
 [![Circle CI](https://circleci.com/gh/oliyh/martian.svg?style=svg)](https://circleci.com/gh/oliyh/martian)
 
 Use `cider-jack-in-clj` or `cider-jack-in-clj&cljs` to start Clojure (and Clojurescript where appropriate) REPLs for development.
+You may need to `lein install` first if you're working in a module that depends on another.
 
 ## Issues and features
 Please feel free to raise issues on Github or send pull requests.
 
 ## Acknowledgements
 Martian uses [tripod](https://github.com/frankiesardo/tripod) for routing, inspired by [pedestal](https://github.com/pedestal/pedestal).
-See also [fintrospect](http://fintrospect.io/) and [kekkonen](https://github.com/metosin/kekkonen) for ideas integrating server and client beyond Swagger.

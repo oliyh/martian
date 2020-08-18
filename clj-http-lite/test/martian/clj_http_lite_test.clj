@@ -2,16 +2,13 @@
   (:require [martian.clj-http-lite :as martian-http]
             [martian.core :as martian]
             [martian.encoders :as encoders]
-            [tripod.context :as tc]
-            [martian.interceptors :as i]
-            [martian.server-stub :refer [with-server swagger-url]]
+            [martian.server-stub :refer [with-server swagger-url openapi-url]]
             [martian.test-utils :refer [input-stream->byte-array]]
-            [clojure.test :refer :all]))
+            [clojure.test :refer [deftest testing is use-fixtures]]))
 
 (use-fixtures :once with-server)
 
-(deftest http-test
-
+(deftest swagger-http-test
   (let [m (martian-http/bootstrap-swagger swagger-url)]
     (testing "default encoders"
       (is (= {:method :post
@@ -37,3 +34,12 @@
               :type "Dog"
               :age 3}
              (:body response))))))
+
+(deftest openapi-bootstrap-test
+  (let [m (martian-http/bootstrap-openapi openapi-url)]
+
+    (is (= "http://localhost:8888/openapi/v3"
+           (:api-root m)))
+
+    (is (contains? (set (map first (martian/explore m)))
+                   :get-order-by-id))))
