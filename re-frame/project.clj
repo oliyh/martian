@@ -1,4 +1,4 @@
-(defproject martian-re-frame "0.1.13"
+(defproject martian-re-frame "0.1.14-SNAPSHOT"
   :description "re-frame bindings for martian"
   :url "https://github.com/oliyh/martian"
   :license {:name "The MIT License"
