@@ -36,13 +36,13 @@
 (re-frame/reg-event-db
  ::on-complete
  (fn [db [_ req]]
-   (update-in db [::martian :pending] disj req)))
+   (update-in db [::martian :pending] (fnil disj #{}) req)))
 
 (defn- do-request [{:keys [db]} [_ operation-id params on-success on-failure]]
   (let [request-key [operation-id params on-success on-failure]]
     (if (contains? (get-in db [::martian :pending]) request-key)
       {:db db}
-      {:db (update-in db [::martian :pending] conj request-key)
+      {:db (update-in db [::martian :pending] (fnil conj #{}) request-key)
        ::request [(instance db) operation-id params on-success on-failure]})))
 
 ;; deprecated, use ::request instead

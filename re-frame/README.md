@@ -12,6 +12,8 @@ that martian can bring:
 ```clj
 (require '[martian.re-frame :as martian])
 (require '[re-frame.core :as re-frame])
+(require '[cljs.core.async :refer [<!]])
+(require-macros '[cljs.core.async.macros :refer [go]])
 
 (def interceptors [re-frame/trim-v])
 
@@ -27,14 +29,13 @@ that martian can bring:
  (fn [db [response-or-error operation-id params]]
    (update db :errors conj [operation-id response-or-error])))
 
-(martian/init "http://pedestal-api.herokuapp.com/swagger.json")
-
-(re-frame/dispatch [::martian/request             ;; event for performing an http request
-                    :create-pet               ;; the route name to call
-                    {:name "Doggy McDogFace"  ;; data to send to the endpoint
-                     :type "Dog"
-                     :age 3}
-                    ::create-pet-success      ;; event to dispatch on success
-                    ::http-failure            ;; event to dispatch on failure
-                    ])
+(go (<! (martian/init "http://pedestal-api.herokuapp.com/swagger.json"))
+    (re-frame/dispatch [::martian/request             ;; event for performing an http request
+                        :create-pet               ;; the route name to call
+                        {:name "Doggy McDogFace"  ;; data to send to the endpoint
+                         :type "Dog"
+                         :age 3}
+                        [::create-pet-success]    ;; event to dispatch on success
+                        [::http-failure]          ;; event to dispatch on failure
+                       ]))
 ```
