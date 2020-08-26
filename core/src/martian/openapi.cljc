@@ -115,7 +115,7 @@
           ;; which aren't the associated OPTIONS call.
           :when (and (:operationId definition)
                      (not= :options method))
-          :let [parameters (group-by :in (:parameters definition))
+          :let [parameters (group-by (comp keyword :in) (:parameters definition))
                 body       (process-body (:requestBody definition) components (:encodes content-types))
                 responses  (process-responses (:responses definition) components (:decodes content-types))]]
       {:path-parts         (vec (tokenise-path url))

@@ -60,3 +60,28 @@
                (->> (filter #(= (:route-name %) :update-pet)))
                first
                (select-keys [:consumes :produces]))))))
+
+(deftest openapi-parameters-test
+  (testing "parses parameters"
+    (is (= {:description nil,
+            :method :get,
+            :produces ["application/json"],
+            :path-schema {:projectId s/Str},
+            :query-schema {(s/optional-key :key) s/Str},
+            :form-schema {},
+            :path-parts ["/project/" :projectKey],
+            :headers-schema {},
+            :consumes [nil],
+            :summary "Get specific values from a configuration for a specific project",
+            :body-schema nil,
+            :route-name :get-project-configuration,
+            :response-schemas
+            [{:status (s/eq 200), :body s/Str}
+             {:status (s/eq 403), :body nil}
+             {:status (s/eq 404), :body nil}]}
+           (-> (parse-string (slurp (io/resource "openapi2.json")))
+               (openapi->handlers {:encodes ["application/json" "application/octet-stream"]
+                                   :decodes ["application/json" "application/octet-stream"]})
+               (->> (filter #(= (:route-name %) :get-project-configuration)))
+               first
+               (dissoc :openapi-definition))))))

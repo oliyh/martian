@@ -1,0 +1,55 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "My API",
+    "version": "1"
+  },
+  "paths": {
+    "/project/{projectKey}": {
+      "get": {
+        "summary": "Get specific values from a configuration for a specific project",
+        "operationId": "getProjectConfiguration",
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "description": "Project ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "string"
+            }
+          },
+          {
+            "name": "key",
+            "in": "query",
+            "description": "Obtains values corresponding to these keys from a project's configuration",
+            "schema": {
+              "type": "string",
+              "format": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Configuration for the specified project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "format": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refusing access to requested resource, perhaps due to insufficient privilege"
+          },
+          "404": {
+            "description": "Requested resource was not found"
+          }
+        }
+      }
+    }
+  }
+}
