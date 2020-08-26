@@ -61,8 +61,8 @@
                first
                (select-keys [:consumes :produces]))))))
 
-(deftest openapi-two-test
-  (testing "parses parameters which are different somehow"
+(deftest openapi-parameters-test
+  (testing "parses parameters"
     (is (= {:description nil,
             :method :get,
             :produces ["application/json"],
