@@ -10,7 +10,7 @@
 
 (re-frame/reg-fx
  ::request
- (fn [[m operation-id params on-success on-failure]]
+ (fn [[m instance-id operation-id params on-success on-failure]]
    (go
      (try
        (if-let [response-chan (martian/response-for m operation-id params)]
@@ -22,28 +22,33 @@
        (catch js/Error e
          (re-frame/dispatch (->event on-failure e operation-id params)))
        (finally
-         (re-frame/dispatch [::on-complete [operation-id params on-success on-failure]]))))))
+         (re-frame/dispatch [::on-complete instance-id [operation-id params on-success on-failure]]))))))
 
 (re-frame/reg-event-db
  ::init
- (fn [db [_ martian]]
-   (assoc db ::martian {:m martian
-                        :pending #{}})))
+ (fn [db [_ martian instance-id]]
+   (assoc-in db [::martian (or instance-id ::default-id)] {:m martian
+                                                           :pending #{}})))
 
-(defn instance [db & _]
-  (get-in db [::martian :m]))
+(defn instance
+  ([db]
+   (instance db []))
+  ([db [_ instance-id]]
+   (get-in db [::martian (or instance-id ::default-id) :m])))
 
 (re-frame/reg-event-db
  ::on-complete
- (fn [db [_ req]]
-   (update-in db [::martian :pending] (fnil disj #{}) req)))
+ (fn [db [_ instance-id req]]
+   (update-in db [::martian instance-id :pending] (fnil disj #{}) req)))
 
 (defn- do-request [{:keys [db]} [_ operation-id params on-success on-failure]]
-  (let [request-key [operation-id params on-success on-failure]]
-    (if (contains? (get-in db [::martian :pending]) request-key)
+  (let [instance-id (::instance-id params ::default-id)
+        params (dissoc params ::instance-id)
+        request-key [operation-id params on-success on-failure]]
+    (if (contains? (get-in db [::martian instance-id :pending]) request-key)
       {:db db}
-      {:db (update-in db [::martian :pending] (fnil conj #{}) request-key)
-       ::request [(instance db) operation-id params on-success on-failure]})))
+      {:db (update-in db [::martian instance-id :pending] (fnil conj #{}) request-key)
+       ::request [(instance db [:ignore instance-id]) instance-id operation-id params on-success on-failure]})))
 
 ;; deprecated, use ::request instead
 (re-frame/reg-event-fx :http/request do-request)
@@ -56,9 +61,10 @@
 
 (re-frame/reg-sub
  ::pending-requests
- (fn [db]
-   (get-in db [::martian :pending])))
+ (fn [db [_ instance-id]]
+   (get-in db [::martian (or instance-id ::default-id) :pending])))
 
 (defn init [swagger-url & [params]]
-  (go (let [martian (<! (martian-http/bootstrap-openapi swagger-url params))]
-        (re-frame/dispatch-sync [::init martian]))))
+  (go (let [instance-id (::instance-id params)
+            martian (<! (martian-http/bootstrap-openapi swagger-url (dissoc params ::instance-id)))]
+        (re-frame/dispatch-sync [::init martian instance-id]))))

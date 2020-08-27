@@ -74,9 +74,7 @@
    (re-frame/reg-event-db
     ::create-pet-success
     (fn [db]
-      (is (= :create-pet (-> @(re-frame/subscribe [::martian/pending-requests])
-                             first
-                             first)))
+      (is (= :create-pet (ffirst @(re-frame/subscribe [::martian/pending-requests]))))
       db))
 
    (martian/init "http://localhost:8888/swagger.json")
@@ -104,7 +102,7 @@
 
      (re-frame/reg-fx
       ::martian/request
-      (fn [[_ operation-id & args]]
+      (fn [[_ _ operation-id & args]]
         (swap! request-counter update operation-id inc)))
 
      (martian/init "http://localhost:8888/swagger.json")
@@ -131,3 +129,58 @@
        (is (= {:create-pet 1
                :get-pet 1}
               @request-counter)))))))
+
+(deftest re-frame-w-custom-id-test
+  (rf-test/run-test-async
+
+   (martian/init "http://localhost:8888/swagger.json" {::martian/instance-id :custom-id})
+
+   (rf-test/wait-for
+    [::martian/init]
+
+    (testing "can subscribe to the instance"
+      (let [m @(re-frame/subscribe [::martian/instance :custom-id])]
+        (is (= "http://localhost:8888/pets/123"
+               (mc/url-for m :get-pet {:id 123})))))
+
+    (testing "can make http requests by dispatching an event"
+      (re-frame/dispatch [::martian/request
+                          :create-pet
+                          {:name "Doggy McDogFace"
+                           :type "Dog"
+                           :age 3
+                           ::martian/instance-id :custom-id}
+                          ::create-pet-success
+                          ::http-failure])
+
+      (rf-test/wait-for
+       [#{::create-pet-success ::http-failure}]
+       (is (= 123 (:pet-id @rdb/app-db))))))))
+
+(deftest re-frame-pending-requests-w-custom-id-test
+  (rf-test/run-test-async
+
+   (re-frame/reg-event-db
+    ::create-pet-success
+    (fn [db]
+      (is (= :create-pet (ffirst @(re-frame/subscribe [::martian/pending-requests :custom-id]))))
+      db))
+
+   (martian/init "http://localhost:8888/swagger.json" {::martian/instance-id :custom-id})
+
+   (rf-test/wait-for
+    [::martian/init]
+
+    (testing "can make http requests by dispatching an event"
+      (re-frame/dispatch [::martian/request
+                          :create-pet
+                          {:name "Doggy McDogFace"
+                           :type "Dog"
+                           :age 3
+                           ::martian/instance-id :custom-id}
+                          ::create-pet-success
+                          ::http-failure]))
+
+    (rf-test/wait-for
+     [::martian/on-complete]
+     (is (empty? @(re-frame/subscribe [::martian/pending-requests :custom-id])))))))
