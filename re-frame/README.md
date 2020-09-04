@@ -14,8 +14,6 @@ that martian can bring:
 ```clj
 (require '[martian.re-frame :as martian])
 (require '[re-frame.core :as re-frame])
-(require '[cljs.core.async :refer [<!]])
-(require-macros '[cljs.core.async.macros :refer [go]])
 
 (def interceptors [re-frame/trim-v])
 
@@ -31,15 +29,15 @@ that martian can bring:
  (fn [db [response-or-error operation-id params]]
    (update db :errors conj [operation-id response-or-error])))
 
-(go (<! (martian/init "http://pedestal-api.herokuapp.com/swagger.json"))
-    (re-frame/dispatch [::martian/request         ;; event for performing an http request
-                        :create-pet               ;; the route name to call
-                        {:name "Doggy McDogFace"  ;; data to send to the endpoint
-                         :type "Dog"
-                         :age 3}
-                        [::create-pet-success]    ;; event to dispatch on success
-                        [::http-failure]          ;; event to dispatch on failure
-                       ]))
+(martian/init "http://pedestal-api.herokuapp.com/swagger.json")
+(re-frame/dispatch [::martian/request         ;; event for performing an http request
+                    :create-pet               ;; the route name to call
+                    {:name "Doggy McDogFace"  ;; data to send to the endpoint
+                     :type "Dog"
+                     :age 3}
+                    [::create-pet-success]    ;; event to dispatch on success
+                    [::http-failure]          ;; event to dispatch on failure
+                   ]))
 ```
 
 ### Multiple instances
@@ -48,13 +46,13 @@ You can specify a value for `:martian.re-frame/instance-id` in the params when c
 useful if you need to talk to more than one remote service. This can be done as follows:
 
 ```clj
-(go (<! (martian/init "http://pedestal-api.herokuapp.com/swagger.json" {::martian/instance-id :pet-store})) ;; instance-id set on initialisation
-    (re-frame/dispatch [::martian/request
-                        :create-pet
-                        {::martian/instance-id :pet-store ;; instance-id specified in the params of each request
-                         :name "Doggy McDogFace"
-                         :type "Dog"
-                         :age 3}
-                        [::create-pet-success]
-                        [::http-failure]]))
+(martian/init "http://pedestal-api.herokuapp.com/swagger.json" {::martian/instance-id :pet-store}) ;; instance-id set on initialisation
+(re-frame/dispatch [::martian/request
+                    :create-pet
+                    {::martian/instance-id :pet-store ;; instance-id specified in the params of each request
+                     :name "Doggy McDogFace"
+                     :type "Dog"
+                     :age 3}
+                    [::create-pet-success]
+                    [::http-failure]])
 ```

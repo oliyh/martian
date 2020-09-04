@@ -24,11 +24,15 @@
        (finally
          (re-frame/dispatch [::on-complete instance-id [operation-id params on-success on-failure]]))))))
 
-(re-frame/reg-event-db
+(re-frame/reg-event-fx
  ::init
- (fn [db [_ martian instance-id]]
-   (assoc-in db [::martian (or instance-id ::default-id)] {:m martian
-                                                           :pending #{}})))
+ (fn [{:keys [db]} [_ martian instance-id]]
+   (let [instance-id (or instance-id ::default-id)]
+     (merge
+      {:db (assoc-in db [::martian instance-id] {:m martian
+                                                 :pending #{}})}
+      (when-let [queue (get-in db [::martian instance-id :queue])]
+        {:dispatch-n queue})))))
 
 (defn instance
   ([db]
@@ -41,14 +45,21 @@
  (fn [db [_ instance-id req]]
    (update-in db [::martian instance-id :pending] (fnil disj #{}) req)))
 
-(defn- do-request [{:keys [db]} [_ operation-id params on-success on-failure]]
+(defn- do-request [{:keys [db]} [_ operation-id params on-success on-failure :as request]]
   (let [instance-id (::instance-id params ::default-id)
         params (dissoc params ::instance-id)
-        request-key [operation-id params on-success on-failure]]
-    (if (contains? (get-in db [::martian instance-id :pending]) request-key)
+        request-key [operation-id params on-success on-failure]
+        martian-instance (instance db [:ignore instance-id])]
+    (cond
+      (not martian-instance)
+      {:db (update-in db [::martian instance-id :queue] (fnil conj []) request)}
+
+      (contains? (get-in db [::martian instance-id :pending]) request-key)
       {:db db}
+
+      :else
       {:db (update-in db [::martian instance-id :pending] (fnil conj #{}) request-key)
-       ::request [(instance db [:ignore instance-id]) instance-id operation-id params on-success on-failure]})))
+       ::request [martian-instance instance-id operation-id params on-success on-failure]})))
 
 ;; deprecated, use ::request instead
 (re-frame/reg-event-fx :http/request do-request)

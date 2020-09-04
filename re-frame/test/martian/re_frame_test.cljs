@@ -46,6 +46,24 @@
        [#{::create-pet-success ::http-failure}]
        (is (= 123 (:pet-id @rdb/app-db))))))))
 
+(deftest async-init-test
+  (rf-test/run-test-async
+
+   (testing "dispatch request before init"
+     (re-frame/dispatch [::martian/request
+                         :create-pet
+                         {:name "Doggy McDogFace"
+                          :type "Dog"
+                          :age 3}
+                         ::create-pet-success
+                         ::http-failure])
+     (martian/init "http://localhost:8888/swagger.json")
+
+     (testing "request is dispatched once init has occurred"
+       (rf-test/wait-for
+        [#{::create-pet-success ::http-failure}]
+        (is (= 123 (:pet-id @rdb/app-db))))))))
+
 (deftest re-frame-failure-test
   (rf-test/run-test-async
 

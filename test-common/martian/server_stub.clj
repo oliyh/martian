@@ -72,3 +72,18 @@
         (bootstrap/start server-instance)
         (f)
         (finally (bootstrap/stop server-instance))))))
+
+;; for use at the repl
+(def server-instance (atom nil))
+
+(defn stop-server! []
+  (when-let [instance @server-instance]
+    (bootstrap/stop instance)
+    (reset! server-instance nil)))
+
+(defn start-server! []
+  (when @server-instance
+    (stop-server!))
+  (let [instance (bootstrap/create-server (bootstrap/default-interceptors service))]
+    (bootstrap/start instance)
+    (reset! server-instance instance)))
