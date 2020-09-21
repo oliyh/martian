@@ -46,7 +46,7 @@ ensuring that your response handling code is also correct. Examples are below.
 
 ## Features
 - Bootstrap an instance from just a OpenAPI/Swagger url or provide your own API mapping
-- Modular with support for `clj-http` and `httpkit` (Clojure) and `cljs-http` (ClojureScript)
+- Modular with support for `clj-http`, `clj-http-lite` and `httpkit` (Clojure) and `cljs-http` (ClojureScript)
 - Build urls and request maps from code or generate and perform the request, returning the response
 - Explore an API from your REPL
 - Extensible via interceptor pattern - inject your own interceptors anywhere in the chain
