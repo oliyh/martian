@@ -26,6 +26,14 @@
            (io/file response-dir (str last-index ".edn")))))))
 
 #?(:clj
+   (defn- cycled-response [opts ctx]
+     (let [response-dir (response-dir opts ctx)]
+       (when (.exists response-dir)
+         (let [file-count (count (.listFiles response-dir))
+               request-index (mod (::request-count ctx) file-count)]
+           (io/file response-dir (str request-index ".edn")))))))
+
+#?(:clj
    (defn- response-file [opts ctx]
      (io/file (response-dir opts ctx)
               (str (::request-count ctx) ".edn"))))
@@ -43,8 +51,13 @@
      (let [file (response-file opts ctx)]
        (if (.exists file)
          (edn/read-string (slurp file))
-         (when (= :repeat-last extra-requests)
-           (some-> (last-response opts ctx) slurp edn/read-string))))))
+         (some->
+          (condp = extra-requests
+            :repeat-last (last-response opts ctx)
+            :cycle (cycled-response opts ctx)
+            nil)
+          slurp
+          edn/read-string)))))
 
 (defmethod persist-response! :atom [{:keys [store]} {:keys [response] :as ctx}]
   (swap! (:store store) assoc-in [(request-op ctx) (request-key ctx) (::request-count ctx)] response))
@@ -52,12 +65,14 @@
 (defmethod load-response :atom [{:keys [store extra-requests]} ctx]
   (let [responses (get-in @(:store store) [(request-op ctx) (request-key ctx)])]
     (or (get responses (::request-count ctx))
-        (when (= :repeat-last extra-requests)
-          (get responses (count responses))))))
+        (condp = extra-requests
+          :repeat-last (get responses (dec (count responses)))
+          :cycle (get responses (mod (::request-count ctx) (count responses)))
+          nil))))
 
 (defn- inc-counter! [counters ctx]
   (let [k [(request-op ctx) (request-key ctx)]
-        new-counters (swap! counters update k (fnil inc 0))]
+        new-counters (swap! counters update k (fnil inc -1))]
     (get new-counters k)))
 
 (defn record [opts]

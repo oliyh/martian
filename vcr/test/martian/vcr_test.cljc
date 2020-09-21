@@ -57,7 +57,7 @@
                                                                           [(vcr/record opts)
                                                                            dummy-responder])})]
           (is (= dummy-response (m/response-for m :load-pet {:id 123})))
-          (is (= dummy-response (get-in @store [:load-pet {:id 123} 1]))))
+          (is (= dummy-response (get-in @store [:load-pet {:id 123} 0]))))
 
         (testing "and playback"
           (let [m (m/bootstrap "http://foo.com" routes {:interceptors (into m/default-interceptors
@@ -69,7 +69,8 @@
               (is (= dummy-response (m/response-for m :load-pet {:id 123}))))))))))
 
 (deftest playback-interceptor-test
-  (let [store (atom {:load-pet {{:id 123} {1 {:status 200 :body "Hello"}}}})
+  (let [store (atom {:load-pet {{:id 123} {0 {:status 200 :body "Hello"}
+                                           1 {:status 200 :body "Goodbye"}}}})
         opts {:store {:kind :atom
                       :store store}}]
 
@@ -82,17 +83,28 @@
 
     (testing "entry missing"
 
-      (testing "repeat-last strategy"
-        (let [playback (vcr/playback (assoc opts :extra-requests :repeat-last))]
-          (is (= {:status 200, :body "Hello"}
-                 (:response
-                  ((:enter playback)
-                   {:params {:id 123}
-                    :handler {:route-name :load-pet}}))
-                 (:response
-                  ((:enter playback)
-                   {:params {:id 123}
-                    :handler {:route-name :load-pet}}))))))
+      (testing "extra-requests strategies"
+        (testing "repeat-last"
+          (let [playback (vcr/playback (assoc opts :extra-requests :repeat-last))]
+            (is (= [{:status 200, :body "Hello"}
+                    {:status 200, :body "Goodbye"}
+                    {:status 200, :body "Goodbye"}
+                    {:status 200, :body "Goodbye"}]
+
+                   (map :response (repeatedly 4 #((:enter playback)
+                                                  {:params {:id 123}
+                                                   :handler {:route-name :load-pet}})))))))
+
+        (testing "cycle"
+          (let [playback (vcr/playback (assoc opts :extra-requests :cycle))]
+            (is (= [{:status 200, :body "Hello"}
+                    {:status 200, :body "Goodbye"}
+                    {:status 200, :body "Hello"}
+                    {:status 200, :body "Goodbye"}]
+
+                   (map :response (repeatedly 4 #((:enter playback)
+                                                  {:params {:id 123}
+                                                   :handler {:route-name :load-pet}}))))))))
 
       (testing "default behaviour (do nothing)"
         (is (nil? (:response

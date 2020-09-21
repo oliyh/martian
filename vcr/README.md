@@ -61,7 +61,8 @@ Options are supplied as a map, like this:
 {:store {:kind :file
          :root-dir "target"
          :pprint? true}
- :on-missing-response :generate-404}
+ :on-missing-response :generate-404
+ :extra-requests :repeat-last}
  ```
 
 The options available are:
@@ -95,12 +96,24 @@ For Clojure only:
 
 The `:on-missing-response` allows you to choose between the following behaviours when a response is not in the store during playback:
 
-#### default
+##### default
 If you do not specify, the default behaviour is to do nothing - the context is passed through unchanged.
 This can be useful during playback to allow the real request to be made and recorded as a way of augmenting your store.
 
-#### throw-error
+##### `:throw-error`
 An error is thrown which can be handled by another interceptor
 
-#### generate-404
+##### `:generate-404`
 A barebones 404 response is returned
+
+#### Extra requests
+
+vcr will play responses to you in the order they were recorded, enabling playback of mutable webservices (e.g. polling endpoints).
+
+If you make more requests than there are recorded responses, you can choose the behaviour by setting the `:extra-requests` option:
+
+##### `:repeat-last`
+The last recorded response will be repeated
+
+##### `:cycle`
+The responses will be cycled
