@@ -3,7 +3,8 @@
 
 ## Usage
 
-You can use martian-vcr in two ways: recording and playback. Recording captures responses from HTTP requests while playback returns
+You can use martian-vcr in two ways: recording and playback.
+Recording captures responses from HTTP requests while playback returns the recorded responses instead of making real requests.
 
 ### Record
 
@@ -31,7 +32,7 @@ Take a martian definition and bootstrap it with the extra interceptor `martian.v
                                            :after http/perform-request)}))
 
 (m/response-for m :load-pet {:id 123})
-;; the response is now stored at test-resources/vcr/load-pet/-655390368.edn
+;; the response is recorded and now stored at test-resources/vcr/load-pet/-655390368/0.edn
 ```
 
 You can populate the directory - use a different one for different test suites - by just making requests as you normally would.
@@ -50,7 +51,7 @@ or working offline.
                                            :before http/perform-request)}))
 
 (m/response-for m :load-pet {:id 123})
-;; the response is read from test-resources/vcr/load-pet/-655390368.edn and returned
+;; the response is read from test-resources/vcr/load-pet/-655390368/0.edn and returned
 ```
 
 ### Options
