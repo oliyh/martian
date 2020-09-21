@@ -22,7 +22,7 @@
    (defn- last-response [opts ctx]
      (let [response-dir (response-dir opts ctx)]
        (when (.exists response-dir)
-         (let [last-index (count (.listFiles response-dir))]
+         (let [last-index (dec (count (.listFiles response-dir)))]
            (io/file response-dir (str last-index ".edn")))))))
 
 #?(:clj

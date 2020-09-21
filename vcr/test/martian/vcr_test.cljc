@@ -36,7 +36,7 @@
                                                                              [(vcr/record opts)
                                                                               dummy-responder])})]
              (is (= dummy-response (m/response-for m :load-pet {:id 123})))
-             (is (.exists (io/file "target" "load-pet" (str (hash {:id 123})) "1.edn"))))
+             (is (.exists (io/file "target" "load-pet" (str (hash {:id 123})) "0.edn"))))
 
            (testing "and playback"
              (let [m (m/bootstrap "http://foo.com" routes {:interceptors (into m/default-interceptors
