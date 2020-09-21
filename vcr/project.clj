@@ -8,7 +8,8 @@
                  [fipp "0.6.23"]]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.10.1"]
                                        [org.clojure/clojurescript "1.10.520"]]}
-             :dev {:exclusions [[org.clojure/tools.reader]]
+             :dev {:resource-paths ["../test-common"]
+                   :exclusions [[org.clojure/tools.reader]]
                    :dependencies [[org.clojure/tools.reader "1.2.2"]
                                   [binaryage/devtools "1.0.0"]
                                   [com.bhauman/figwheel-main "0.2.1"]
