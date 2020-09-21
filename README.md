@@ -44,6 +44,8 @@ ensuring that your response handling code is also correct. Examples are below.
 
 [![Clojars Project](https://img.shields.io/clojars/v/martian-re-frame.svg)](https://clojars.org/martian-re-frame) [![cljdoc badge](https://cljdoc.org/badge/martian-re-frame/martian-re-frame)](https://cljdoc.org/d/martian-re-frame/martian-re-frame/CURRENT)
 
+[![Clojars Project](https://img.shields.io/clojars/v/martian-vcr.svg)](https://clojars.org/martian-vcr) [![cljdoc badge](https://cljdoc.org/badge/martian-vcr/martian-vcr)](https://cljdoc.org/d/martian-vcr/martian-vcr/CURRENT)
+
 ## Features
 - Bootstrap an instance from just a OpenAPI/Swagger url or provide your own API mapping
 - Modular with support for `clj-http`, `clj-http-lite` and `httpkit` (Clojure) and `cljs-http` (ClojureScript)
