@@ -1,0 +1,9 @@
+^{:watch-dirs ["test" "src"]
+  :open-url false
+  :auto-testing true}
+{:main "martian.vcr"
+ :output-to "target/public/martian-vcr.js"
+ :preloads [devtools.preload]
+ :external-config {:devtools/config {:features-to-install    [:formatters :hints]
+                                     :fn-symbol              "F"
+                                     :print-config-overrides true}}}

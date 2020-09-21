@@ -1,0 +1,6 @@
+^{
+  ;; use an alternative landing page for the tests so that we don't
+  ;; launch the application
+  :open-url "http://[[server-hostname]]:[[server-port]]/test.html"
+  :launch-js ["/opt/google/chrome/google-chrome" "--headless" "--disable-gpu" "--remote-debugging-port=9222" "--no-sandbox" :open-url]}
+{:main martian.figwheel-runner}
