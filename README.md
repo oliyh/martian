@@ -59,6 +59,8 @@ ensuring that your response handling code is also correct. Examples are below.
 - Parameters are aliased to kebab-case keywords so that your code remains idiomatic, neat and clean
 - Simple, data driven behaviour with low coupling using libraries and patterns you already know
 - Pure client code, no server code or modifications required
+- Write generative, realistic tests using [martian-test](https://github.com/oliyh/martian/tree/master/test) to generate response data
+- Record and play back HTTP calls using [martian-vcr](https://github.com/oliyh/martian/tree/master/vcr)
 
 For more details and rationale you can [watch the talk given at ClojureX Bytes](https://skillsmatter.com/skillscasts/8843-clojure-bytes#video).
 
@@ -172,6 +174,26 @@ The following example shows how exceptions will be thrown by bad code and how re
 `martian-test` has interceptors that always give successful responses, always errors, or a random choice.
 By making your application code accept a Martian instance you can inject a test instance within your tests, making
 previously untestable code testable again.
+
+More documentation is available at [martian-test](https://github.com/oliyh/martian/tree/master/test).
+
+## Recording and playback with martian-vcr
+martian-vcr allows you to record responses from real HTTP requests and play them back later, allowing you to build realistic test
+data quickly and easily.
+
+```clj
+(require '[martian.vcr :as vcr])
+
+(def m (http/bootstrap "https://foo.com/api"
+                       {:interceptors (inject http/default-interceptors
+                                              (vcr/record opts)
+                                              :after http/perform-request)}))
+
+(m/response-for m :load-pet {:id 123})
+;; the response is recorded and now stored at test-resources/vcr/load-pet/-655390368/0.edn
+```
+
+More documentation is available at [martian-vcr](https://github.com/oliyh/martian/tree/master/vcr).
 
 ## Idiomatic parameters
 
