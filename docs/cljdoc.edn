@@ -1,4 +1,5 @@
 {:cljdoc.doc/tree [["Readme" {:file "README.md"}]
+                   ["cljs-http usage" {:file "cljs-http/README.md"}]
                    ["Re-frame integration" {:file "re-frame/README.md"}]
                    ["Testing with martian" {:file "test/README.md"}]
                    ["Recording and playback with martian-vcr" {:file "vcr/README.md"}]]}
