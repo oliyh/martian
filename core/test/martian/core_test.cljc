@@ -1,10 +1,9 @@
 (ns martian.core-test
   (:require [martian.core :as martian]
             [schema.core :as s]
-            [clojure.spec.alpha :as spec]
             [clojure.spec.test.alpha :as stest]
-            #?(:clj [clojure.test :refer :all]
-               :cljs [cljs.test :refer-macros [deftest testing is run-tests]]))
+            #?(:clj [clojure.test :refer [deftest testing is]]
+               :cljs [cljs.test :refer-macros [deftest testing is]]))
   #?(:clj (:import [martian Martian])))
 
 #?(:cljs

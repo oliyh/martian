@@ -1,9 +1,15 @@
 (ns martian.openapi-test
-  (:require [clojure.java.io :as io]
+  (:require [martian.test-helpers #?@(:clj [:refer [json-resource]]
+                                      :cljs [:refer-macros [json-resource]])]
             [clojure.test :refer [deftest is testing]]
-            [cheshire.core :refer [parse-string]]
             [schema.core :as s]
             [martian.openapi :refer [openapi->handlers]]))
+
+(def openapi-json
+  (json-resource "openapi.json"))
+
+(def openapi-2-json
+  (json-resource "openapi2.json"))
 
 (deftest openapi-sanity-check
   (testing "parses each handler"
@@ -43,7 +49,7 @@
              {:status (s/eq 404) :body nil}
              {:status (s/eq 405) :body nil}]}
 
-           (-> (parse-string (slurp (io/resource "openapi.json")))
+           (-> openapi-json
                (openapi->handlers {:encodes ["application/json" "application/octet-stream"]
                                    :decodes ["application/json" "application/octet-stream"]})
                (->> (filter #(= (:route-name %) :update-pet)))
@@ -54,7 +60,7 @@
     (is (= {:consumes ["application/xml"]
             :produces ["application/json"]}
 
-           (-> (parse-string (slurp (io/resource "openapi.json")))
+           (-> openapi-json
                (openapi->handlers {:encodes ["application/xml"]
                                    :decodes ["application/json"]})
                (->> (filter #(= (:route-name %) :update-pet)))
@@ -79,7 +85,7 @@
             [{:status (s/eq 200), :body s/Str}
              {:status (s/eq 403), :body nil}
              {:status (s/eq 404), :body nil}]}
-           (-> (parse-string (slurp (io/resource "openapi2.json")))
+           (-> openapi-2-json
                (openapi->handlers {:encodes ["application/json" "application/octet-stream"]
                                    :decodes ["application/json" "application/octet-stream"]})
                (->> (filter #(= (:route-name %) :get-project-configuration)))

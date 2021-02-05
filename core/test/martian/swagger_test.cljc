@@ -1,5 +1,5 @@
 (ns martian.swagger-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is]]
             [schema.core :as s]
             [martian.swagger :as swagger]))
 
