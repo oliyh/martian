@@ -339,6 +339,15 @@ Martian allows you to add support for content-types in addition to those support
 
 ```
 
+## Development mode
+
+When martian is bootstrapped it closes over the route definitions and any options you provide, returning an immutable instance.
+This can hamper REPL development when you wish to rapidly iterate on your martian definition, so all martian API calls also accept a function or a var that returns the instance instead:
+
+```clojure
+(martian/url-for (fn [] (martian/bootstrap ... )) :load-pet {:id 123}) ;; => "https://api.com/pets/123"
+```
+
 ## Java
 
 ```java

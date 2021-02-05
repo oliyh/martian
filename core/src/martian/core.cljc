@@ -39,60 +39,71 @@
               (update :consumes #(or % global-consumes)))))
        concise-handlers))
 
+(defn- resolve-instance [m]
+  (cond
+    (map? m) m
+    (var? m) (deref m)
+    (fn? m) (m)
+    :else m))
+
 (defn find-handler [handlers route-name]
   (first (filter #(= (keyword route-name) (:route-name %)) handlers)))
 
 (defn handler-for [m route-name]
-  (find-handler (:handlers m) route-name))
+  (find-handler (:handlers (resolve-instance m)) route-name))
 
 (defn update-handler
   "Update a handler in the martian record with the provided route-name
    e.g. add route-specific interceptors:
    (update-handler m :load-pet assoc :interceptors [an-interceptor])"
   [m route-name update-fn & update-args]
-  (update m :handlers #(mapv (fn [handler]
-                               (if (= (keyword route-name) (:route-name handler))
-                                 (apply update-fn handler update-args)
-                                 handler))
-                             %)))
+  (update (resolve-instance m)
+          :handlers #(mapv (fn [handler]
+                             (if (= (keyword route-name) (:route-name handler))
+                               (apply update-fn handler update-args)
+                               handler))
+                           %)))
 
 (defrecord Martian [api-root handlers interceptors])
 
 (defn url-for
   ([martian route-name] (url-for martian route-name {}))
-  ([{:keys [api-root handlers]} route-name params]
-   (when-let [handler (find-handler handlers route-name)]
-     (let [params (->> params keywordize-keys (interceptors/coerce-data handler :path-schema))]
-       (str api-root (string/join (map #(get params % %) (:path-parts handler))))))))
+  ([martian route-name params]
+   (let [{:keys [api-root handlers]} (resolve-instance martian)]
+     (when-let [handler (find-handler handlers route-name)]
+       (let [params (->> params keywordize-keys (interceptors/coerce-data handler :path-schema))]
+         (str api-root (string/join (map #(get params % %) (:path-parts handler)))))))))
 
 (defn request-for
   ([martian route-name] (request-for martian route-name {}))
-  ([{:keys [handlers interceptors] :as martian} route-name params]
-   (when-let [handler (find-handler handlers route-name)]
-     (let [ctx (tc/enqueue* {} (-> (or interceptors default-interceptors) vec (conj interceptors/request-only-handler)))]
-       (:request (tc/execute
-                  (assoc ctx
-                         :url-for (partial url-for martian)
-                         :request (or (::request params) {})
-                         :handler handler
-                         :params params)))))))
+  ([martian route-name params]
+   (let [{:keys [handlers interceptors] :as martian} (resolve-instance martian)]
+     (when-let [handler (find-handler handlers route-name)]
+       (let [ctx (tc/enqueue* {} (-> (or interceptors default-interceptors) vec (conj interceptors/request-only-handler)))]
+         (:request (tc/execute
+                    (assoc ctx
+                           :url-for (partial url-for martian)
+                           :request (or (::request params) {})
+                           :handler handler
+                           :params params))))))))
 
 (defn response-for
   ([martian route-name] (response-for martian route-name {}))
-  ([{:keys [handlers interceptors] :as martian} route-name params]
-   (when-let [handler (find-handler handlers route-name)]
-     (let [ctx (tc/enqueue* {} (or interceptors default-interceptors))]
-       (:response (tc/execute
-                   (assoc ctx
-                          :url-for (partial url-for martian)
-                          :request (or (::request params) {})
-                          :handler handler
-                          :params params)))))))
+  ([martian route-name params]
+   (let [{:keys [handlers interceptors] :as martian} (resolve-instance martian)]
+     (when-let [handler (find-handler handlers route-name)]
+       (let [ctx (tc/enqueue* {} (or interceptors default-interceptors))]
+         (:response (tc/execute
+                     (assoc ctx
+                            :url-for (partial url-for martian)
+                            :request (or (::request params) {})
+                            :handler handler
+                            :params params))))))))
 
 (defn explore
-  ([{:keys [handlers]}] (mapv (juxt :route-name :summary) handlers))
-  ([{:keys [handlers]} route-name]
-   (when-let [handler (find-handler handlers route-name)]
+  ([martian] (mapv (juxt :route-name :summary) (:handlers (resolve-instance martian))))
+  ([martian route-name]
+   (when-let [handler (find-handler (:handlers (resolve-instance martian)) route-name)]
      {:summary (:summary handler)
       :parameters (let [parameter-aliases (:parameter-aliases handler)]
                     (->> (map handler parameter-schemas)

@@ -418,3 +418,40 @@
     (is (= actual-without
            {:method :post, :url "https://api.org/pets", :body record}))
     (is (instance? TestRecord (:body actual-without)))))
+
+(def dev-mode-martian
+  (let [routes [{:route-name :load-pet
+                 :path-parts ["/pets/" :id]
+                 :method :get
+                 :path-schema {:id s/Int}
+                 :interceptors [{:name ::fake-response
+                                 :leave (fn [ctx]
+                                          (assoc ctx :response {:status 200 :body "Pet!"}))}]}]]
+    (martian/bootstrap "https://api.com" routes {})))
+
+(deftest dev-mode-test
+  (testing "martian instance can be a var or a function"
+    (is (= dev-mode-martian
+           (@#'martian/resolve-instance dev-mode-martian)
+           (@#'martian/resolve-instance (constantly dev-mode-martian))
+           (@#'martian/resolve-instance #'dev-mode-martian)))
+
+    (is (= {:summary nil, :parameters {:id s/Int}, :returns {}}
+           (martian/explore dev-mode-martian :load-pet)
+           (martian/explore (constantly dev-mode-martian) :load-pet)
+           (martian/explore #'dev-mode-martian :load-pet)))
+
+    (is (= "https://api.com/pets/123"
+           (martian/url-for dev-mode-martian :load-pet {:id 123})
+           (martian/url-for (constantly dev-mode-martian) :load-pet {:id 123})
+           (martian/url-for #'dev-mode-martian :load-pet {:id 123})))
+
+    (is (= {:method :get, :url "https://api.com/pets/123"}
+           (martian/request-for dev-mode-martian :load-pet {:id 123})
+           (martian/request-for (constantly dev-mode-martian) :load-pet {:id 123})
+           (martian/request-for #'dev-mode-martian :load-pet {:id 123})))
+
+    (is (= {:status 200 :body "Pet!"}
+           (martian/response-for dev-mode-martian :load-pet {:id 123})
+           (martian/response-for (constantly dev-mode-martian) :load-pet {:id 123})
+           (martian/response-for #'dev-mode-martian :load-pet {:id 123})))))
