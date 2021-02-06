@@ -143,6 +143,10 @@
                 (cond-> (schemas-for-parameters ref-lookup (map (fn [[name p]] (assoc p :name name)) properties))
                   additionalProperties (assoc s/Any s/Any))
 
+                (= "object" (:type schema))
+                (cond-> (schemas-for-parameters ref-lookup (map (fn [[name p]] (assoc p :name name)) (:properties schema)))
+                  (:additionalProperties schema) (assoc s/Any s/Any))
+
                 :else
                 (schema-type ref-lookup param))
         (and (not required) (not= "array" type) (not= "array" (:type schema)))

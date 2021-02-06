@@ -1,9 +1,8 @@
 (ns martian.schema-test
   (:require [martian.schema :as schema]
             [schema.core :as s]
-            [camel-snake-kebab.core :refer [->kebab-case-keyword]]
-            #?(:clj [clojure.test :refer :all]
-               :cljs [cljs.test :refer-macros [deftest testing is run-tests]])))
+            #?(:clj [clojure.test :refer [deftest testing is]]
+               :cljs [cljs.test :refer-macros [deftest testing is]])))
 
 (deftest free-form-object-test
   (let [schema (schema/make-schema {:definitions
@@ -117,6 +116,26 @@
             :tags [s/Str]}
            (schema/make-schema {:parameters parameters} body-param)))))
 
+(deftest inline-objects-test
+  (let [body-param {:name "Pet"
+                    :in "body"
+                    :required true
+                    :schema {:type "object"
+                             :additionalProperties {}
+                             :properties {:id {:type "integer"
+                                               :required true}
+                                          :name {:type "string"
+                                                 :required true}
+                                          :tags {:type "array"
+                                                 :required true
+                                                 :items {:type "string"}}}}}]
+
+    (is (= {:id s/Int
+            :name s/Str
+            :tags [s/Str]
+            s/Any s/Any}
+           (schema/make-schema {} body-param)))))
+
 (deftest optionality-test
   (is (= {(s/optional-key :id) (s/maybe s/Int)}
          (schema/schemas-for-parameters {} [{:name "id"
@@ -152,6 +171,7 @@
               :in "path"
               :required true
               :type "integer"}]))))
+
   (testing "object with additional properties"
     (let [schema (:Pet (schema/schemas-for-parameters
                         {:definitions
@@ -167,6 +187,7 @@
               s/Any         s/Any} schema))
       (is (s/validate schema {:CamelBodyKey 42
                               :AdditionalDetails {"GoodBoy" true}}))))
+
   (testing "object with empty properties"
     (is (= {:Pet {}}
            (schema/schemas-for-parameters
@@ -177,6 +198,7 @@
               :in       "path"
               :required true
               :schema   {:$ref "#/definitions/Pet"}}]))))
+
   (testing "body params"
     (is (= {:Pet {:CamelBodyKey s/Int}}
            (schema/schemas-for-parameters
