@@ -50,6 +50,7 @@ ensuring that your response handling code is also correct. Examples are below.
 - Bootstrap an instance from just a OpenAPI/Swagger url or provide your own API mapping
 - Modular with support for `clj-http`, `clj-http-lite` and `httpkit` (Clojure) and `cljs-http` (ClojureScript)
 - Build urls and request maps from code or generate and perform the request, returning the response
+- Validate requests and responses to ensure they are correct before the data leaves/enters your system
 - Explore an API from your REPL
 - Extensible via interceptor pattern - inject your own interceptors anywhere in the chain
 - Negotiates the most efficient content-type and handles serialisation and deserialisation including `transit`, `edn` and `json`
@@ -338,6 +339,22 @@ Martian allows you to add support for content-types in addition to those support
                            http/perform-request])}))
 
 ```
+
+## Response validation
+
+Martian provides a response validation interceptor which validates the response against the response schemas.
+It is not included in the default interceptor stack, but you can include it yourself:
+
+```clojure
+(http/bootstrap-openapi
+ "https://example-api.com"
+ {:interceptors (cons (i/validate-response {:strict? true})
+                      http/default-interceptors)})
+```
+
+The `strict?` argument defines whether any response with an undefined schema is allowed, e.g. if a response
+schema is defined for a 200 status code only, but the server returns a 500, strict mode will throw an error but
+non-strict mode will allow it. Strict mode defaults to false.
 
 ## Development mode
 

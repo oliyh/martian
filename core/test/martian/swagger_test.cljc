@@ -49,3 +49,29 @@
                    (s/optional-key :state) (s/maybe s/Int)
                    (s/optional-key :systems) [s/Int]}}
            (:body-schema handler)))))
+
+(deftest response-schema-test
+  (let [swagger-json
+        {:paths {(keyword "/pets/{id}")
+                 {:get {:operationId "load-pet"
+                        :summary "Loads a pet by id"
+                        :parameters [{:name "id"
+                                      :in "path"
+                                      :type "integer"}]
+                        :responses {:200 {:description "The pet requested"
+                                          :schema {:type "object"
+                                                   :properties {:name {:type "string"}
+                                                                :age {:type "integer"}
+                                                                :type {:type "string"}}}}
+                                    :400 {:schema {:type "string"}}
+                                    :404 {:schema {:type "string"}}}}}}}
+        [handler] (swagger/swagger->handlers swagger-json)]
+    (is (= [{:status (s/eq 200),
+             :body {(s/optional-key :name) (s/maybe s/Str),
+                    (s/optional-key :age) (s/maybe s/Int),
+                    (s/optional-key :type) (s/maybe s/Str)}}
+            {:status (s/eq 400)
+             :body s/Str}
+            {:status (s/eq 404)
+             :body s/Str}]
+           (:response-schemas handler)))))

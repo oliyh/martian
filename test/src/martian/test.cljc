@@ -3,8 +3,7 @@
             [martian.interceptors :as interceptors]
             [schema-generators.generators :as g]
             [clojure.test.check.generators :as tcg]
-            [schema.core :as s]
-            [tripod.context :as tc]
+            #?(:clj [tripod.context :as tc])
             #?(:cljs [cljs.core.async :as a])))
 
 (defn- status-range [from to]

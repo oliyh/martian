@@ -2,9 +2,13 @@
   (:require [martian.interceptors :as i]
             [martian.encoders :as encoders]
             [tripod.context :as tc]
+            [schema.core :as s]
             #?(:clj [clojure.test :refer [deftest is testing]]
                :cljs [cljs.test :refer-macros [deftest testing is]])
             #?(:clj [martian.test-utils :as tu])))
+
+#?(:cljs
+   (def Throwable js/Error))
 
 (deftest encode-body-test
   (let [i i/default-encode-body
@@ -88,34 +92,32 @@
                                                :as :magic})
           body {:the {:wheels ["on" "the" "bus"]}
                 :go {:round {:and "round"}}}
-          encoded-body (-> body encoders/json-encode reverse-string)]
-
-      (let [ctx (tc/enqueue* {:request {:body body}
+          encoded-body (-> body encoders/json-encode reverse-string)
+          ctx (tc/enqueue* {:request {:body body}
                               :handler {:consumes ["text/magical+json"]
                                         :produces ["text/magical+json"]}}
                              [(i/encode-body encoders)
                               (i/coerce-response encoders)
                               (stub-response "text/magical+json" encoded-body)])
-            result (tc/execute ctx)]
+          result (tc/execute ctx)]
 
-        (is (= {:body encoded-body
-                :headers {"Content-Type" "text/magical+json"
-                          "Accept" "text/magical+json"}
-                :as :magic}
-               (:request result)))
+      (is (= {:body encoded-body
+              :headers {"Content-Type" "text/magical+json"
+                        "Accept" "text/magical+json"}
+              :as :magic}
+             (:request result)))
 
-        (is (= {:body body
-                :headers {:content-type "text/magical+json"}}
-               (:response result)))))))
+      (is (= {:body body
+              :headers {:content-type "text/magical+json"}}
+             (:response result))))))
 
 (deftest auto-encoder-test
   (testing "when the server speaks a language martian doesn't understand it leaves it alone"
     (let [reverse-string #(apply str (reverse %))
           body {:the {:wheels ["on" "the" "bus"]}
                 :go {:round {:and "round"}}}
-          encoded-body (-> body encoders/json-encode reverse-string)]
-
-      (let [ctx (tc/enqueue* {:request {:body encoded-body
+          encoded-body (-> body encoders/json-encode reverse-string)
+          ctx (tc/enqueue* {:request {:body encoded-body
                                         :headers {"Content-Type" "text/magical+json"
                                                   "Accept" "text/magical+json"}}
                               :handler {:consumes ["text/magical+json"]
@@ -123,17 +125,17 @@
                              [i/default-encode-body
                               i/default-coerce-response
                               (stub-response "text/magical+json" encoded-body)])
-            result (tc/execute ctx)]
+          result (tc/execute ctx)]
 
-        (is (= {:body encoded-body
-                :headers {"Content-Type" "text/magical+json"
-                          "Accept" "text/magical+json"}
-                :as :auto}
-               (:request result)))
+      (is (= {:body encoded-body
+              :headers {"Content-Type" "text/magical+json"
+                        "Accept" "text/magical+json"}
+              :as :auto}
+             (:request result)))
 
-        (is (= {:body encoded-body
-                :headers {:content-type "text/magical+json"}}
-               (:response result)))))))
+      (is (= {:body encoded-body
+              :headers {:content-type "text/magical+json"}}
+             (:response result))))))
 
 (deftest supported-content-types-test
   (testing "picks up the supported content-types from the encoding/decoding interceptors"
@@ -148,3 +150,54 @@
               :decodes #?(:clj #{"application/json" "text/magical+json" "application/transit+msgpack" "application/transit+json" "application/edn"}
                           :cljs #{"application/json" "text/magical+json" "application/transit+json" "application/edn"})}
              (i/supported-content-types [encode-body coerce-response]))))))
+
+(deftest validate-response-test
+  (let [handler {:response-schemas [{:status (s/eq 200),
+                                     :body {(s/optional-key :name) (s/maybe s/Str),
+                                            (s/optional-key :age) (s/maybe s/Int),
+                                            (s/optional-key :type) (s/maybe s/Str)}}
+                                    {:status (s/eq 400)
+                                     :body s/Str}
+                                    {:status (s/eq 404)
+                                     :body s/Str}]}
+        happy? (fn [response & [strict?]]
+                 (let [ctx {:response response
+                            :handler handler}]
+                   (= ctx ((:leave (i/validate-response-body {:strict? strict?})) ctx))))]
+
+    (is (happy? {:status 200
+                 :body {:name "Dupont"
+                        :age 4
+                        :type "Goldfish"}}))
+
+    (is (happy? {:status 400
+                 :body "You must supply a pet id"}))
+
+    (is (happy? {:status 404
+                 :body "No pet with that id"}))
+
+    (is (thrown-with-msg?
+         Throwable
+         #"Value does not match schema"
+         (happy? {:status 200
+                  :body "Here is you pet :)"})))
+
+    (is (thrown-with-msg?
+         Throwable
+         #"Value does not match schema"
+         (happy? {:status 400
+                  :body {:message "Bad times"}})))
+
+
+    (testing "does not allow responses that aren't defined in strict mode"
+      (is (thrown-with-msg?
+           Throwable
+           #"No response body schema found for status 500"
+           (happy? {:status 500
+                    :body {:message "That did not go well"}}
+                   true))))
+
+    (testing "allows responses that aren't defined in non-strict mode"
+      (is (happy? {:status 500
+                   :body {:message "That did not go well"}}
+                  false)))))

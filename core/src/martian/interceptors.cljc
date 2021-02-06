@@ -110,6 +110,22 @@
 
 (def default-coerce-response (coerce-response (encoders/default-encoders)))
 
+(defn validate-response-body
+  ([] (validate-response-body {:strict? false}))
+  ([{:keys [strict?]}]
+   {:name ::validate-response
+    :leave (fn [{:keys [handler response] :as ctx}]
+             (if-let [body-schema (some (fn [schema]
+                                          (when-not (s/check (:status schema) (:status response))
+                                            (:body schema)))
+                                        (:response-schemas handler))]
+               (s/validate body-schema (:body response))
+               (when strict?
+                 (throw (ex-info (str "No response body schema found for status " (:status response))
+                                 {:response response
+                                  :response-schemas (:response-schemas handler)}))))
+             ctx)}))
+
 (defn supported-content-types
   "Return the full set of supported content-types as declared by any encoding/decoding interceptors"
   [interceptors]
