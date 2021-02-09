@@ -83,7 +83,7 @@
        [#{::create-pet-success ::http-failure}]
        (let [[op-id error] (last (:errors @rdb/app-db))]
          (is (= :create-pet op-id))
-         (is (= "Interceptor Exception: Value cannot be coerced to match schema: {:name (not (cljs$core$string? 1))}"
+         (is (= "Interceptor Exception: Value cannot be coerced to match schema: {:name (not (cljs$core$string? 1)), :type missing-required-key, :age missing-required-key}"
                 (.-message error)))))))))
 
 (deftest re-frame-pending-requests-test

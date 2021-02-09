@@ -20,7 +20,7 @@
                                     :description ""
                                     :required    true
                                     :schema      {:$ref "#/definitions/Body55523"}})]
-    (is (= {(s/optional-key :name)   (s/maybe {s/Any s/Any})
+    (is (= {:name                    {s/Any s/Any}
             (s/optional-key :age)    (s/maybe {s/Any s/Any})
             (s/optional-key :colour) (s/maybe {s/Any s/Any})}
            schema))))
@@ -122,8 +122,8 @@
                     :required true
                     :schema {:type "object"
                              :additionalProperties {}
-                             :properties {:id {:type "integer"
-                                               :required true}
+                             :required ["id"]
+                             :properties {:id {:type "integer"}
                                           :name {:type "string"
                                                  :required true}
                                           :tags {:type "array"

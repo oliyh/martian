@@ -32,6 +32,7 @@
                                         "in" "body"
                                         "required" true
                                         "schema" {"type" "object"
+                                                  "required" ["dataset"]
                                                   "properties" {"dataset" {"type" "integer"}
                                                                 "description" {"type" "string"}
                                                                 "goal" {"type" "integer"}
@@ -42,7 +43,7 @@
                          "tags" ["code"]}}}}
         [handler] (swagger/swagger->handlers swagger-json)]
 
-    (is (= {:data {(s/optional-key :dataset) (s/maybe s/Int)
+    (is (= {:data {:dataset s/Int
                    (s/optional-key :description) (s/maybe s/Str)
                    (s/optional-key :goal) (s/maybe s/Int)
                    (s/optional-key :name) (s/maybe s/Str)

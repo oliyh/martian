@@ -112,9 +112,21 @@
 
 (def ^:dynamic *visited-refs* #{})
 
+(defn- denormalise-object-properties [{:keys [required properties] :as s}]
+  (map (fn [[parameter-name param]] (assoc param
+                                           :name parameter-name
+                                           :required (or (:required param)
+                                                         (and (coll? required)
+                                                              (contains? (set required) (name parameter-name))))))
+       properties))
+
+(defn- make-object-schema [ref-lookup {:keys [additionalProperties] :as schema}]
+  (cond-> (schemas-for-parameters ref-lookup (denormalise-object-properties schema))
+    additionalProperties (assoc s/Any s/Any)))
+
 (defn make-schema
   "Takes a swagger parameter and returns a schema"
-  [ref-lookup {:keys [name required type enum schema properties $ref items additionalProperties] :as param}]
+  [ref-lookup {:keys [required type schema $ref items] :as param}]
 
   (if (let [ref (or $ref (:$ref schema))]
         (and ref (contains? *visited-refs* ref)))
@@ -140,12 +152,10 @@
                 [(schema-type ref-lookup (assoc (:items schema) :required true))]
 
                 (= "object" type)
-                (cond-> (schemas-for-parameters ref-lookup (map (fn [[name p]] (assoc p :name name)) properties))
-                  additionalProperties (assoc s/Any s/Any))
+                (make-object-schema ref-lookup param)
 
                 (= "object" (:type schema))
-                (cond-> (schemas-for-parameters ref-lookup (map (fn [[name p]] (assoc p :name name)) (:properties schema)))
-                  (:additionalProperties schema) (assoc s/Any s/Any))
+                (make-object-schema ref-lookup schema)
 
                 :else
                 (schema-type ref-lookup param))
