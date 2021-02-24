@@ -411,11 +411,11 @@
         params {:record record}
         actual-default (martian/request-for default :create-pet params)
         actual-without (martian/request-for without :create-pet params)]
-    (is (= actual-default
-           {:method :post, :url "https://api.org/pets", :body {:x 1, :y 2, :z 3, :thing 4, :five 5}}))
+    (is (= {:method :post, :url "https://api.org/pets", :body {:x 1, :y 2, :z 3, :thing 4, :five 5}}
+           actual-default))
     (is (not (instance? TestRecord (:body actual-default))))
-    (is (= actual-without
-           {:method :post, :url "https://api.org/pets", :body record}))
+    (is (= {:method :post, :url "https://api.org/pets", :body record}
+           actual-without))
     (is (instance? TestRecord (:body actual-without)))))
 
 (def dev-mode-martian

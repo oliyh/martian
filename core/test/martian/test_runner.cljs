@@ -4,6 +4,7 @@
             [martian.interceptors-test]
             [martian.swagger-test]
             [martian.openapi-test]
+            [martian.defaults-test]
             [figwheel.main.testing :refer [run-tests-async]]))
 
 (defn -main [& args]

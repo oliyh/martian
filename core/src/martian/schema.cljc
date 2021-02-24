@@ -6,6 +6,14 @@
             [clojure.walk :refer [postwalk-replace]])
   #?(:clj (:import [schema.core AnythingSchema Maybe EnumSchema EqSchema])))
 
+(defrecord SchemaWithMeta [schema meta]
+  s/Schema
+  (spec [this] (s/spec schema))
+  (explain [this] (list 'schema-with-meta (s/explain schema) meta)))
+
+(defn schema-with-meta [schema meta]
+  (->SchemaWithMeta schema meta))
+
 (defn- keyword->string [s]
   (if (keyword? s) (name s) s))
 
@@ -16,9 +24,16 @@
                  (string? (.-v ^EqSchema schema))))
     keyword->string))
 
+(declare coercion-matchers)
+
+(defn- schema-with-meta-matcher [schema]
+  (when (instance? SchemaWithMeta schema)
+    (coercion-matchers (:schema schema))))
+
 (defn coercion-matchers [schema]
   (or (sc/string-coercion-matcher schema)
-      (string-enum-matcher schema)))
+      (string-enum-matcher schema)
+      (schema-with-meta-matcher schema)))
 
 (defn- from-maybe [s]
   (if (instance? Maybe s)
@@ -96,7 +111,7 @@
   #?(:clj java.net.URI
      :cljs goog.Uri))
 
-(defn- schema-type [ref-lookup {:keys [type enum format $ref] :as param}]
+(defn leaf-schema [{:keys [type enum format]}]
   (cond
     enum (apply s/enum enum)
     (= "string" type) (case format
@@ -105,14 +120,24 @@
                         s/Str)
     (= "integer" type) s/Int
     (= "boolean" type) s/Bool
-    (or (= "object" type) $ref) (make-schema ref-lookup param)
 
     :else
     s/Any))
 
+(defn wrap-default [{:keys [default]} schema]
+  (if (some? default)
+    (schema-with-meta schema {:default default})
+    schema))
+
+(defn- schema-type [ref-lookup {:keys [type $ref] :as param}]
+  (let [schema (if (or (= "object" type) $ref)
+                 (make-schema ref-lookup param)
+                 (leaf-schema param))]
+    (wrap-default param schema)))
+
 (def ^:dynamic *visited-refs* #{})
 
-(defn- denormalise-object-properties [{:keys [required properties] :as s}]
+(defn- denormalise-object-properties [{:keys [required properties]}]
   (map (fn [[parameter-name param]] (assoc param
                                            :name parameter-name
                                            :required (or (:required param)

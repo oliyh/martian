@@ -1,6 +1,7 @@
 (ns martian.openapi-test
   (:require [martian.test-helpers #?@(:clj [:refer [json-resource]]
                                       :cljs [:refer-macros [json-resource]])]
+            [martian.schema :refer [schema-with-meta]]
             [clojure.test :refer [deftest is testing]]
             [schema.core :as s]
             [martian.openapi :refer [openapi->handlers]]))
@@ -73,7 +74,7 @@
             :method :get,
             :produces ["application/json"],
             :path-schema {:projectId s/Str},
-            :query-schema {(s/optional-key :key) s/Str},
+            :query-schema {(s/optional-key :key) (schema-with-meta s/Str {:default "some-default-key"})},
             :form-schema {},
             :path-parts ["/project/" :projectKey],
             :headers-schema {},

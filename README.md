@@ -58,6 +58,7 @@ ensuring that your response handling code is also correct. Examples are below.
 - Support for integration testing without requiring external HTTP stubs
 - Routes are named as idiomatic kebab-case keywords of the `operationId` of the endpoint in the OpenAPI/Swagger definition
 - Parameters are aliased to kebab-case keywords so that your code remains idiomatic, neat and clean
+- Parameter defaults can be optionally applied
 - Simple, data driven behaviour with low coupling using libraries and patterns you already know
 - Pure client code, no server code or modifications required
 - Write generative, realistic tests using [martian-test](https://github.com/oliyh/martian/tree/master/test) to generate response data
@@ -355,6 +356,30 @@ It is not included in the default interceptor stack, but you can include it your
 The `strict?` argument defines whether any response with an undefined schema is allowed, e.g. if a response
 schema is defined for a 200 status code only, but the server returns a 500, strict mode will throw an error but
 non-strict mode will allow it. Strict mode defaults to false.
+
+## Defaults
+
+Martian can read `default` directives from Swagger, or you can supply them if bootstrapping from data. They can be seen using `explore` and merged with your params if you include the optional `merge-defaults` interceptor.
+
+```clojure
+(require '[martian.schema :refer [schema-with-meta]])
+(require '[martian.interceptors :refer [merge-defaults]])
+
+(let [m (martian/bootstrap "https://api.org"
+                           [{:route-name :create-pet
+                             :path-parts ["/pets/"]
+                             :method :post
+                             :body-schema {:pet {:id   s/Int
+                                                 :name (schema-with-meta s/Str {:default "Bryson"})}}}]
+                           {:interceptors (cons (merge-defaults) martian/default-interceptors)})]
+
+  (martian/explore m :create-pet)
+  ;; {:summary nil, :parameters {:pet {:id Int, :name (schema-with-meta Str {:default "Bryson"})}}, :returns {}}
+
+  (martian/request-for m :create-pet {:pet {:id 123}})
+  ;; {:method :post, :url "https://api.org/pets/", :body {:id 123, :name "Bryson"}}
+  )
+```
 
 ## Development mode
 

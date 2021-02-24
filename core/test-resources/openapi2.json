@@ -26,7 +26,8 @@
             "description": "Obtains values corresponding to these keys from a project's configuration",
             "schema": {
               "type": "string",
-              "format": "string"
+              "format": "string",
+              "default": "some-default-key"
             }
           }
         ],
