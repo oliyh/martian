@@ -3,6 +3,7 @@
             [clojure.string :as string]
             [clojure.walk :refer [keywordize-keys]]
             [schema.core :as s]
+            [martian.schema :refer [leaf-schema wrap-default]]
             #?(:cljs [cljs.reader :refer [read-string]])))
 
 (defn openapi-schema? [json]
@@ -23,6 +24,17 @@
   #?(:clj java.net.URI
      :cljs goog.Uri))
 
+(defn- wrap-nullable [{:keys [nullable]} schema]
+  (if nullable
+    (s/maybe schema)
+    schema))
+
+(defn- wrap [property schema]
+  (reduce (fn [schema f]
+            (f property schema))
+          schema
+          [wrap-default wrap-nullable]))
+
 (defn- openapi->schema
   ([schema components] (openapi->schema schema components #{}))
   ([schema components seen-set]
@@ -33,28 +45,18 @@
        (recur (lookup-ref components reference)
               components
               (conj seen-set reference)))
-     (let [wrap (if (:nullable schema) s/maybe identity)]
-       (wrap
-        (condp = (:type schema)
-          "string"  (if-let [enum (:enum schema)]
-                      (apply s/enum enum)
-                      (condp = (:format schema)
-                        "uuid" s/Uuid
-                        "uri" URI
-                        s/Str))
-          "integer" s/Int
-          "number"  s/Num
-          "boolean" s/Bool
-          "array"   [(openapi->schema (:items schema) components seen-set)]
-          "object"  (let [required? (set (:required schema))]
-                      (into {}
-                            (map (fn [[k v]]
-                                   {(if (required? (name k))
-                                      (keyword k)
-                                      (s/optional-key (keyword k)))
-                                    (openapi->schema v components seen-set)}))
-                            (:properties schema)))
-          (throw (ex-info "Cannot convert OpenAPI type to schema" {:definition schema}))))))))
+     (wrap schema
+           (condp = (:type schema)
+             "array"   [(openapi->schema (:items schema) components seen-set)]
+             "object"  (let [required? (set (:required schema))]
+                         (into {}
+                               (map (fn [[k v]]
+                                      {(if (required? (name k))
+                                         (keyword k)
+                                         (s/optional-key (keyword k)))
+                                       (openapi->schema v components seen-set)}))
+                               (:properties schema)))
+             (leaf-schema schema))))))
 
 (defn- get-matching-schema [object content-types]
   (if-let [content-type (first (filter #(get-in object [:content (keyword %) :schema]) content-types))]

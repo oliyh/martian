@@ -1,6 +1,7 @@
 (ns martian.interceptors-test
   (:require [martian.interceptors :as i]
             [martian.encoders :as encoders]
+            [martian.schema :refer [schema-with-meta]]
             [tripod.context :as tc]
             [schema.core :as s]
             #?(:clj [clojure.test :refer [deftest is testing]]
@@ -201,3 +202,36 @@
       (is (happy? {:status 500
                    :body {:message "That did not go well"}}
                   false)))))
+
+(deftest merge-defaults-test
+  (testing "merges defaults into params"
+    (let [handler {:path-schema {:foo (schema-with-meta s/Str {:default "bar"})}
+                   :query-schema {:baz (schema-with-meta s/Int {:default 123})}
+                   :body-schema {:pet {:type (schema-with-meta s/Int {:default 123})}}}
+          merge-defaults (fn [params]
+                           (let [ctx {:params params
+                                      :handler handler}]
+                             (:params ((:enter (i/merge-defaults)) ctx))))]
+
+      (testing "reads all default values"
+        (is (= {:foo "bar"
+                :baz 123
+                :pet {:type 123}}
+               (merge-defaults {}))))
+
+      (testing "defaults can be overridden"
+        (is (= {:foo "FOO"
+                :baz "BAZ"
+                :pet nil}
+               (merge-defaults {:foo "FOO"
+                                :baz "BAZ"
+                                :pet nil}))))
+
+      (testing "keeps additional keys"
+        (is (= {:foo "bar"
+                :baz 123
+                :quu "QUU"
+                :pet {:type 123
+                      :name "Tigger"}}
+               (merge-defaults {:quu "QUU"
+                                :pet {:name "Tigger"}})))))))

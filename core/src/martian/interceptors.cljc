@@ -1,5 +1,6 @@
 (ns martian.interceptors
   (:require [martian.schema :as schema]
+            [martian.defaults :refer [defaults]]
             [clojure.walk :refer [keywordize-keys stringify-keys]]
             [tripod.context :as tc]
             [schema.core :as s]
@@ -111,6 +112,8 @@
 (def default-coerce-response (coerce-response (encoders/default-encoders)))
 
 (defn validate-response-body
+  "Validate responses against the appropriate response schema.
+   Optional strict mode throws an error if it is invalid"
   ([] (validate-response-body {:strict? false}))
   ([{:keys [strict?]}]
    {:name ::validate-response
@@ -125,6 +128,26 @@
                                  {:response response
                                   :response-schemas (:response-schemas handler)}))))
              ctx)}))
+
+(defn- deep-merge [a b]
+  (merge-with
+   (fn [a b]
+     (if (every? map? [a b])
+       (deep-merge a b)
+       b))
+   a b))
+
+(defn merge-defaults
+  "Read default values from the specified (default: all) input schemas and merge into the params map"
+  ([] (merge-defaults [:path-schema :query-schema :body-schema :form-schema :headers-schema]))
+  ([schema-keys]
+   {:name ::merge-defaults
+    :enter (fn [{:keys [handler] :as ctx}]
+             (update ctx :params (fn [params]
+                                   (reduce (fn [p schema-key]
+                                             (deep-merge (defaults (get handler schema-key)) p))
+                                           params
+                                           schema-keys))))}))
 
 (defn supported-content-types
   "Return the full set of supported content-types as declared by any encoding/decoding interceptors"

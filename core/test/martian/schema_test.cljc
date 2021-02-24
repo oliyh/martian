@@ -38,8 +38,8 @@
           :dog? s/Bool
           :unknown s/Any}
          (schema/schemas-for-parameters {} [{:name "id"
-                                              :in "path"
-                                              :required true
+                                             :in "path"
+                                             :required true
                                              :type "integer"}
                                             {:name "name"
                                              :in "path"
@@ -53,6 +53,57 @@
                                              :in "path"
                                              :required true
                                              :type "unknown"}]))))
+
+(deftest default-values-test
+  (testing "explaining and printing"
+    (is (= '(schema-with-meta Int {:default 123})
+           (s/explain (schema/schema-with-meta s/Int {:default 123})))))
+
+  (let [schema (schema/schemas-for-parameters {} [{:name "id"
+                                                   :in "path"
+                                                   :required true
+                                                   :type "integer"
+                                                   :default 123}
+                                                  {:name "name"
+                                                   :in "path"
+                                                   :required true
+                                                   :type "string"
+                                                   :default "Gershwin"}
+                                                  {:name "dog?"
+                                                   :in "path"
+                                                   :required true
+                                                   :type "boolean"
+                                                   :default false}
+                                                  {:name "unknown"
+                                                   :in "path"
+                                                   :type "unknown"
+                                                   :default "foo"}])]
+
+    (testing "builds the schemas preserving default information"
+      (is (= {:id (schema/schema-with-meta s/Int {:default 123})
+              :name (schema/schema-with-meta s/Str {:default "Gershwin"})
+              :dog? (schema/schema-with-meta s/Bool {:default false})
+              (s/optional-key :unknown) (s/maybe (schema/schema-with-meta s/Any {:default "foo"}))}
+             schema)))
+
+    (testing "works on nested params inside the body"
+      (let [body-param {:name "Pet"
+                        :in "body"
+                        :required true
+                        :schema {:$ref "#/definitions/Pet"}}
+            definitions {:Pet {:type "object"
+                               :properties {:name {:type "string"
+                                                   :required true}
+                                            :address {:schema {:$ref "#/definitions/Address"}
+                                                      :required true}}}
+                         :Address {:type "object"
+                                   :properties {:city {:type "string"
+                                                       :required true
+                                                       :default "trondheim"}}}}
+            schema (schema/make-schema {:definitions definitions} body-param)]
+        (is (= {:name s/Str
+                :address {:city (schema/schema-with-meta s/Str {:default "trondheim"})}}
+               schema))))))
 
 (deftest uuid-test
   (is (= (s/cond-pre s/Str s/Uuid)
