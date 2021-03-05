@@ -32,6 +32,7 @@
 
 (defn coercion-matchers [schema]
   (or (sc/string-coercion-matcher schema)
+      ({s/Str keyword->string} schema)
       (string-enum-matcher schema)
       (schema-with-meta-matcher schema)))
 
@@ -48,7 +49,8 @@
   [schema data & [parameter-aliases]]
   (when-let [s (from-maybe schema)]
     (cond
-      (instance? AnythingSchema s)
+      (or (coercion-matchers schema)
+          (instance? AnythingSchema s))
       ((sc/coercer! schema coercion-matchers) data)
 
       (map? s)
