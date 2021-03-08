@@ -12,6 +12,9 @@
 (def openapi-2-json
   (json-resource "openapi2.json"))
 
+(def jira-openapi-v3-json
+  (json-resource "jira-openapi-v3.json"))
+
 (deftest openapi-sanity-check
   (testing "parses each handler"
     (is (= {:summary        "Update an existing pet"
@@ -92,3 +95,10 @@
                (->> (filter #(= (:route-name %) :get-project-configuration)))
                first
                (dissoc :openapi-definition))))))
+
+(deftest jira-openapi-v3-test
+  (is (= 410
+         (-> jira-openapi-v3-json
+             (openapi->handlers {:encodes ["json"]
+                                 :decodes ["json"]})
+             count))))

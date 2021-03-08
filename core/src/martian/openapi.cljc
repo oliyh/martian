@@ -58,18 +58,27 @@
                                (:properties schema)))
              (leaf-schema schema))))))
 
-(defn- get-matching-schema [object content-types]
-  (if-let [content-type (first (filter #(get-in object [:content (keyword %) :schema]) content-types))]
-    [(get-in object [:content (keyword content-type) :schema])
+(defn- stringify-ns-keyword [k]
+  (if (keyword? k)
+    (if-let [ns (namespace k)]
+      (str ns "/" (name k))
+      (name k))
+    k))
+
+(defn- get-matching-schema [{:keys [content]} content-types header-name]
+  (if-let [content-type (first (filter #(contains? content (keyword %)) content-types))]
+    [(get-in content [(keyword content-type) :schema])
      content-type]
-    (when (seq (:content object))
+    (when (seq content)
       #?(:clj (println "No matching content-type available" {:supported-content-types content-types
-                                                             :available-content-types (map name (keys (:content object)))})
+                                                             :available-content-types (map stringify-ns-keyword (keys content))
+                                                             :header header-name})
          :cljs (js/console.warn "No matching content-type available" {:supported-content-types content-types
-                                                                      :available-content-types (keys (get object "content"))})))))
+                                                                      :available-content-types (map stringify-ns-keyword (keys content))
+                                                                      :header header-name})))))
 
 (defn- process-body [body components content-types]
-  (when-let [[json-schema content-type] (get-matching-schema body content-types)]
+  (when-let [[json-schema content-type] (get-matching-schema body content-types "Accept")]
     (let [required (:required body)]
       {:schema       {(if required :body (s/optional-key :body))
                       (openapi->schema json-schema components)}
@@ -87,7 +96,7 @@
 (defn- process-responses [responses components content-types]
   (for [[status-code value] responses
         :let                [status-code (name status-code)
-                             [json-schema content-type] (get-matching-schema value content-types)]]
+                             [json-schema content-type] (get-matching-schema value content-types "Content-Type")]]
     {:status       (if (= status-code "default")
                      s/Any
                      (s/eq (if (number? status-code) status-code (read-string (name status-code)))))
