@@ -318,19 +318,34 @@
                                  :query-schema {:camelVersion s/Int}
                                  :body-schema {:Camel {:camelName s/Str
                                                        :camelTrain {:leaderName s/Str
-                                                                    (s/optional-key :followerCamels) [{:followerName s/Str}]}}}
+                                                                    (s/optional-key :followerCamels) [{:followerName s/Str}]}
+                                                       :anyCamel s/Any}}
                                  :headers-schema {(s/optional-key :camelToken) s/Str}
                                  :form-schema {:camelHumps (s/maybe s/Int)}}])]
 
     (is (= "https://camels.org/camels/1"
            (martian/url-for m :create-camel {:camel-id 1})))
 
+    (is (= {:path-schema {:camel-id :camelId}
+            :query-schema {:camel-version :camelVersion},
+            :body-schema {:camel :Camel,
+                          :camel-name :camelName,
+                          :camel-train :camelTrain,
+                          :any-camel :anyCamel,
+                          :leader-name :leaderName,
+                          :follower-camels :followerCamels,
+                          :follower-name :followerName},
+            :form-schema {:camel-humps :camelHumps},
+            :headers-schema {:camel-token :camelToken}}
+           (:parameter-aliases (martian/handler-for m :create-camel))))
+
     (is (= {:method :put,
             :url "https://camels.org/camels/1",
             :query-params {:camelVersion 2},
             :body {:camelName "kebab"
                    :camelTrain {:leaderName "camel leader"
-                                :followerCamels [{:followerName "OCaml"}]}},
+                                :followerCamels [{:followerName "OCaml"}]}
+                   :anyCamel {:camel-train "choo choo"}},
             :form-params {:camelHumps 2},
             :headers {"camelToken" "cAmEl"}}
 
@@ -341,10 +356,11 @@
                                                  :camel-humps 2
                                                  :camel-name "kebab"
                                                  :camel-train {:leader-name "camel leader"
-                                                               :follower-camels [{:follower-name "OCaml"}]}})
+                                                               :follower-camels [{:follower-name "OCaml"}]}
+                                                 :any-camel {:camel-train "choo choo"}})
 
            ;; nested under (kebabbed) body key
-           (martian/request-for m :create-camel {:camel-id 1
+           #_(martian/request-for m :create-camel {:camel-id 1
                                                  :camel-version 2
                                                  :camel-token "cAmEl"
                                                  :camel-humps 2
@@ -353,7 +369,7 @@
                                                                        :follower-camels [{:follower-name "OCaml"}]}}})
 
            ;; destructured, already in camel case
-           (martian/request-for m :create-camel {:camelId 1
+           #_(martian/request-for m :create-camel {:camelId 1
                                                  :camelVersion 2
                                                  :camelToken "cAmEl"
                                                  :camelHumps 2
@@ -362,7 +378,7 @@
                                                               :followerCamels [{:followerName "OCaml"}]}})
 
            ;; nested under (already camelled) body key
-           (martian/request-for m :create-camel {:camelId 1
+           #_(martian/request-for m :create-camel {:camelId 1
                                                  :camelVersion 2
                                                  :camelToken "cAmEl"
                                                  :camelHumps 2
@@ -377,8 +393,9 @@
                :camel-version                s/Int,
                :camel                        {:camel-name s/Str
                                               :camel-train {:leader-name s/Str
-                                                            (s/optional-key :follower-camels) [{:follower-name s/Str}]}},
-               :camel-humps                  (s/maybe s/Int),
+                                                            (s/optional-key :follower-camels) [{:follower-name s/Str}]}
+                                              :any-camel s/Any},
+               :camel-humps                  (s/maybe s/Int)
                (s/optional-key :camel-token) s/Str},
               :returns {}}
              (martian/explore m :create-camel))))))
