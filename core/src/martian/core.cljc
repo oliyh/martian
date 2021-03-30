@@ -3,6 +3,7 @@
             [camel-snake-kebab.core :refer [->kebab-case-keyword]]
             [clojure.string :as string]
             [clojure.walk :refer [keywordize-keys postwalk-replace]]
+            [clojure.set :refer [map-invert]]
             [martian.interceptors :as interceptors]
             [martian.schema :as schema]
             [martian.swagger :refer [swagger->handlers]]
@@ -25,10 +26,17 @@
 
 (defn- enrich-handler [handler]
   (-> handler
-      (assoc :parameter-aliases (let [ks (->> (map handler parameter-schemas)
-                                              schema/parameter-keys
-                                              (remove #(= % s/Any)))]
-                                  (zipmap (map ->kebab-case-keyword ks) ks)))))
+      (assoc :parameter-aliases
+             (reduce (fn [aliases parameter-key]
+                       (assoc aliases parameter-key
+                              (let [ks (schema/parameter-keys [(get handler parameter-key)])]
+                                (zipmap (map ->kebab-case-keyword ks) ks))))
+                     {}
+                     parameter-schemas))))
+
+(:parameter-aliases (enrich-handler {:body-schema {:Foo {:Bar {:Baz s/Str}}}
+                                     :path-schema {:foo s/Str
+                                                   s/Any s/Any}}))
 
 (defn- concise->handlers [concise-handlers global-produces global-consumes]
   (map (comp
@@ -103,12 +111,16 @@
 (defn explore
   ([martian] (mapv (juxt :route-name :summary) (:handlers (resolve-instance martian))))
   ([martian route-name]
-   (when-let [handler (find-handler (:handlers (resolve-instance martian)) route-name)]
-     {:summary (:summary handler)
-      :parameters (let [parameter-aliases (:parameter-aliases handler)]
-                    (->> (map handler parameter-schemas)
-                         (apply merge)
-                         (postwalk-replace (zipmap (vals parameter-aliases) (keys parameter-aliases)))))
+   (when-let [{:keys [parameter-aliases summary] :as handler} (find-handler (:handlers (resolve-instance martian)) route-name)]
+     {:summary summary
+      :parameters (reduce (fn [params parameter-key]
+                            (merge params (postwalk-replace (map-invert (get parameter-aliases parameter-key))
+                                                            (get handler parameter-key))))
+                          {}
+                          parameter-schemas)
+      #_(->> (map handler parameter-schemas)
+             (apply merge)
+             (postwalk-replace (zipmap (vals parameter-aliases) (keys parameter-aliases))))
       :returns (->> (:response-schemas handler)
                     (map (juxt (comp :v :status) :body))
                     (into {}))})))

@@ -37,7 +37,7 @@
             (update ctx :request create-only :url (url-for (:route-name handler) params)))})
 
 (defn coerce-data [{:keys [parameter-aliases] :as handler} schema-key params]
-  (schema/coerce-data (get handler schema-key) params parameter-aliases))
+  (schema/coerce-data (get handler schema-key) params (get parameter-aliases schema-key)))
 
 (def keywordize-params
   {:name ::keywordize-params
@@ -52,7 +52,7 @@
   {:name ::body-params
    :enter (fn [{:keys [params handler] :as ctx}]
             (if-let [[body-key body-schema] (first (:body-schema handler))]
-              (let [parameter-aliases (:parameter-aliases handler)
+              (let [parameter-aliases (get-in handler [:parameter-aliases :body-schema])
                     body-params (or (:martian.core/body params)
                                     (get params (s/explicit-schema-key body-key))
                                     (get params (->kebab-case-keyword (s/explicit-schema-key body-key)))
