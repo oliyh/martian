@@ -296,9 +296,9 @@
              (schema/coerce-data
               {s/Keyword s/Any}
               {:a-camel {:another-camel {:camels-everywhere 1}}}
-              {:a-camel :aCamel
-               :another-camel :anotherCamel
-               :camels-everywhere :camelsEverywhere})))))
+              {[] {:a-camel :aCamel}
+               [:a-camel] {:another-camel :anotherCamel}
+               [:a-camel :another-camel] {:camels-everywhere :camelsEverywhere}})))))
 
   (testing "keywords to strings"
     (is (= "foo" (schema/coerce-data s/Str :foo)))))

@@ -33,7 +33,7 @@
   (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
               (martian-test/respond-with-generated {:load-pet :random}))]
 
-    (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema"
+    (is (thrown-with-msg? Throwable #"Could not coerce value to schema"
                           (martian/response-for m :load-pet {:id "abc"})))
 
     (is (nil? (s/check (s/conditional

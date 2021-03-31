@@ -1,14 +1,11 @@
 (ns martian.core
   (:require [tripod.context :as tc]
-            [camel-snake-kebab.core :refer [->kebab-case-keyword]]
             [clojure.string :as string]
-            [clojure.walk :refer [keywordize-keys postwalk-replace]]
-            [clojure.set :refer [map-invert]]
+            [clojure.walk :refer [keywordize-keys]]
             [martian.interceptors :as interceptors]
-            [martian.schema :as schema]
+            [martian.parameter-aliases :as parameter-aliases :refer [parameter-aliases alias-schema]]
             [martian.swagger :refer [swagger->handlers]]
             [martian.openapi :refer [openapi->handlers openapi-schema?]]
-            [schema.core :as s]
             [clojure.spec.alpha :as spec]
             [martian.spec :as mspec]))
 
@@ -28,15 +25,9 @@
   (-> handler
       (assoc :parameter-aliases
              (reduce (fn [aliases parameter-key]
-                       (assoc aliases parameter-key
-                              (let [ks (schema/parameter-keys [(get handler parameter-key)])]
-                                (zipmap (map ->kebab-case-keyword ks) ks))))
+                       (assoc aliases parameter-key (parameter-aliases (get handler parameter-key))))
                      {}
                      parameter-schemas))))
-
-(:parameter-aliases (enrich-handler {:body-schema {:Foo {:Bar {:Baz s/Str}}}
-                                     :path-schema {:foo s/Str
-                                                   s/Any s/Any}}))
 
 (defn- concise->handlers [concise-handlers global-produces global-consumes]
   (map (comp
@@ -114,8 +105,7 @@
    (when-let [{:keys [parameter-aliases summary] :as handler} (find-handler (:handlers (resolve-instance martian)) route-name)]
      {:summary summary
       :parameters (reduce (fn [params parameter-key]
-                            (merge params (postwalk-replace (map-invert (get parameter-aliases parameter-key))
-                                                            (get handler parameter-key))))
+                            (merge params (alias-schema (get parameter-aliases parameter-key) (get handler parameter-key))))
                           {}
                           parameter-schemas)
       #_(->> (map handler parameter-schemas)
