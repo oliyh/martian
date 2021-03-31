@@ -5,6 +5,7 @@
             :url "http://opensource.org/licenses/MIT"}
   :dependencies [[frankiesardo/tripod "0.2.0"]
                  [prismatic/schema "1.1.9"]
+                 [metosin/schema-tools "0.12.3"]
                  [metosin/spec-tools "0.7.0"
                   :exclusions [com.fasterxml.jackson.core/jackson-databind]]
                  [org.clojure/spec.alpha "0.2.176"]

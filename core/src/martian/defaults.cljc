@@ -5,6 +5,9 @@
   #?(:clj (:import [schema.core MapEntry EqSchema]
                    [martian.schema SchemaWithMeta])))
 
+;; todo should be able to use martian.schema-tools for this
+;; or schema-tools.core
+
 (defn get-default [schema]
   (when (instance? SchemaWithMeta schema) (get-in schema [:meta :default])))
 

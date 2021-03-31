@@ -3,7 +3,8 @@
                :cljs [schema.core :as s :refer [AnythingSchema Maybe EnumSchema EqSchema]])
             #?(:cljs [goog.Uri])
             [schema.coerce :as sc]
-            [clojure.walk :refer [postwalk-replace]])
+            [schema-tools.core :as st]
+            [martian.parameter-aliases :refer [unalias-data]])
   #?(:clj (:import [schema.core AnythingSchema Maybe EnumSchema EqSchema])))
 
 (defrecord SchemaWithMeta [schema meta]
@@ -41,9 +42,6 @@
     (:schema s)
     s))
 
-(defn- unalias-parameters [data parameter-aliases]
-  (postwalk-replace parameter-aliases data))
-
 (defn coerce-data
   "Extracts the data referred to by the schema's keys and coerces it"
   [schema data & [parameter-aliases]]
@@ -54,18 +52,12 @@
       ((sc/coercer! schema coercion-matchers) data)
 
       (map? s)
-      (if (every? s/specific-key? (keys s))
-        (some->> (keys s)
-                 (map s/explicit-schema-key)
-                 (select-keys (unalias-parameters data parameter-aliases))
-                 ((sc/coercer! schema coercion-matchers)))
-        (some->> (unalias-parameters data parameter-aliases)
-                 ((sc/coercer! schema coercion-matchers))))
+      (st/select-schema (unalias-data parameter-aliases data) s coercion-matchers)
 
       (coll? s) ;; primitives, arrays, arrays of maps
       ((sc/coercer! schema coercion-matchers)
        (map #(if (map? %)
-               (unalias-parameters % parameter-aliases)
+               (unalias-data parameter-aliases %)
                %)
             data))
 

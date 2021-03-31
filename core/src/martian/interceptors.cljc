@@ -51,13 +51,14 @@
 (def set-body-params
   {:name ::body-params
    :enter (fn [{:keys [params handler] :as ctx}]
-            (if-let [[body-key body-schema] (first (:body-schema handler))]
+            (if-let [[body-key] (first (:body-schema handler))]
               (let [parameter-aliases (get-in handler [:parameter-aliases :body-schema])
+                    body-key (s/explicit-schema-key body-key)
                     body-params (or (:martian.core/body params)
-                                    (get params (s/explicit-schema-key body-key))
-                                    (get params (->kebab-case-keyword (s/explicit-schema-key body-key)))
+                                    (get params body-key)
+                                    (get params (->kebab-case-keyword body-key))
                                     params)]
-                (update ctx :request insert-or-merge :body (schema/coerce-data body-schema body-params parameter-aliases)))
+                (update ctx :request insert-or-merge :body (get (schema/coerce-data (:body-schema handler) {body-key body-params} parameter-aliases) body-key)))
               ctx))})
 
 (def set-form-params

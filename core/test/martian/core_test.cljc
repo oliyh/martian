@@ -9,6 +9,8 @@
 #?(:cljs
    (def Throwable js/Error))
 
+(def cannot-coerce-pattern #"Could not coerce value to schema")
+
 (stest/instrument)
 
 (def swagger-definition
@@ -102,7 +104,7 @@
                                 :consumes ["application/json"]})]
 
       (is (= "https://api.org/pets/123" (martian/url-for m :load-pet {:id 123})))
-      (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema"
+      (is (thrown-with-msg? Throwable cannot-coerce-pattern
                             (martian/request-for m :load-pet {:id "one"})))
 
       (is (= {:method :post
@@ -269,17 +271,17 @@
                                        :name "nigel"}))))
 
     (testing "exceptions"
-      (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema"
+      (is (thrown-with-msg? Throwable cannot-coerce-pattern
                             (request-for :all-pets {:sort "baa"})))
 
-      (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema"
+      (is (thrown-with-msg? Throwable cannot-coerce-pattern
                             (request-for :load-pet {:id "one"})))
 
-      (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema"
+      (is (thrown-with-msg? Throwable cannot-coerce-pattern
                             (request-for :create-pet {:pet {:id "one"
                                                             :name 1}})))
 
-      (is (thrown-with-msg? Throwable #"Value cannot be coerced to match schema: \{:id missing-required-key, :name missing-required-key\}"
+      (is (thrown-with-msg? Throwable cannot-coerce-pattern
                             (request-for :create-pet))))))
 
 (deftest with-interceptors-test
@@ -326,17 +328,17 @@
     (is (= "https://camels.org/camels/1"
            (martian/url-for m :create-camel {:camel-id 1})))
 
-    (is (= {:path-schema {:camel-id :camelId}
-            :query-schema {:camel-version :camelVersion},
-            :body-schema {:camel :Camel,
-                          :camel-name :camelName,
-                          :camel-train :camelTrain,
-                          :any-camel :anyCamel,
-                          :leader-name :leaderName,
-                          :follower-camels :followerCamels,
-                          :follower-name :followerName},
-            :form-schema {:camel-humps :camelHumps},
-            :headers-schema {:camel-token :camelToken}}
+    (is (= {:path-schema {[] {:camel-id :camelId}},
+            :query-schema {[] {:camel-version :camelVersion}},
+            :body-schema {[] {:camel :Camel},
+                          [:camel] {:camel-name :camelName,
+                                    :camel-train :camelTrain,
+                                    :any-camel :anyCamel},
+                          [:camel :camel-train] {:leader-name :leaderName,
+                                                 :follower-camels :followerCamels},
+                          [:camel :camel-train :follower-camels] {:follower-name :followerName}},
+            :form-schema {[] {:camel-humps :camelHumps}},
+            :headers-schema {[] {:camel-token :camelToken}}}
            (:parameter-aliases (martian/handler-for m :create-camel))))
 
     (is (= {:method :put,
@@ -360,31 +362,34 @@
                                                  :any-camel {:camel-train "choo choo"}})
 
            ;; nested under (kebabbed) body key
-           #_(martian/request-for m :create-camel {:camel-id 1
+           (martian/request-for m :create-camel {:camel-id 1
                                                  :camel-version 2
                                                  :camel-token "cAmEl"
                                                  :camel-humps 2
                                                  :camel {:camel-name "kebab"
                                                          :camel-train {:leader-name "camel leader"
-                                                                       :follower-camels [{:follower-name "OCaml"}]}}})
+                                                                       :follower-camels [{:follower-name "OCaml"}]}
+                                                         :any-camel {:camel-train "choo choo"}}})
 
            ;; destructured, already in camel case
-           #_(martian/request-for m :create-camel {:camelId 1
+           (martian/request-for m :create-camel {:camelId 1
                                                  :camelVersion 2
                                                  :camelToken "cAmEl"
                                                  :camelHumps 2
                                                  :camelName "kebab"
                                                  :camelTrain {:leaderName "camel leader"
-                                                              :followerCamels [{:followerName "OCaml"}]}})
+                                                              :followerCamels [{:followerName "OCaml"}]}
+                                                 :anyCamel {:camel-train "choo choo"}})
 
            ;; nested under (already camelled) body key
-           #_(martian/request-for m :create-camel {:camelId 1
+           (martian/request-for m :create-camel {:camelId 1
                                                  :camelVersion 2
                                                  :camelToken "cAmEl"
                                                  :camelHumps 2
                                                  :Camel {:camelName "kebab"
                                                          :camelTrain {:leaderName "camel leader"
-                                                                      :followerCamels [{:followerName "OCaml"}]}}})))
+                                                                      :followerCamels [{:followerName "OCaml"}]}
+                                                         :anyCamel {:camel-train "choo choo"}}})))
 
     (testing "explore shows idiomatic kebab keys"
       (is (= {:summary nil,
