@@ -1,7 +1,6 @@
 (ns martian.spec
   (:require [clojure.spec.alpha :as s]
-            [schema.core :as schema]
-            [clojure.spec.alpha :as spec]))
+            [schema.core :as schema]))
 
 (s/def ::api-root string?)
 
@@ -43,7 +42,8 @@
             ::swagger-definition
             ::path]))
 
-(s/def ::interceptor (spec/keys :opt-un [::name ::enter ::leave ::catch]))
-(s/def ::interceptors (spec/nilable (spec/coll-of ::interceptor)))
+(s/def ::interceptor (s/keys :opt-un [::name ::enter ::leave ::catch]))
+(s/def ::interceptors (s/nilable (s/coll-of ::interceptor)))
+(s/def ::use-defaults? boolean?)
 
-(s/def ::opts (spec/nilable (spec/keys :opt-un [::interceptors])))
+(s/def ::opts (s/nilable (s/keys :opt-un [::interceptors ::use-defaults?])))

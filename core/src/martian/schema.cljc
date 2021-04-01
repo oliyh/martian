@@ -4,16 +4,9 @@
             #?(:cljs [goog.Uri])
             [schema.coerce :as sc]
             [schema-tools.core :as st]
+            [schema-tools.coerce :as stc]
             [martian.parameter-aliases :refer [unalias-data]])
   #?(:clj (:import [schema.core AnythingSchema Maybe EnumSchema EqSchema])))
-
-(defrecord SchemaWithMeta [schema meta]
-  s/Schema
-  (spec [this] (s/spec schema))
-  (explain [this] (list 'schema-with-meta (s/explain schema) meta)))
-
-(defn schema-with-meta [schema meta]
-  (->SchemaWithMeta schema meta))
 
 (defn- keyword->string [s]
   (if (keyword? s) (name s) s))
@@ -25,17 +18,17 @@
                  (string? (.-v ^EqSchema schema))))
     keyword->string))
 
-(declare coercion-matchers)
-
-(defn- schema-with-meta-matcher [schema]
-  (when (instance? SchemaWithMeta schema)
-    (coercion-matchers (:schema schema))))
-
 (defn coercion-matchers [schema]
   (or (sc/string-coercion-matcher schema)
       ({s/Str keyword->string} schema)
-      (string-enum-matcher schema)
-      (schema-with-meta-matcher schema)))
+      (string-enum-matcher schema)))
+
+(defn build-coercion-matchers [use-defaults?]
+  (if use-defaults?
+    (fn [schema]
+      (or (stc/default-matcher schema)
+          (coercion-matchers schema)))
+    coercion-matchers))
 
 (defn- from-maybe [s]
   (if (instance? Maybe s)
@@ -44,45 +37,26 @@
 
 (defn coerce-data
   "Extracts the data referred to by the schema's keys and coerces it"
-  [schema data & [parameter-aliases]]
-  (when-let [s (from-maybe schema)]
-    (cond
-      (or (coercion-matchers schema)
-          (instance? AnythingSchema s))
-      ((sc/coercer! schema coercion-matchers) data)
+  [schema data & [parameter-aliases use-defaults?]]
+  (let [coercion-matchers (build-coercion-matchers use-defaults?)]
+    (when-let [s (from-maybe schema)]
+      (cond
+        (or (coercion-matchers schema)
+            (instance? AnythingSchema s))
+        ((sc/coercer! schema coercion-matchers) data)
 
-      (map? s)
-      (st/select-schema (unalias-data parameter-aliases data) s coercion-matchers)
+        (map? s)
+        (stc/coerce (unalias-data parameter-aliases data) s (stc/forwarding-matcher coercion-matchers stc/map-filter-matcher))
 
-      (coll? s) ;; primitives, arrays, arrays of maps
-      ((sc/coercer! schema coercion-matchers)
-       (map #(if (map? %)
-               (unalias-data parameter-aliases %)
-               %)
-            data))
+        (coll? s) ;; primitives, arrays, arrays of maps
+        ((sc/coercer! schema coercion-matchers)
+         (map #(if (map? %)
+                 (unalias-data parameter-aliases %)
+                 %)
+              data))
 
-      :else
-      ((sc/coercer! schema coercion-matchers) data))))
-
-(defn- extract-keys-from-map-schema [schema]
-  (->> (keys schema)
-       (filter s/specific-key?)
-       (map s/explicit-schema-key)))
-
-(defn parameter-keys [schemas]
-  (mapcat
-   (fn [schema]
-     (when-let [s (from-maybe schema)]
-       (cond
-         (and (map? s) (not (record? s)))
-         (concat (extract-keys-from-map-schema s) (parameter-keys (vals s)))
-
-         (coll? s)
-         (parameter-keys s)
-
-         :else
-         nil)))
-   schemas))
+        :else
+        ((sc/coercer! schema coercion-matchers) data)))))
 
 (declare make-schema)
 
@@ -120,7 +94,7 @@
 
 (defn wrap-default [{:keys [default]} schema]
   (if (some? default)
-    (schema-with-meta schema {:default default})
+    (st/default schema default)
     schema))
 
 (defn- schema-type [ref-lookup {:keys [type $ref] :as param}]

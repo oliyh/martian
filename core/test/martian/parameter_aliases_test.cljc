@@ -1,6 +1,6 @@
 (ns martian.parameter-aliases-test
   (:require [martian.parameter-aliases :refer [parameter-aliases unalias-data alias-schema]]
-            [martian.schema :refer [schema-with-meta]]
+            [schema-tools.core :as st]
             [schema.core :as s]
             #?(:clj [clojure.test :refer [deftest testing is]]
                :cljs [cljs.test :refer-macros [deftest testing is]])))
@@ -35,9 +35,10 @@
             [:baz :quux] {:fizz :Fizz}}
            (parameter-aliases {:fooBar s/Str
                                (s/optional-key :BAR) s/Str
-                               :Baz (schema-with-meta {:QUU s/Str
-                                                       :Quux [{:Fizz s/Str}]}
-                                                      {:default {:QUU "hi"}})})))))
+                               :Baz (st/default {:QUU s/Str
+                                                 :Quux [{:Fizz s/Str}]}
+                                                {:QUU "hi"
+                                                 :Quux []})})))))
 
 (deftest unalias-data-test
   (testing "renames idiomatic keys back to original"

@@ -359,10 +359,10 @@ non-strict mode will allow it. Strict mode defaults to false.
 
 ## Defaults
 
-Martian can read `default` directives from Swagger, or you can supply them if bootstrapping from data. They can be seen using `explore` and merged with your params if you include the optional `merge-defaults` interceptor.
+Martian can read `default` directives from Swagger, or you can supply them if bootstrapping from data. They can be seen using `explore` and merged with your params if you set the optional `use-defaults?` option.
 
 ```clojure
-(require '[martian.schema :refer [schema-with-meta]])
+(require '[schema-tools.core :as st])
 (require '[martian.interceptors :refer [merge-defaults]])
 
 (let [m (martian/bootstrap "https://api.org"
@@ -370,11 +370,11 @@ Martian can read `default` directives from Swagger, or you can supply them if bo
                              :path-parts ["/pets/"]
                              :method :post
                              :body-schema {:pet {:id   s/Int
-                                                 :name (schema-with-meta s/Str {:default "Bryson"})}}}]
-                           {:interceptors (cons (merge-defaults) martian/default-interceptors)})]
+                                                 :name (st/default s/Str "Bryson")}}}]
+                           {:use-defaults? true})]
 
   (martian/explore m :create-pet)
-  ;; {:summary nil, :parameters {:pet {:id Int, :name (schema-with-meta Str {:default "Bryson"})}}, :returns {}}
+  ;; {:summary nil, :parameters {:pet {:id Int, :name (default Str "Bryson")}}, :returns {}}
 
   (martian/request-for m :create-pet {:pet {:id 123}})
   ;; {:method :post, :url "https://api.org/pets/", :body {:id 123, :name "Bryson"}}

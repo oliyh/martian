@@ -6,7 +6,7 @@
 ;; todo
 ;; write some tests and lean on schema-tools.core where possible
 
-(defn- with-paths [path schema]
+(defn with-paths [path schema]
   (keep (fn [schema]
           (cond (and (instance? MapEntry schema)
                      (instance? EqSchema (:key-schema schema)))
@@ -48,13 +48,3 @@
 
 (defn prewalk-with-path [f path form]
   (walk-with-path (partial prewalk-with-path f) (fn [_path form] form) path (f path form)))
-
-(defn select-keys-nested [schema data]
-  (let [paths (set (key-seqs schema))]
-    (println paths)
-    (postwalk-with-path (fn [path x]
-                          (println path)
-                          (when (contains? paths path)
-                            x))
-                        []
-                        data)))
