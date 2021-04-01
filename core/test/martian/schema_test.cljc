@@ -1,6 +1,7 @@
 (ns martian.schema-test
   (:require [martian.schema :as schema]
             [schema.core :as s]
+            [schema-tools.core :as st]
             #?(:clj [clojure.test :refer [deftest testing is]]
                :cljs [cljs.test :refer-macros [deftest testing is]])))
 
@@ -56,8 +57,8 @@
 
 (deftest default-values-test
   (testing "explaining and printing"
-    (is (= '(schema-with-meta Int {:default 123})
-           (s/explain (schema/schema-with-meta s/Int {:default 123})))))
+    (is (= '(default Int 123)
+           (s/explain (st/default s/Int 123)))))
 
   (let [schema (schema/schemas-for-parameters {} [{:name "id"
                                                    :in "path"
@@ -80,10 +81,10 @@
                                                    :default "foo"}])]
 
     (testing "builds the schemas preserving default information"
-      (is (= {:id (schema/schema-with-meta s/Int {:default 123})
-              :name (schema/schema-with-meta s/Str {:default "Gershwin"})
-              :dog? (schema/schema-with-meta s/Bool {:default false})
-              (s/optional-key :unknown) (s/maybe (schema/schema-with-meta s/Any {:default "foo"}))}
+      (is (= {:id (st/default s/Int 123)
+              :name (st/default s/Str "Gershwin")
+              :dog? (st/default s/Bool false)
+              (s/optional-key :unknown) (s/maybe (st/default s/Any "foo"))}
              schema)))
 
     (testing "works on nested params inside the body"
@@ -94,16 +95,73 @@
             definitions {:Pet {:type "object"
                                :properties {:name {:type "string"
                                                    :required true}
+                                            :tags {:type "array"
+                                                   :items {:schema {:$ref "#/definitions/Tag"}}}
                                             :address {:schema {:$ref "#/definitions/Address"}
                                                       :required true}}}
                          :Address {:type "object"
                                    :properties {:city {:type "string"
                                                        :required true
-                                                       :default "trondheim"}}}}
+                                                       :default "trondheim"}}}
+                         :Tag {:type "object"
+                               :properties {:k {:type "string"
+                                                :required true
+                                                :default "ExampleTag"}} }}
             schema (schema/make-schema {:definitions definitions} body-param)]
         (is (= {:name s/Str
-                :address {:city (schema/schema-with-meta s/Str {:default "trondheim"})}}
-               schema))))))
+                (s/optional-key :tags) [s/Any]
+                :address {:city (st/default s/Str "trondheim")}}
+               schema))
+
+        (testing "and coerces data using default values"
+          (testing "does nothing if values are present"
+            (is (= {:name "Brachiosaurus"
+                    :address {:city "stavanger"}}
+                   (schema/coerce-data schema
+                                       {:name "Brachiosaurus"
+                                        :address {:city "stavanger"}}
+                                       nil
+                                       true))))
+
+         (testing "adds missing values when there are defaults"
+           (is (= {:name "Brachiosaurus"
+                    :address {:city "trondheim"}}
+                  (schema/coerce-data schema
+                                      {:name "Brachiosaurus"
+                                       :address {:city nil}}
+                                      nil
+                                       true))))
+
+         (testing "adds missing keys"
+           (is (= {:name "Brachiosaurus"
+                   :address {:city "trondheim"}}
+                  (schema/coerce-data schema
+                                      {:name "Brachiosaurus"
+                                       :address {}}
+                                      nil
+                                      true))))
+
+         (testing "removing extra keys"
+           (is (= {:name "Brachiosaurus"
+                   :address {:city "trondheim"}}
+                  (schema/coerce-data schema
+                                      {:name "Brachiosaurus"
+                                       :extra "key"
+                                       :address {}}
+                                      nil
+                                      true))))
+
+         ;; doesn't work - a limitation of spec-tools?
+         #_(testing "works inside arrays"
+           (is (= {:name "Brachiosaurus"
+                   :address {:city "stavanger"}
+                   :tags [{}]}
+                  (schema/coerce-data schema
+                                      {:name "Brachiosaurus"
+                                       :address {:city "stavanger"}
+                                       :tags [{:k nil}]}
+                                      nil
+                                      true)))))))))
 
 (deftest uuid-test
   (is (= (s/cond-pre s/Str s/Uuid)
@@ -302,25 +360,6 @@
 
   (testing "keywords to strings"
     (is (= "foo" (schema/coerce-data s/Str :foo)))))
-
-(deftest parameter-keys-test
-  (is (= [:foo]
-         (schema/parameter-keys [{:foo s/Int}])))
-
-  (is (= [:foo]
-         (schema/parameter-keys [{:foo s/Int
-                                  s/Any s/Any}])))
-
-  (is (= [:foo :bar]
-         (schema/parameter-keys [{:foo s/Int}
-                                 {:bar s/Str}])))
-
-  (is (= [:foo :bar :baz :quu :quux :fizz :buzz]
-         (schema/parameter-keys [{:foo s/Int}
-                                 {:bar s/Str}
-                                 {:baz {:quu s/Bool
-                                        :quux s/Num}}
-                                 {:fizz [{:buzz s/Str}]}]))))
 
 (deftest recursive-schema-test
   (let [schema (schema/make-schema {:definitions {:A {:type       "object"

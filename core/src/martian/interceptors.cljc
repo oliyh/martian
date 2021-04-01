@@ -1,6 +1,5 @@
 (ns martian.interceptors
   (:require [martian.schema :as schema]
-            [martian.defaults :refer [defaults]]
             [clojure.walk :refer [keywordize-keys stringify-keys]]
             [tripod.context :as tc]
             [schema.core :as s]
@@ -36,8 +35,8 @@
    :enter (fn [{:keys [params url-for handler] :as ctx}]
             (update ctx :request create-only :url (url-for (:route-name handler) params)))})
 
-(defn coerce-data [{:keys [parameter-aliases] :as handler} schema-key params]
-  (schema/coerce-data (get handler schema-key) params (get parameter-aliases schema-key)))
+(defn coerce-data [{:keys [parameter-aliases] :as handler} schema-key params opts]
+  (schema/coerce-data (get handler schema-key) params (get parameter-aliases schema-key) (:use-defaults? opts)))
 
 (def keywordize-params
   {:name ::keywordize-params
@@ -45,31 +44,30 @@
 
 (def set-query-params
   {:name ::query-params
-   :enter (fn [{:keys [params handler] :as ctx}]
-            (update ctx :request insert-or-merge :query-params (coerce-data handler :query-schema params)))})
+   :enter (fn [{:keys [params handler opts] :as ctx}]
+            (update ctx :request insert-or-merge :query-params (coerce-data handler :query-schema params opts)))})
 
 (def set-body-params
   {:name ::body-params
-   :enter (fn [{:keys [params handler] :as ctx}]
+   :enter (fn [{:keys [params handler opts] :as ctx}]
             (if-let [[body-key] (first (:body-schema handler))]
-              (let [parameter-aliases (get-in handler [:parameter-aliases :body-schema])
-                    body-key (s/explicit-schema-key body-key)
+              (let [body-key (s/explicit-schema-key body-key)
                     body-params (or (:martian.core/body params)
                                     (get params body-key)
                                     (get params (->kebab-case-keyword body-key))
                                     params)]
-                (update ctx :request insert-or-merge :body (get (schema/coerce-data (:body-schema handler) {body-key body-params} parameter-aliases) body-key)))
+                (update ctx :request insert-or-merge :body (get (coerce-data handler :body-schema {body-key body-params} opts) body-key)))
               ctx))})
 
 (def set-form-params
   {:name ::form-params
-   :enter (fn [{:keys [params handler] :as ctx}]
-            (update ctx :request insert-or-merge :form-params (coerce-data handler :form-schema params)))})
+   :enter (fn [{:keys [params handler opts] :as ctx}]
+            (update ctx :request insert-or-merge :form-params (coerce-data handler :form-schema params opts)))})
 
 (def set-header-params
   {:name ::header-params
-   :enter (fn [{:keys [params handler] :as ctx}]
-            (update ctx :request insert-or-merge :headers (stringify-keys (coerce-data handler :headers-schema params))))})
+   :enter (fn [{:keys [params handler opts] :as ctx}]
+            (update ctx :request insert-or-merge :headers (stringify-keys (coerce-data handler :headers-schema params opts))))})
 
 (def enqueue-route-specific-interceptors
   {:name ::enqueue-route-specific-interceptors
@@ -129,26 +127,6 @@
                                  {:response response
                                   :response-schemas (:response-schemas handler)}))))
              ctx)}))
-
-(defn- deep-merge [a b]
-  (merge-with
-   (fn [a b]
-     (if (every? map? [a b])
-       (deep-merge a b)
-       b))
-   a b))
-
-(defn merge-defaults
-  "Read default values from the specified (default: all) input schemas and merge into the params map"
-  ([] (merge-defaults [:path-schema :query-schema :body-schema :form-schema :headers-schema]))
-  ([schema-keys]
-   {:name ::merge-defaults
-    :enter (fn [{:keys [handler] :as ctx}]
-             (update ctx :params (fn [params]
-                                   (reduce (fn [p schema-key]
-                                             (deep-merge (defaults (get handler schema-key)) p))
-                                           params
-                                           schema-keys))))}))
 
 (defn supported-content-types
   "Return the full set of supported content-types as declared by any encoding/decoding interceptors"

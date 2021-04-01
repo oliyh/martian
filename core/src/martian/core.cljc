@@ -63,14 +63,14 @@
                                handler))
                            %)))
 
-(defrecord Martian [api-root handlers interceptors])
+(defrecord Martian [api-root handlers interceptors opts])
 
 (defn url-for
   ([martian route-name] (url-for martian route-name {}))
   ([martian route-name params]
    (let [{:keys [api-root handlers]} (resolve-instance martian)]
      (when-let [handler (find-handler handlers route-name)]
-       (let [params (->> params keywordize-keys (interceptors/coerce-data handler :path-schema))]
+       (let [params (interceptors/coerce-data handler :path-schema (keywordize-keys params) (:opts martian))]
          (str api-root (string/join (map #(get params % %) (:path-parts handler)))))))))
 
 (defn request-for
@@ -84,7 +84,8 @@
                            :url-for (partial url-for martian)
                            :request (or (::request params) {})
                            :handler handler
-                           :params params))))))))
+                           :params params
+                           :opts (:opts martian)))))))))
 
 (defn response-for
   ([martian route-name] (response-for martian route-name {}))
@@ -97,7 +98,8 @@
                             :url-for (partial url-for martian)
                             :request (or (::request params) {})
                             :handler handler
-                            :params params))))))))
+                            :params params
+                            :opts (:opts martian)))))))))
 
 (defn explore
   ([martian] (mapv (juxt :route-name :summary) (:handlers (resolve-instance martian))))
@@ -108,15 +110,12 @@
                             (merge params (alias-schema (get parameter-aliases parameter-key) (get handler parameter-key))))
                           {}
                           parameter-schemas)
-      #_(->> (map handler parameter-schemas)
-             (apply merge)
-             (postwalk-replace (zipmap (vals parameter-aliases) (keys parameter-aliases))))
       :returns (->> (:response-schemas handler)
                     (map (juxt (comp :v :status) :body))
                     (into {}))})))
 
-(defn- build-instance [api-root handlers {:keys [interceptors]}]
-  (->Martian api-root handlers (or interceptors default-interceptors)))
+(defn- build-instance [api-root handlers {:keys [interceptors] :as opts}]
+  (->Martian api-root handlers (or interceptors default-interceptors) (dissoc opts :interceptors)))
 
 (spec/fdef build-instance
   :args (spec/cat :api-root ::mspec/api-root
