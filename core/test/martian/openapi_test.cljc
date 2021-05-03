@@ -97,39 +97,36 @@
                (dissoc :openapi-definition))))))
 
 (deftest openapi-param-ref-test
-  (is (= {:body-schema      nil
-          :consumes         [nil]
-          :description      nil
-          :form-schema      {}
-          :headers-schema   {}
-          :method           :get
-          :path-parts       ["/some-operation"]
-          :path-schema      {}
-          :produces         []
-          :query-schema     {{:k :direct-param-in-query} s/Any}
-          :response-schemas []
-          :route-name       :some-operation
-          :summary          nil}
-         (-> {:components
-              {:parameters
-               {:RefParam {:name "ref-param-name"
-                           :in "query"}}}
-              :paths
-              {"/some-operation"
-               {:get
-                {:operationId "someOperation"
-                 :parameters  [{:$ref "#/components/parameters/RefParam"}
-                               {:name "direct-param-in-query"
-                                :in "query"}]}}}}
-             (clojure.walk/stringify-keys)
-             (openapi->handlers {:encodes ["some/mime-type"]
-                                 :decodes ["some/mime-type"]})
-             first
-             (dissoc :openapi-definition)
-             (doto clojure.pprint/pprint)
-             ))))
+  (let [gen-param (fn [name-kw]
+                    {:name (name name-kw)
+                     :in   "query"})
 
-;(openapi-param-ref-test)
+        base-schema {:paths
+                     {"/some-operation"
+                      {:get
+                       {:operationId "someOperation"
+                        :parameters  [(gen-param :direct-param)]}}}}
+
+        test-openapi->handlers
+        (fn [keywordized-json-api]
+          (-> keywordized-json-api
+              (clojure.walk/stringify-keys)
+              (openapi->handlers {:encodes ["some/mime-type"]
+                                  :decodes ["some/mime-type"]})
+              first
+              (dissoc :openapi-definition)
+              #_(doto clojure.pprint/pprint)))]
+    (is (= (test-openapi->handlers
+             (-> base-schema
+                 (assoc-in [:components :parameters :RefParam]
+                           (gen-param :ref-param))
+                 (update-in [:paths "/some-operation" :get :parameters]
+                            into [{:$ref "#/components/parameters/RefParam"}])))
+
+           (test-openapi->handlers
+             (-> base-schema
+                 (update-in [:paths "/some-operation" :get :parameters]
+                            into [(gen-param :ref-param)])))))))
 
 (deftest jira-openapi-v3-test
   (is (= 410
