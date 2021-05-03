@@ -96,9 +96,77 @@
                first
                (dissoc :openapi-definition))))))
 
+(deftest openapi-param-ref-test
+  (is (= {:body-schema      nil
+          :consumes         [nil]
+          :description      nil
+          :form-schema      {}
+          :headers-schema   {}
+          :method           :get
+          :path-parts       ["/some-operation"]
+          :path-schema      {}
+          :produces         []
+          :query-schema     {{:k :direct-param-in-query} s/Any}
+          :response-schemas []
+          :route-name       :some-operation
+          :summary          nil}
+         (-> {:components
+              {:parameters
+               {:RefParam {:name "ref-param-name"
+                           :in "query"}}}
+              :paths
+              {"/some-operation"
+               {:get
+                {:operationId "someOperation"
+                 :parameters  [{:$ref "#/components/parameters/RefParam"}
+                               {:name "direct-param-in-query"
+                                :in "query"}]}}}}
+             (clojure.walk/stringify-keys)
+             (openapi->handlers {:encodes ["some/mime-type"]
+                                 :decodes ["some/mime-type"]})
+             first
+             (dissoc :openapi-definition)
+             (doto clojure.pprint/pprint)
+             ))))
+
+;(openapi-param-ref-test)
+
 (deftest jira-openapi-v3-test
   (is (= 410
          (-> jira-openapi-v3-json
              (openapi->handlers {:encodes ["json"]
                                  :decodes ["json"]})
              count))))
+
+(comment
+
+  (def xero-json
+    (-> (json-resource "xero_accounting.json")
+        (update "paths" select-keys ["/Reports/ProfitAndLoss"])))
+
+  (martian.openapi/openapi-schema? xero-json)
+
+  (-> xero-json
+      (clojure.walk/keywordize-keys)
+      (get :components)
+      (#'martian.openapi/lookup-ref "#/components/parameters/FromDate")
+      )
+
+  (-> xero-json
+      ;(get "paths")
+      (openapi->handlers {:encodes ["application/json"]
+                          :decodes ["application/json"]})
+      doall
+      ;(martian.core/handler-for :get-report-profit-and-loss)
+      ;(->> (def xero-handlers))
+      )
+
+
+  (-> xero-json
+      (get-in ["components" "parameters" "FromDate"]))
+  (def jira-api
+    (-> jira-openapi-v3-json
+        (openapi->handlers {:encodes ["application/json"]
+                            :decodes ["application/json"]})))
+  (first jira-api)
+  )

@@ -117,6 +117,17 @@
             (keyword param-name)
             %) parts)))
 
+(defn resolve-param-ref
+  "`components` are the keywordized value of the :components key from an
+   OpenAPI specification.
+
+   `param` is one of the values from
+   [:paths <some path> <some HTTP method> :parameters] of an OpenAPI spec."
+  [components param]
+  (if-let [ref (:$ref param)]
+     (lookup-ref components ref)
+     param))
+
 (defn openapi->handlers [openapi-json content-types]
   (let [openapi-spec (keywordize-keys openapi-json)
         components (:components openapi-spec)]
@@ -126,7 +137,10 @@
           ;; which aren't the associated OPTIONS call.
           :when (and (:operationId definition)
                      (not= :options method))
-          :let [parameters (group-by (comp keyword :in) (:parameters definition))
+          :let [parameters (->> (:parameters definition)
+                                (map (partial resolve-param-ref components))
+                                (group-by (comp keyword :in)))
+                ;_ (clojure.pprint/pprint parameters)
                 body       (process-body (:requestBody definition) components (:encodes content-types))
                 responses  (process-responses (:responses definition) components (:decodes content-types))]]
       {:path-parts         (vec (tokenise-path url))
