@@ -131,16 +131,17 @@
 (defn openapi->handlers [openapi-json content-types]
   (let [openapi-spec (keywordize-keys openapi-json)
         components (:components openapi-spec)]
-    (for [[url methods] (:paths openapi-spec)
-          [method definition] methods
+    (for [[url methods-or-params] (:paths openapi-spec)
+          :let [route-parameters (:parameters methods-or-params)]
+          [method definition] (dissoc methods-or-params :parameters)
           ;; We only care about things which have a defined operationId, and
           ;; which aren't the associated OPTIONS call.
           :when (and (:operationId definition)
                      (not= :options method))
           :let [parameters (->> (:parameters definition)
+                                (into route-parameters)
                                 (map (partial resolve-param-ref components))
                                 (group-by (comp keyword :in)))
-                ;_ (clojure.pprint/pprint parameters)
                 body       (process-body (:requestBody definition) components (:encodes content-types))
                 responses  (process-responses (:responses definition) components (:decodes content-types))]]
       {:path-parts         (vec (tokenise-path url))
