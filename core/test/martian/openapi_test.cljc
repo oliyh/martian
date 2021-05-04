@@ -101,32 +101,34 @@
                     {:name (name name-kw)
                      :in   "query"})
 
-        base-schema {:paths
-                     {"/some-operation"
-                      {:get
-                       {:operationId "someOperation"
-                        :parameters  [(gen-param :direct-param)]}}}}
+        some-param (gen-param :some-param)
 
-        test-openapi->handlers
-        (fn [keywordized-json-api]
-          (-> keywordized-json-api
-              (clojure.walk/stringify-keys)
+        api-spec (fn [params & [param-refs-map]]
+                   (clojure.walk/stringify-keys
+                     {:components
+                      {:parameters
+                       param-refs-map}
+
+                      :paths
+                      {"/some-path"
+                       {:get
+                        {:operationId "someOpId"
+                         :parameters  (into [(gen-param :hardwired-param)]
+                                            params)}}}}))
+
+        openapi->handlers-without-openapi-definitions
+        (fn [json-api]
+          (-> json-api
               (openapi->handlers {:encodes ["some/mime-type"]
                                   :decodes ["some/mime-type"]})
-              first
-              (dissoc :openapi-definition)
-              #_(doto clojure.pprint/pprint)))]
-    (is (= (test-openapi->handlers
-             (-> base-schema
-                 (assoc-in [:components :parameters :RefParam]
-                           (gen-param :ref-param))
-                 (update-in [:paths "/some-operation" :get :parameters]
-                            into [{:$ref "#/components/parameters/RefParam"}])))
+              (->> (map #(dissoc % :openapi-definition)))))]
 
-           (test-openapi->handlers
-             (-> base-schema
-                 (update-in [:paths "/some-operation" :get :parameters]
-                            into [(gen-param :ref-param)])))))))
+    (is (= (openapi->handlers-without-openapi-definitions
+             (api-spec [{:$ref (str "#/components/parameters/" "ParamRef")}]
+                       {"ParamRef" some-param}))
+
+           (openapi->handlers-without-openapi-definitions
+             (api-spec [some-param]))))))
 
 (deftest jira-openapi-v3-test
   (is (= 410
@@ -154,16 +156,16 @@
       (openapi->handlers {:encodes ["application/json"]
                           :decodes ["application/json"]})
       doall
-      ;(martian.core/handler-for :get-report-profit-and-loss)
       ;(->> (def xero-handlers))
       )
 
-
   (-> xero-json
       (get-in ["components" "parameters" "FromDate"]))
-  (def jira-api
-    (-> jira-openapi-v3-json
-        (openapi->handlers {:encodes ["application/json"]
-                            :decodes ["application/json"]})))
-  (first jira-api)
+
+  (require '[martian.core :as m])
+  (def xero-api (m/bootstrap-openapi nil xero-json))
+
+  (-> xero-api
+      (m/handler-for :get-report-profit-and-loss)
+      ((juxt :header-schema :query-schema)))
   )
