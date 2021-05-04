@@ -1,4 +1,5 @@
 **/pom.xml
+!core/pom.xml
 **/pom.xml.asc
 **/*jar
 /lib/

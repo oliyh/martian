@@ -71,6 +71,10 @@
                first
                (select-keys [:consumes :produces]))))))
 
+(defn gen-param [name-kw]
+  {:name (name name-kw)
+   :in   "query"})
+
 (deftest openapi-parameters-test
   (testing "parses parameters"
     (is (= {:description nil,
@@ -95,6 +99,71 @@
                (->> (filter #(= (:route-name %) :get-project-configuration)))
                first
                (dissoc :openapi-definition))))))
+
+(deftest openapi-param-ref-test
+  (let [some-param (gen-param :some-param)
+
+        api-spec (fn [params & [param-refs-map]]
+                   (clojure.walk/stringify-keys
+                     {:components
+                      {:parameters
+                       param-refs-map}
+
+                      :paths
+                      {"/some-path"
+                       {:get
+                        {:operationId "someOpId"
+                         :parameters  (into [(gen-param :hardwired-param)]
+                                            params)}}}}))
+
+        openapi->handlers-without-openapi-definitions
+        (fn [json-api]
+          (-> json-api
+              (openapi->handlers {:encodes ["some/mime-type"]
+                                  :decodes ["some/mime-type"]})
+              (->> (map #(dissoc % :openapi-definition)))))]
+
+    (is (= (openapi->handlers-without-openapi-definitions
+             (api-spec [{:$ref (str "#/components/parameters/" "ParamRef")}]
+                       {"ParamRef" some-param}))
+
+           (openapi->handlers-without-openapi-definitions
+             (api-spec [some-param]))))))
+
+(deftest openapi-route-param-test
+  (let [api-spec (fn [method-params & [route-params param-refs-map]]
+                   (clojure.walk/stringify-keys
+                     {:components
+                      {:parameters
+                       param-refs-map}
+
+                      :paths
+                      {"/some-path"
+                       {:parameters
+                        route-params
+
+                        :get
+                        {:operationId "someOpId"
+                         :parameters  (into [(gen-param :hardwired-param)]
+                                            method-params)}}}}))
+
+        openapi->handlers-without-openapi-definitions
+        (fn [json-api]
+          (-> json-api
+              (openapi->handlers {:encodes ["some/mime-type"]
+                                  :decodes ["some/mime-type"]})
+              (->> (map #(dissoc % :openapi-definition)))))]
+
+    (is (= (openapi->handlers-without-openapi-definitions
+             (api-spec [(gen-param :method-param)]
+                       [{:$ref (str "#/components/parameters/" "ParamRef")}
+                        (gen-param :route-param)]
+                       {"ParamRef" (gen-param :indirect-route-param)}))
+
+           (openapi->handlers-without-openapi-definitions
+             (api-spec [(gen-param :indirect-route-param)
+                        (gen-param :route-param)
+                        (gen-param :method-param)]))))))
 
 (deftest jira-openapi-v3-test
   (is (= 410
