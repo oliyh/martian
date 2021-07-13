@@ -19,7 +19,8 @@ You can bootstrap it in one line and start calling the server:
   ;; => {:status 200 :body {:name "Doggy McDogFace" :type "Dog" :age 3}}
 ```
 
-Implementations using `clj-http`, `clj-http-lite`, `httpkit` and `cljs-http` are supplied as modules,
+Implementations using [clj-http](https://github.com/dakrone/clj-http), [clj-http-lite](https://github.com/hiredman/clj-http-lite), [httpkit](https://github.com/http-kit/http-kit),
+[hato](https://github.com/gnarroway/hato) and [cljs-http](https://github.com/r0man/cljs-http) are supplied as modules,
 but any other HTTP library can be used due to the extensibility of Martian's interceptor chain.
 It also allows custom behaviour to be injected in a uniform and powerful way.
 
@@ -38,6 +39,8 @@ ensuring that your response handling code is also correct. Examples are below.
 
 [![Clojars Project](https://img.shields.io/clojars/v/martian-httpkit.svg)](https://clojars.org/martian-httpkit) [![cljdoc badge](https://cljdoc.org/badge/martian-httpkit/martian-httpkit)](https://cljdoc.org/d/martian-httpkit/martian-httpkit/CURRENT)
 
+[![Clojars Project](https://img.shields.io/clojars/v/martian-hato.svg)](https://clojars.org/martian-hato) [![cljdoc badge](https://cljdoc.org/badge/martian-hato/martian-hato)](https://cljdoc.org/d/martian-hato/martian-hato/CURRENT)
+
 [![Clojars Project](https://img.shields.io/clojars/v/martian-cljs-http.svg)](https://clojars.org/martian-cljs-http) [![cljdoc badge](https://cljdoc.org/badge/martian-cljs-http/martian-cljs-http)](https://cljdoc.org/d/martian-cljs-http/martian-cljs-http/CURRENT)
 
 [![Clojars Project](https://img.shields.io/clojars/v/martian-test.svg)](https://clojars.org/martian-test)
@@ -48,7 +51,7 @@ ensuring that your response handling code is also correct. Examples are below.
 
 ## Features
 - Bootstrap an instance from just a OpenAPI/Swagger url or provide your own API mapping
-- Modular with support for `clj-http`, `clj-http-lite` and `httpkit` (Clojure) and `cljs-http` (ClojureScript)
+- Modular with support for [clj-http](https://github.com/dakrone/clj-http), [clj-http-lite](https://github.com/hiredman/clj-http-lite), [httpkit](https://github.com/http-kit/http-kit), [hato](https://github.com/gnarroway/hato) (Clojure) and [cljs-http](https://github.com/r0man/cljs-http) (ClojureScript)
 - Build urls and request maps from code or generate and perform the request, returning the response
 - Validate requests and responses to ensure they are correct before the data leaves/enters your system
 - Explore an API from your REPL
