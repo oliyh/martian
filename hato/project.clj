@@ -7,11 +7,10 @@
   :dependencies [[martian :version]
                  [hato "0.8.1"]
                  [cheshire "5.10.0"]]
-  :profiles {:provided {:dependencies [[org.clojure/clojure "1.10.1"]]}
+  :profiles {:provided {:dependencies [[org.clojure/clojure "1.10.3"]]}
              :dev {:source-paths ["../test-common"]
                    :exclusions [[org.clojure/tools.reader]]
-                   :dependencies [[org.clojure/clojure "1.10.1"]
-                                  [org.clojure/tools.reader "1.3.4"]
+                   :dependencies [[org.clojure/tools.reader "1.3.5"]
                                   [pedestal-api "0.3.5"]
                                   [io.pedestal/pedestal.service "0.5.9"]
                                   [io.pedestal/pedestal.jetty "0.5.9"]]}})

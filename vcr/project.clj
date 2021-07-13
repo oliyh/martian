@@ -5,15 +5,15 @@
             :url "http://opensource.org/licenses/MIT"}
   :plugins [[lein-modules "0.3.11"]]
   :dependencies [[martian :version]
-                 [fipp "0.6.23"]]
-  :profiles {:provided {:dependencies [[org.clojure/clojure "1.10.1"]
-                                       [org.clojure/clojurescript "1.10.520"]]}
+                 [fipp "0.6.24"]]
+  :profiles {:provided {:dependencies [[org.clojure/clojure "1.10.3"]
+                                       [org.clojure/clojurescript "1.10.866"]]}
              :dev {:resource-paths ["../test-common"]
                    :exclusions [[org.clojure/tools.reader]]
-                   :dependencies [[org.clojure/tools.reader "1.2.2"]
-                                  [binaryage/devtools "1.0.0"]
-                                  [com.bhauman/figwheel-main "0.2.1"]
-                                  [cider/piggieback "0.4.1"]
+                   :dependencies [[org.clojure/tools.reader "1.3.5"]
+                                  [binaryage/devtools "1.0.3"]
+                                  [com.bhauman/figwheel-main "0.2.13"]
+                                  [cider/piggieback "0.5.2"]
                                   [org.clojure/tools.nrepl "0.2.13"]]
                    :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}}}
   :aliases {"fig"       ["trampoline" "run" "-m" "figwheel.main"]
