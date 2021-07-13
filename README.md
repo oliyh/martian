@@ -330,6 +330,10 @@ Martian allows you to add support for content-types in addition to those support
 (require '[martian.httpkit :as http])
 (require '[martian.encoders :as encoders])
 (require '[martian.interceptors :as i])
+(require '[clojure.string :as str])
+
+(def magic-encoder str/upper-case)
+(def magic-decoder str/lower-caser)
 
 (let [encoders (assoc (encoders/default-encoders)
                       "application/magical" {:encode magic-encoder
