@@ -19,7 +19,7 @@
                                   [org.clojure/tools.nrepl "0.2.13"]
                                   [org.clojure/tools.reader "1.3.5"]
                                   [cider/piggieback "0.5.2"]
-                                  [martian-httpkit :version]]
+                                  [com.github.oliyh/martian-httpkit :version]]
                    :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}}}
   :aliases {"fig"       ["trampoline" "run" "-m" "figwheel.main"]
             "fig:build" ["trampoline" "run" "-m" "figwheel.main" "-b" "dev" "-r"]
