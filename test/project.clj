@@ -4,7 +4,7 @@
   :license {:name "The MIT License"
             :url "http://opensource.org/licenses/MIT"}
   :plugins [[lein-modules "0.3.11"]]
-  :dependencies [[martian :version]
+  :dependencies [[com.github.oliyh/martian :version]
                  [prismatic/schema-generators "0.1.3"]
                  [org.clojure/test.check "1.1.0"]
                  [org.clojure/core.async "1.3.618"]]

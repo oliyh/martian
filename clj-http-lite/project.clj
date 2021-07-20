@@ -4,7 +4,7 @@
   :license {:name "The MIT License"
             :url "http://opensource.org/licenses/MIT"}
   :plugins [[lein-modules "0.3.11"]]
-  :dependencies [[martian :version]
+  :dependencies [[com.github.oliyh/martian :version]
                  [org.martinklepsch/clj-http-lite "0.4.3"]
                  [cheshire "5.10.0"]]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.10.3"]]}
