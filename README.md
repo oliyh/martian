@@ -34,23 +34,23 @@ ensuring that your response handling code is also correct. Examples are below.
 
 **Attention** as of 2021-07-13 the Clojars artifacts have been moved to a fully qualified group e.g. `com.github.oliyh/martian` (previously was just `martian`).
 
-[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian.svg)](https://clojars.org/com.github.oliyh/martian) [![cljdoc badge](https://cljdoc.org/badge/martian/martian)](https://cljdoc.org/d/martian/martian/CURRENT)
+[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian.svg)](https://clojars.org/com.github.oliyh/martian) [![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian)](https://cljdoc.org/d/com.github.oliyh/martian/CURRENT)
 
-[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-clj-http.svg)](https://clojars.org/com.github.oliyh/martian-clj-http) [![cljdoc badge](https://cljdoc.org/badge/martian-clj-http/martian-clj-http)](https://cljdoc.org/d/martian-clj-http/martian-clj-http/CURRENT)
+[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-clj-http.svg)](https://clojars.org/com.github.oliyh/martian-clj-http) [![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-clj-http)](https://cljdoc.org/d/com.github.oliyh/martian-clj-http/CURRENT)
 
-[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-clj-http-lite.svg)](https://clojars.org/com.github.oliyh/martian-clj-http-lite) [![cljdoc badge](https://cljdoc.org/badge/martian-clj-http-lite/martian-clj-http-lite)](https://cljdoc.org/d/martian-clj-http-lite/martian-clj-http-lite/CURRENT)
+[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-clj-http-lite.svg)](https://clojars.org/com.github.oliyh/martian-clj-http-lite) [![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-clj-http-lite)](https://cljdoc.org/d/com.github.oliyh/martian-clj-http-lite/CURRENT)
 
-[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-httpkit.svg)](https://clojars.org/com.github.oliyh/martian-httpkit) [![cljdoc badge](https://cljdoc.org/badge/martian-httpkit/martian-httpkit)](https://cljdoc.org/d/martian-httpkit/martian-httpkit/CURRENT)
+[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-httpkit.svg)](https://clojars.org/com.github.oliyh/martian-httpkit) [![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-httpkit)](https://cljdoc.org/d/com.github.oliyh/martian-httpkit/CURRENT)
 
-[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-hato.svg)](https://clojars.org/com.github.oliyh/martian-hato) [![cljdoc badge](https://cljdoc.org/badge/martian-hato/martian-hato)](https://cljdoc.org/d/martian-hato/martian-hato/CURRENT)
+[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-hato.svg)](https://clojars.org/com.github.oliyh/martian-hato) [![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-hato)](https://cljdoc.org/d/com.github.oliyh/martian-hato/CURRENT)
 
-[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-cljs-http.svg)](https://clojars.org/com.github.oliyh/martian-cljs-http) [![cljdoc badge](https://cljdoc.org/badge/martian-cljs-http/martian-cljs-http)](https://cljdoc.org/d/martian-cljs-http/martian-cljs-http/CURRENT)
+[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-cljs-http.svg)](https://clojars.org/com.github.oliyh/martian-cljs-http) [![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-cljs-http)](https://cljdoc.org/d/com.github.oliyh/martian-cljs-http/CURRENT)
 
 [![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-test.svg)](https://clojars.org/com.github.oliyh/martian-test)
 
-[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-re-frame.svg)](https://clojars.org/com.github.oliyh/martian-re-frame) [![cljdoc badge](https://cljdoc.org/badge/martian-re-frame/martian-re-frame)](https://cljdoc.org/d/martian-re-frame/martian-re-frame/CURRENT)
+[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-re-frame.svg)](https://clojars.org/com.github.oliyh/martian-re-frame) [![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-re-frame)](https://cljdoc.org/d/com.github.oliyh/martian-re-frame/CURRENT)
 
-[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-vcr.svg)](https://clojars.org/com.github.oliyh/martian-vcr) [![cljdoc badge](https://cljdoc.org/badge/martian-vcr/martian-vcr)](https://cljdoc.org/d/martian-vcr/martian-vcr/CURRENT)
+[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-vcr.svg)](https://clojars.org/com.github.oliyh/martian-vcr) [![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-vcr)](https://cljdoc.org/d/com.github.oliyh/martian-vcr/CURRENT)
 
 ## Features
 - Bootstrap an instance from just a OpenAPI/Swagger url or provide your own API mapping
