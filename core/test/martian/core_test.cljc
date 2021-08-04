@@ -311,9 +311,16 @@
            (martian/request-for m :create-blob {::martian/body body})
            (martian/request-for m :create-blob {:blob body})))))
 
+(deftest missing-route-test
+  (let [m (martian/bootstrap "https://camels.org" [])]
+    (try
+      (martian/url-for m :missing-route {:camel-id 1})
+      (catch Throwable e
+        (is (= :missing-route (-> e ex-data :route-name)))))))
+
 (deftest kebab-mapping-test
   (let [m (martian/bootstrap "https://camels.org"
-                               [{:route-name :create-camel
+                             [{:route-name :create-camel
                                  :path-parts ["/camels/" :camelId]
                                  :method :put
                                  :path-schema {:camelId s/Int}
