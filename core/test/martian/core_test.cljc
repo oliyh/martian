@@ -312,18 +312,7 @@
            (martian/request-for m :create-blob {:blob body})))))
 
 (deftest missing-route-test
-  (let [m (martian/bootstrap "https://camels.org"
-                             [{:route-name :create-camel
-                                 :path-parts ["/camels/" :camelId]
-                                 :method :put
-                                 :path-schema {:camelId s/Int}
-                                 :query-schema {:camelVersion s/Int}
-                                 :body-schema {:Camel {:camelName s/Str
-                                                       :camelTrain {:leaderName s/Str
-                                                                    (s/optional-key :followerCamels) [{:followerName s/Str}]}
-                                                       :anyCamel s/Any}}
-                                 :headers-schema {(s/optional-key :camelToken) s/Str}
-                               :form-schema {:camelHumps (s/maybe s/Int)}}])]
+  (let [m (martian/bootstrap "https://camels.org" [])]
     (try
       (martian/url-for m :missing-route {:camel-id 1})
       (catch Throwable e
