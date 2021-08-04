@@ -311,9 +311,27 @@
            (martian/request-for m :create-blob {::martian/body body})
            (martian/request-for m :create-blob {:blob body})))))
 
+(deftest missing-route-test
+  (let [m (martian/bootstrap "https://camels.org"
+                             [{:route-name :create-camel
+                                 :path-parts ["/camels/" :camelId]
+                                 :method :put
+                                 :path-schema {:camelId s/Int}
+                                 :query-schema {:camelVersion s/Int}
+                                 :body-schema {:Camel {:camelName s/Str
+                                                       :camelTrain {:leaderName s/Str
+                                                                    (s/optional-key :followerCamels) [{:followerName s/Str}]}
+                                                       :anyCamel s/Any}}
+                                 :headers-schema {(s/optional-key :camelToken) s/Str}
+                               :form-schema {:camelHumps (s/maybe s/Int)}}])]
+    (try
+      (martian/url-for m :missing-route {:camel-id 1})
+      (catch Exception e
+        (is (= :missing-route (-> e ex-data :route-name)))))))
+
 (deftest kebab-mapping-test
   (let [m (martian/bootstrap "https://camels.org"
-                               [{:route-name :create-camel
+                             [{:route-name :create-camel
                                  :path-parts ["/camels/" :camelId]
                                  :method :put
                                  :path-schema {:camelId s/Int}

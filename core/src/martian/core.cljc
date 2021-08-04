@@ -46,7 +46,11 @@
     :else m))
 
 (defn find-handler [handlers route-name]
-  (first (filter #(= (keyword route-name) (:route-name %)) handlers)))
+  (let [handler (first (filter #(= (keyword route-name) (:route-name %)) handlers))]
+    (or handler
+        (throw (ex-info (str "Could not find route " route-name)
+                        {:handlers   handlers
+                         :route-name route-name})))))
 
 (defn handler-for [m route-name]
   (find-handler (:handlers (resolve-instance m)) route-name))
