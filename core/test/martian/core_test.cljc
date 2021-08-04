@@ -326,7 +326,7 @@
                                :form-schema {:camelHumps (s/maybe s/Int)}}])]
     (try
       (martian/url-for m :missing-route {:camel-id 1})
-      (catch Exception e
+      (catch Throwable e
         (is (= :missing-route (-> e ex-data :route-name)))))))
 
 (deftest kebab-mapping-test
