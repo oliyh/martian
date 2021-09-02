@@ -24,6 +24,9 @@
 (defn- process-async-response [ctx response]
   (:response (tc/execute (assoc ctx :response response))))
 
+(defn- process-async-error [ctx error]
+  (:response (tc/execute (assoc ctx ::tc/error error))))
+
 (def perform-request-async
   {:name ::perform-request-async
    :leave (fn [{:keys [request] :as ctx}]
@@ -31,7 +34,8 @@
                 interceptors/remove-stack
                 (assoc :response
                        (http/request (assoc request :async? true)
-                                     (partial process-async-response ctx)))))})
+                                     (partial process-async-response ctx)
+                                     (partial process-async-error ctx)))))})
 
 (def default-to-http-1
   {:name ::default-to-http-1

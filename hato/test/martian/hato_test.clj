@@ -80,7 +80,15 @@
                                          :enter (fn [ctx] (assoc-in ctx [:request :throw-exceptions?] false))}
             m (martian-http/bootstrap-swagger swagger-url {:interceptors (cons turn-off-exception-throwing
                                                                                martian-http/default-interceptors-async)})]
-        (is (= 404 (:status @(martian/response-for m :get-pet {:id -1}))))))))
+        (is (= 404 (:status @(martian/response-for m :get-pet {:id -1}))))))
+
+    (testing "can be caught in the interceptor chain"
+      (let [m (martian-http/bootstrap-swagger swagger-url {:interceptors (cons {:name ::i-catch-errors
+                                                                                :error (fn [ctx _error]
+                                                                                         (assoc ctx :response {:custom-error-response true}))}
+                                                                               martian-http/default-interceptors-async)})]
+        (is (= {:custom-error-response true}
+               @(martian/response-for m :get-pet {:id -1})))))))
 
 (deftest openapi-bootstrap-test
   (let [m (martian-http/bootstrap-openapi openapi-url)]
