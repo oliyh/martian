@@ -46,6 +46,8 @@ ensuring that your response handling code is also correct. Examples are below.
 
 [![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-cljs-http.svg)](https://clojars.org/com.github.oliyh/martian-cljs-http) [![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-cljs-http)](https://cljdoc.org/d/com.github.oliyh/martian-cljs-http/CURRENT)
 
+[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-cljs-http-promise.svg)](https://clojars.org/com.github.oliyh/martian-cljs-http-promise) [![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-cljs-http-promise)](https://cljdoc.org/d/com.github.oliyh/martian-cljs-http-promise/CURRENT)
+
 [![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-test.svg)](https://clojars.org/com.github.oliyh/martian-test)
 
 [![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-re-frame.svg)](https://clojars.org/com.github.oliyh/martian-re-frame) [![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-re-frame)](https://cljdoc.org/d/com.github.oliyh/martian-re-frame/CURRENT)
@@ -54,7 +56,7 @@ ensuring that your response handling code is also correct. Examples are below.
 
 ## Features
 - Bootstrap an instance from just a OpenAPI/Swagger url or provide your own API mapping
-- Modular with support for [clj-http](https://github.com/dakrone/clj-http), [clj-http-lite](https://github.com/hiredman/clj-http-lite), [httpkit](https://github.com/http-kit/http-kit), [hato](https://github.com/gnarroway/hato) (Clojure) and [cljs-http](https://github.com/r0man/cljs-http) (ClojureScript)
+- Modular with support for [clj-http](https://github.com/dakrone/clj-http), [clj-http-lite](https://github.com/hiredman/clj-http-lite), [httpkit](https://github.com/http-kit/http-kit), [hato](https://github.com/gnarroway/hato) (Clojure), [cljs-http](https://github.com/r0man/cljs-http) (ClojureScript) and [cljs-http-promise](https://github.com/oliyh/cljs-http-promise) (ClojureScript)
 - Build urls and request maps from code or generate and perform the request, returning the response
 - Validate requests and responses to ensure they are correct before the data leaves/enters your system
 - Explore an API from your REPL
