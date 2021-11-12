@@ -18,8 +18,8 @@
 (defn bootstrap [api-root concise-handlers & [opts]]
   (martian/bootstrap api-root concise-handlers (merge default-opts opts)))
 
-(defn bootstrap-openapi [url & [opts]]
-  (let [definition (:body (http/get url {:as :json}))
+(defn bootstrap-openapi [url & [opts get-swagger-opts]]
+  (let [definition (:body (http/get url (merge {:as :json} get-swagger-opts)))
         {:keys [scheme server-name server-port]} (http/parse-url url)
         base-url (format "%s://%s%s%s" (name scheme) server-name (if server-port (str ":" server-port) "")
                          (if (openapi-schema? definition)
