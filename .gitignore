@@ -14,3 +14,5 @@
 **/.cljs_nashorn_repl/
 **/nashorn_code_cache/
 /**/out/
+.clj-kondo/.cache
+/.lsp/.cache
