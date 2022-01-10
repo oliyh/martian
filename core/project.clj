@@ -10,7 +10,7 @@
                   :exclusions [com.fasterxml.jackson.core/jackson-databind]]
                  [org.clojure/spec.alpha "0.2.194"]
                  [camel-snake-kebab "0.4.2"]
-                 [cheshire "5.10.0"]
+                 [cheshire "5.10.1"]
 
                  [com.cognitect/transit-clj "1.0.324"]
                  [com.cognitect/transit-cljs "0.8.269"]

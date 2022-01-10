@@ -6,7 +6,7 @@
   :plugins [[lein-modules "0.3.11"]]
   :dependencies [[com.github.oliyh/martian :version]
                  [clj-http "3.12.3"]
-                 [cheshire "5.10.0"]]
+                 [cheshire "5.10.1"]]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.10.3"]]}
              :dev {:source-paths ["../test-common"]
                    :exclusions [[org.clojure/tools.reader]]
