@@ -64,6 +64,7 @@
 
 (def swagger-url (format "http://localhost:%s/swagger.json" (::bootstrap/port service)))
 (def openapi-url (format "http://localhost:%s/openapi.json" (::bootstrap/port service)))
+(def openapi-test-url (format "http://localhost:%s/openapi-test.json" (::bootstrap/port service)))
 
 (def with-server
   (fn [f]

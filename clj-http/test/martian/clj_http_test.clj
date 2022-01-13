@@ -2,7 +2,7 @@
   (:require [martian.clj-http :as martian-http]
             [martian.core :as martian]
             [martian.encoders :as encoders]
-            [martian.server-stub :refer [with-server swagger-url openapi-url]]
+            [martian.server-stub :refer [with-server swagger-url openapi-url openapi-test-url]]
             [martian.test-utils :refer [input-stream->byte-array]]
             [clojure.test :refer [deftest testing is use-fixtures]]))
 
@@ -37,7 +37,12 @@
              (:body response))))))
 
 (deftest openapi-bootstrap-test
-  (let [m (martian-http/bootstrap-openapi openapi-url)]
+  (let [m (martian-http/bootstrap-openapi openapi-url)
+        mt (martian-http/bootstrap-openapi openapi-test-url)]
+
+    (is (= "https://sandbox.example.com"
+           (:api-root mt)) "check absolute server url")
+
 
     (is (= "http://localhost:8888/openapi/v3"
            (:api-root m)))
