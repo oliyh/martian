@@ -85,13 +85,14 @@
        :content-type content-type})))
 
 (defn- process-parameters [parameters components]
-  (into {}
-        (map (fn [param]
-               {(if (:required param)
-                  (keyword (:name param))
-                  (s/optional-key (keyword (:name param))))
-                (openapi->schema (:schema param) components)}))
-        parameters))
+  (not-empty
+   (into {}
+         (map (fn [param]
+                {(if (:required param)
+                   (keyword (:name param))
+                   (s/optional-key (keyword (:name param))))
+                 (openapi->schema (:schema param) components)}))
+         parameters)))
 
 (defn- process-responses [responses components content-types]
   (for [[status-code value] responses

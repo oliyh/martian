@@ -21,11 +21,11 @@
             :description    "Update an existing pet by Id"
             :method         :put
             :produces       ["application/json"]
-            :path-schema    {}
-            :query-schema   {}
-            :form-schema    {}
+            :path-schema    nil
+            :query-schema   nil
+            :form-schema    nil
             :path-parts     ["/pet"]
-            :headers-schema {}
+            :headers-schema nil
             :consumes       ["application/json"]
             :body-schema
             {:body
@@ -78,9 +78,9 @@
             :produces ["application/json"],
             :path-schema {:projectId s/Str},
             :query-schema {(s/optional-key :key) (st/default s/Str "some-default-key")},
-            :form-schema {},
+            :form-schema nil,
             :path-parts ["/project/" :projectKey],
-            :headers-schema {},
+            :headers-schema nil,
             :consumes [nil],
             :summary "Get specific values from a configuration for a specific project",
             :body-schema nil,
