@@ -3,6 +3,18 @@
             [schema.core :as s]
             [martian.swagger :as swagger]))
 
+(deftest parameter-schemas-test
+  (let [[get-handler]
+        (swagger/swagger->handlers {"paths" {"/pets/{id}"
+                                             {"get"        {"operationId" "getPetById"
+                                                            "method"      "get"
+                                                            "parameters"  [{"name"     "id"
+                                                                            "in"       "path"
+                                                                            "type"     "string"
+                                                                            "required" "true"}]}}}})]
+    (is (= {:id s/Str} (:path-schema get-handler)))
+    (is (= nil (:query-schema get-handler)))))
+
 (deftest path-item-obj-parameters-test
   (let [[get-handler delete-handler]
         (swagger/swagger->handlers {"paths" {"/pets/{id}"
