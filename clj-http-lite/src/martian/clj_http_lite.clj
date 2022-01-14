@@ -24,10 +24,10 @@
 (defn bootstrap [api-root concise-handlers & [opts]]
   (martian/bootstrap api-root concise-handlers (merge default-opts opts)))
 
-(defn bootstrap-openapi [url & [opts get-swagger-opts]]
+(defn bootstrap-openapi [url & [{:keys [server-url] :as opts} get-swagger-opts]]
   (let [definition (-> (http/get url (or get-swagger-opts {})) :body (json/parse-string keyword)) ;; clj-http-lite does not support {:as :json} body conversion (yet) so we do it right here
         {:keys [scheme server-name server-port]} (http/parse-url url)
-        api-root (or (:server-url opts) (openapi/base-url definition))
+        api-root (or server-url (openapi/base-url definition))
         base-url (if (and (openapi-schema? definition) (not (string/starts-with? api-root "/")))
                    api-root
                    (format "%s://%s%s%s" (name scheme) server-name (if server-port (str ":" server-port) "")
