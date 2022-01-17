@@ -4,7 +4,7 @@
             [martian.interceptors :as i]
             [martian.openapi :refer [openapi-schema?] :as openapi]
             [tripod.context :as tc]
-            [clojure.string :as str]
+            [clojure.string :as string]
             [promesa.core :as prom]))
 
 (def ^:private go-async
@@ -28,18 +28,21 @@
 (defn bootstrap [api-root concise-handlers & [opts]]
   (martian/bootstrap api-root concise-handlers (merge default-opts opts)))
 
-(defn bootstrap-openapi [url & [{:keys [trim-base-url?] :as opts}]]
+(defn bootstrap-openapi [url & [{:keys [server-url trim-base-url?] :as opts}]]
   (prom/then (http/get url {:as :json})
              (fn [response]
                (let [definition (:body response)
                      {:keys [scheme server-name server-port]} (http/parse-url url)
-                     raw-base-url (str (when-not (re-find #"^/" url)
-                                         (str (name scheme) "://" server-name (when server-port (str ":" server-port))))
-                                       (if (openapi-schema? definition)
-                                         (openapi/base-url definition)
-                                         (get definition :basePath "")))
+                     api-root (or server-url (openapi/base-url definition))
+                     raw-base-url (if (and (openapi-schema? definition) (not (string/starts-with? api-root "/")))
+                                    api-root
+                                    (str (name scheme) "://"
+                                         server-name (when server-port (str ":" server-port))
+                                         (if (openapi-schema? definition)
+                                           api-root
+                                           (get definition :basePath ""))))
                      base-url (if trim-base-url?
-                                (str/replace raw-base-url #"/$" "")
+                                (string/replace raw-base-url #"/$" "")
                                 raw-base-url)]
                  (martian/bootstrap-openapi base-url definition (merge default-opts opts))))))
 
