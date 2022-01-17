@@ -31,5 +31,5 @@
                       (:api-root m)))
 
                (is (contains? (set (map first (martian/explore m)))
-                              :get-order-by-id))))
-         (done)))
+                              :get-order-by-id)))
+             (done))))
