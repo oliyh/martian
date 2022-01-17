@@ -25,10 +25,11 @@
         api-root (or server-url (openapi/base-url definition))
         base-url (if (and (openapi-schema? definition) (not (string/starts-with? api-root "/")))
                    api-root
-                   (format "%s://%s%s%s" (name scheme) server-name (if server-port (str ":" server-port) "")
-                           (if (openapi-schema? definition)
-                             api-root
-                             (get definition :basePath ""))))]
+                   (str (name scheme)  "://"
+                        server-name (when server-port (str ":" server-port))
+                        (if (openapi-schema? definition)
+                          api-root
+                          (get definition :basePath ""))))]
     (martian/bootstrap-openapi base-url definition (merge default-opts opts))))
 
 (def bootstrap-swagger bootstrap-openapi)
