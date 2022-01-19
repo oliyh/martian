@@ -5,7 +5,7 @@
             [martian.interceptors :as i]
             [martian.openapi :refer [openapi-schema?] :as openapi]
             [tripod.context :as tc]
-            [clojure.string :as str])
+            [clojure.string :as string])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
 (def ^:private go-async
@@ -28,16 +28,11 @@
 (defn bootstrap [api-root concise-handlers & [opts]]
   (martian/bootstrap api-root concise-handlers (merge default-opts opts)))
 
-(defn bootstrap-openapi [url & [{:keys [trim-base-url?] :as opts} get-swagger-opts]]
+(defn bootstrap-openapi [url & [{:keys [server-url trim-base-url?] :as opts} get-swagger-opts]]
   (go (let [definition (:body (<! (http/get url (merge {:as :json} get-swagger-opts))))
-            {:keys [scheme server-name server-port]} (http/parse-url url)
-            raw-base-url (str (when-not (re-find #"^/" url)
-                                (str (name scheme) "://" server-name (when server-port (str ":" server-port))))
-                              (if (openapi-schema? definition)
-                                (openapi/base-url definition)
-                                (get definition :basePath "")))
+            raw-base-url (openapi/base-url url server-url definition)
             base-url (if trim-base-url?
-                       (str/replace raw-base-url #"/$" "")
+                       (string/replace raw-base-url #"/$" "")
                        raw-base-url)]
         (martian/bootstrap-openapi base-url definition (merge default-opts opts)))))
 

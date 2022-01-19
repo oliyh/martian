@@ -2,7 +2,7 @@
   (:require [clj-http.client :as http]
             [martian.core :as martian]
             [martian.interceptors :as interceptors]
-            [martian.openapi :refer [openapi-schema?] :as openapi])
+            [martian.openapi :as openapi])
   (:import [java.io ByteArrayInputStream]))
 
 (def perform-request
@@ -18,13 +18,9 @@
 (defn bootstrap [api-root concise-handlers & [opts]]
   (martian/bootstrap api-root concise-handlers (merge default-opts opts)))
 
-(defn bootstrap-openapi [url & [opts get-swagger-opts]]
+(defn bootstrap-openapi [url & [{:keys [server-url] :as opts} get-swagger-opts]]
   (let [definition (:body (http/get url (merge {:as :json} get-swagger-opts)))
-        {:keys [scheme server-name server-port]} (http/parse-url url)
-        base-url (format "%s://%s%s%s" (name scheme) server-name (if server-port (str ":" server-port) "")
-                         (if (openapi-schema? definition)
-                           (openapi/base-url definition)
-                           (get definition :basePath "")))]
+        base-url (openapi/base-url url server-url definition)]
     (martian/bootstrap-openapi base-url definition (merge default-opts opts))))
 
 (def bootstrap-swagger bootstrap-openapi)
