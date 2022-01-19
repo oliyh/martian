@@ -6,6 +6,7 @@
   :plugins [[lein-modules "0.3.11"]]
   :dependencies [[com.github.oliyh/martian :version]
                  [hato "0.8.2"]
+                 [clj-commons/clj-yaml "0.7.107"]
                  [cheshire "5.10.1"]]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.10.3"]]}
              :dev {:source-paths ["../test-common"]

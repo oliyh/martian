@@ -1,0 +1,31 @@
+"openapi": "3.1.0"
+"info":
+  "version": "1.2.3"
+  "title": "Repro"
+  "description": "A OAS 3.1.0 definition for testing."
+"paths":
+  "/items":
+    "get":
+      "summary": "Gets a list of items."
+      "description": "Filler"
+      "operationId": "list-items"
+      "parameters":
+        - "in": "query"
+          "name": "ClientId"
+          "description": "Client identifier"
+          "schema":
+            "type": "string"
+          "required": false
+      "responses":
+        "200":
+          "description": "Success."
+          "content":
+            "application/json":
+              "schema":
+                "type": "array"
+                "maxItems": 5000
+                "items":
+                  "type": "string"
+"servers":
+  - "url": "https://sandbox.example.com"
+    "description": "Sandbox"
