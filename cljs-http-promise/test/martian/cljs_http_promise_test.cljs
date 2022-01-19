@@ -29,19 +29,21 @@
 
 (deftest openapi-bootstrap-test
   (async done
-         (-> (prom/let [m (martian-http/bootstrap-openapi openapi-url)
-                        mt (martian-http/bootstrap-openapi openapi-test-url)
-                        mt1 (martian-http/bootstrap-openapi openapi-test-url {:server-url "https://sandbox.com"})
-                        mt2 (martian-http/bootstrap-openapi openapi-test-url {:server-url "/v3.1"})]
+         (-> (martian-http/bootstrap-openapi openapi-test-url)
+             (prom/then (fn [m]
+                          (is (= "https://sandbox.example.com"
+                                 (:api-root m)) "check absolute server url"))))
 
-               (is (= "https://sandbox.example.com"
-                      (:api-root mt)) "check absolute server url")
+         (-> (martian-http/bootstrap-openapi openapi-test-url {:server-url "https://sandbox.com"})
+             (prom/then (fn [m]
+                          (is (= "https://sandbox.com"
+                                 (:api-root m)) "check absolute server url via opts"))))
+         (-> (martian-http/bootstrap-openapi openapi-test-url {:server-url "/v3.1"})
+             (prom/then (fn [m]
+                          (is (= "http://localhost:8888/v3.1"
+                                 (:api-root m)) "check relative server url via opts"))))
 
-               (is (= "https://sandbox.com"
-                      (:api-root mt1)) "check absolute server url via opts")
-
-               (is (= "http://localhost:8888/v3.1"
-                      (:api-root mt2)) "check relative server url via opts")
+         (-> (prom/let [m (martian-http/bootstrap-openapi openapi-url)]
 
                (is (= "http://localhost:8888/openapi/v3"
                       (:api-root m)))
