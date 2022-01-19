@@ -1,5 +1,6 @@
 (ns martian.openapi
   (:require [camel-snake-kebab.core :refer [->kebab-case-keyword]]
+            [lambdaisland.uri :as uri]
             [clojure.string :as string]
             [clojure.walk :refer [keywordize-keys]]
             [schema.core :as s]
@@ -9,8 +10,18 @@
 (defn openapi-schema? [json]
   (some #(get json %) [:openapi "openapi"]))
 
-(defn base-url [json]
-  (get-in json [:servers 0 :url] ""))
+(defn base-url [url server-url json]
+  (let [first-server (get-in json [:servers 0 :url] "")
+        {:keys [scheme host port]} (uri/uri url)
+        api-root (or server-url first-server)]
+    (if (and (openapi-schema? json) (not (string/starts-with? api-root "/")))
+      api-root
+      (str scheme "://"
+           host
+           (when (not (string/blank? port)) (str ":" port))
+           (if (openapi-schema? json)
+             api-root
+             (get json :basePath ""))))))
 
 (defn- lookup-ref [components reference]
   (if (string/starts-with? reference "#/components/")
@@ -19,10 +30,6 @@
                         {:reference reference})))
     (throw (ex-info "References start with something other than #/components/ aren't supported yet. :("
                     {:reference reference}))))
-
-(def ^:private URI
-  #?(:clj java.net.URI
-     :cljs goog.Uri))
 
 (defn- wrap-nullable [{:keys [nullable]} schema]
   (if nullable

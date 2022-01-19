@@ -30,15 +30,7 @@
 
 (defn bootstrap-openapi [url & [{:keys [server-url trim-base-url?] :as opts} get-swagger-opts]]
   (go (let [definition (:body (<! (http/get url (merge {:as :json} get-swagger-opts))))
-            {:keys [scheme server-name server-port]} (http/parse-url url)
-            api-root (or server-url (openapi/base-url definition))
-            raw-base-url (if (and (openapi-schema? definition) (not (string/starts-with? api-root "/")))
-                           api-root
-                           (str (name scheme) "://"
-                                server-name (when server-port (str ":" server-port))
-                                (if (openapi-schema? definition)
-                                  api-root
-                                  (get definition :basePath ""))))
+            raw-base-url (openapi/base-url url server-url definition)
             base-url (if trim-base-url?
                        (string/replace raw-base-url #"/$" "")
                        raw-base-url)]

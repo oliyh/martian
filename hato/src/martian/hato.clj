@@ -2,20 +2,9 @@
   (:require [hato.client :as http]
             [martian.core :as martian]
             [martian.interceptors :as interceptors]
-            [martian.openapi :refer [openapi-schema?] :as openapi]
-            [clojure.string :as string]
+            [martian.openapi :as openapi]
             [clojure.walk :refer [keywordize-keys stringify-keys]]
-            [tripod.context :as tc])
-  (:import [java.net URL]))
-
-(defn- parse-url
-  "Parse a URL string into a map of interesting parts. Lifted from clj-http."
-  [url]
-  (let [url-parsed (URL. url)]
-    {:scheme (keyword (.getProtocol url-parsed))
-     :server-name (.getHost url-parsed)
-     :server-port (let [port (.getPort url-parsed)]
-                    (when (pos? port) port))}))
+            [tripod.context :as tc]))
 
 (def perform-request
   {:name ::perform-request
@@ -67,15 +56,7 @@
 
 (defn bootstrap-openapi [url & [{:keys [server-url] :as opts} get-swagger-opts]]
   (let [definition (:body (http/get url (merge {:as :json} get-swagger-opts)))
-        {:keys [scheme server-name server-port]} (parse-url url)
-        api-root (or server-url (openapi/base-url definition))
-        base-url (if (and (openapi-schema? definition) (not (string/starts-with? api-root "/")))
-                   api-root
-                   (str (name scheme) "://"
-                        server-name (when server-port (str ":" server-port))
-                        (if (openapi-schema? definition)
-                          api-root
-                          (get definition :basePath ""))))]
+        base-url (openapi/base-url url server-url definition)]
     (martian/bootstrap-openapi base-url definition (merge default-opts opts))))
 
 (def bootstrap-swagger bootstrap-openapi)

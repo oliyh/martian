@@ -2,7 +2,7 @@
   (:require [cljs-http.client :as http]
             [martian.core :as martian]
             [martian.interceptors :as i]
-            [martian.openapi :refer [openapi-schema?] :as openapi]
+            [martian.openapi :as openapi]
             [tripod.context :as tc]
             [clojure.string :as string]
             [promesa.core :as prom]))
@@ -32,15 +32,7 @@
   (prom/then (http/get url {:as :json})
              (fn [response]
                (let [definition (:body response)
-                     {:keys [scheme server-name server-port]} (http/parse-url url)
-                     api-root (or server-url (openapi/base-url definition))
-                     raw-base-url (if (and (openapi-schema? definition) (not (string/starts-with? api-root "/")))
-                                    api-root
-                                    (str (name scheme) "://"
-                                         server-name (when server-port (str ":" server-port))
-                                         (if (openapi-schema? definition)
-                                           api-root
-                                           (get definition :basePath ""))))
+                     raw-base-url (openapi/base-url url server-url definition)
                      base-url (if trim-base-url?
                                 (string/replace raw-base-url #"/$" "")
                                 raw-base-url)]
