@@ -4,7 +4,6 @@
             [martian.interceptors :as interceptors]
             [martian.openapi :as openapi]
             [martian.yaml :as yaml]
-            [clojure.string :as string]
             [clojure.walk :refer [keywordize-keys stringify-keys]]
             [tripod.context :as tc]))
 
@@ -57,7 +56,7 @@
   (martian/bootstrap api-root concise-handlers (merge default-opts opts)))
 
 (defn bootstrap-openapi [url & [{:keys [server-url] :as opts} get-swagger-opts]]
-  (let [definition (if (or (string/ends-with? url ".yaml") (string/ends-with? url ".yml"))
+  (let [definition (if (yaml/yaml-url? url)
                      (yaml/yaml->edn (:body (http/get url (dissoc get-swagger-opts :as))))
                      (:body (http/get url (merge {:as :json} get-swagger-opts))))
         base-url (openapi/base-url url server-url definition)]

@@ -1,7 +1,6 @@
 (ns martian.clj-http-lite
   (:require [clj-http.lite.client :as http]
             [cheshire.core :as json]
-            [clojure.string :as string]
             [martian.yaml :as yaml]
             [martian.core :as martian]
             [martian.interceptors :as interceptors]
@@ -28,7 +27,7 @@
 (defn bootstrap-openapi [url & [{:keys [server-url] :as opts} get-swagger-opts]]
   (let [body (:body (http/get url (or get-swagger-opts {})))
         ;; clj-http-lite does not support {:as :json} body conversion (yet) so we do it right here
-        definition (if (or (string/ends-with? url ".yaml") (string/ends-with? url ".yml"))
+        definition (if (yaml/yaml-url? url)
                      (yaml/yaml->edn body)
                      (json/parse-string body keyword))
         base-url (openapi/base-url url server-url definition)]

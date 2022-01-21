@@ -1,9 +1,16 @@
 (ns martian.yaml
   "Handle OpenAPI specs in YAML."
   (:require [clojure.walk :as w]
+            [clojure.string :as string]
             [clj-yaml.core :as yaml]))
 
 ;;; NOTE: Currently only for CLJ
+
+(defn yaml-url?
+  "Predicate that returns true if the `url` has a YAML extension.
+  False otherwise."
+  [url]
+  (boolean (or (string/ends-with? url ".yaml") (string/ends-with? url ".yml"))))
 
 (defn cleanup
   "Clean up the EDN returned by clj-commons/clj-yaml

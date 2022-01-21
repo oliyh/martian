@@ -4,7 +4,6 @@
             [martian.interceptors :as interceptors]
             [martian.openapi :as openapi]
             [martian.yaml :as yaml]
-            [clojure.string :as string]
             [cheshire.core :as json]
             [tripod.context :as tc]))
 
@@ -34,7 +33,7 @@
   (let [definition @(http/get url
                               (merge {:as :text} get-swagger-opts)
                               (fn [{:keys [body]}]
-                                (if (or (string/ends-with? url ".yaml") (string/ends-with? url ".yml"))
+                                (if (yaml/yaml-url? url)
                                   (yaml/yaml->edn body)
                                   (json/decode body keyword))))
         base-url (openapi/base-url url server-url definition)]
