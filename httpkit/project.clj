@@ -5,6 +5,7 @@
             :url "http://opensource.org/licenses/MIT"}
   :plugins [[lein-modules "0.3.11"]]
   :dependencies [[com.github.oliyh/martian :version]
+                 [cheshire "5.10.1"]
                  [http-kit "2.5.3"]]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.10.3"]]}
              :dev {:source-paths ["../test-common"]
