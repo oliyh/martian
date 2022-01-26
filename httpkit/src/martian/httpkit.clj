@@ -3,9 +3,9 @@
             [martian.core :as martian]
             [martian.interceptors :as interceptors]
             [martian.openapi :as openapi]
+            [martian.yaml :as yaml]
             [cheshire.core :as json]
-            [tripod.context :as tc])
-  (:import [java.net URL]))
+            [tripod.context :as tc]))
 
 (def go-async interceptors/remove-stack)
 
@@ -32,7 +32,10 @@
 (defn bootstrap-openapi [url & [{:keys [server-url] :as opts} get-swagger-opts]]
   (let [definition @(http/get url
                               (merge {:as :text} get-swagger-opts)
-                              (fn [{:keys [body]}] (json/decode body keyword)))
+                              (fn [{:keys [body]}]
+                                (if (yaml/yaml-url? url)
+                                  (yaml/yaml->edn body)
+                                  (json/decode body keyword))))
         base-url (openapi/base-url url server-url definition)]
     (martian/bootstrap-openapi base-url definition (merge default-opts opts))))
 
