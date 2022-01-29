@@ -245,7 +245,7 @@ You may wish to provide additional behaviour to requests. This can be done by pr
 which behave in the same way as pedestal interceptors.
 
 ### Global behaviour
-You can add interceptors to the stack that gets executed on every request when bootstrapping martian.
+You can add interceptors to the stack that get executed on every request when bootstrapping martian.
 For example, if you wish to add an authentication header and a timer to all requests:
 
 ```clojure
