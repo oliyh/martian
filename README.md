@@ -56,7 +56,7 @@ ensuring that your response handling code is also correct. Examples are below.
 
 ## Features
 - Bootstrap an instance from just a OpenAPI/Swagger url or provide your own API mapping
-- Modular with support for [clj-http](https://github.com/dakrone/clj-http), [clj-http-lite](https://github.com/hiredman/clj-http-lite), [httpkit](https://github.com/http-kit/http-kit), [hato](https://github.com/gnarroway/hato) (Clojure), [cljs-http](https://github.com/r0man/cljs-http) (ClojureScript) and [cljs-http-promise](https://github.com/oliyh/cljs-http-promise) (ClojureScript)
+- Modular with support for [clj-http](https://github.com/dakrone/clj-http), [clj-http-lite](https://github.com/hiredman/clj-http-lite), [httpkit](https://github.com/http-kit/http-kit), [hato](https://github.com/gnarroway/hato) (Clojure), [cljs-http](https://github.com/r0man/cljs-http) and [cljs-http-promise](https://github.com/oliyh/cljs-http-promise) (ClojureScript)
 - Build urls and request maps from code or generate and perform the request, returning the response
 - Validate requests and responses to ensure they are correct before the data leaves/enters your system
 - Explore an API from your REPL
