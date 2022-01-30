@@ -29,7 +29,7 @@ Take a martian definition and bootstrap it with the extra interceptor `martian.v
 (def m (http/bootstrap "https://foo.com/api"
                        {:interceptors (inject http/default-interceptors
                                               (vcr/record opts)
-                                              :after http/perform-request)}))
+                                              :after (:name http/perform-request))}))
 
 (m/response-for m :load-pet {:id 123})
 ;; the response is recorded and now stored at test-resources/vcr/load-pet/-655390368/0.edn
@@ -48,7 +48,7 @@ or working offline.
 (def m (m/bootstrap "https://foo.com/api"
                     {:interceptors (inject http/default-interceptors
                                            (vcr/playback opts)
-                                           :before http/perform-request)}))
+                                           :before (:name http/perform-request))}))
 
 (m/response-for m :load-pet {:id 123})
 ;; the response is read from test-resources/vcr/load-pet/-655390368/0.edn and returned
