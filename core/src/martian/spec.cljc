@@ -8,9 +8,7 @@
 (s/def ::route-name keyword?)
 (s/def ::path-parts (s/coll-of (s/or :literal string? :arg keyword?)))
 
-(s/def ::input-schema (s/nilable (s/map-of (s/or :specific-key schema/specific-key?
-                                                 :any-key schema/Any)
-                                           #(satisfies? schema/Schema %))))
+(s/def ::input-schema (s/nilable (s/and map? #(satisfies? schema/Schema %))))
 
 (s/def ::path-schema ::input-schema)
 (s/def ::query-schema ::input-schema)
