@@ -9,7 +9,7 @@
 (s/def ::path-parts (s/coll-of (s/or :literal string? :arg keyword?)))
 
 (s/def ::input-schema (s/nilable (s/map-of (s/or :specific-key schema/specific-key?
-                                                 :any-key schema/Any)
+                                                 :any-key #(schema/validate schema/Any %))
                                            #(satisfies? schema/Schema %))))
 
 (s/def ::path-schema ::input-schema)
