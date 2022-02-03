@@ -6,6 +6,9 @@
   },
   "paths": {
     "/project/{projectKey}": {
+      "parameters": [
+        {"$ref": "#/components/parameters/requiredHeader"}
+      ],
       "get": {
         "summary": "Get specific values from a configuration for a specific project",
         "operationId": "getProjectConfiguration",
@@ -49,6 +52,18 @@
           "404": {
             "description": "Requested resource was not found"
           }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "requiredHeader": {
+        "in": "header",
+        "name": "userAuthToken",
+        "schema": {
+          "type": "string",
+          "format": "string"
         }
       }
     }
