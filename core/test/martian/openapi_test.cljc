@@ -80,7 +80,7 @@
             :query-schema {(s/optional-key :key) (st/default s/Str "some-default-key")},
             :form-schema nil,
             :path-parts ["/project/" :projectKey],
-            :headers-schema nil,
+            :headers-schema {(s/optional-key :userAuthToken) s/Str},
             :consumes [nil],
             :summary "Get specific values from a configuration for a specific project",
             :body-schema nil,

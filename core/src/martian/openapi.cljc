@@ -125,16 +125,27 @@
             (keyword param-name)
             %) parts)))
 
+(defn- resolve-ref
+  "`components` are the keywordized value of the :components key from an
+   OpenAPI specification.
+   `param` is one of the values from
+   [:paths <some path> <some HTTP method> :parameters] of an OpenAPI spec."
+  [components param]
+  (if-let [ref (:$ref param)]
+     (lookup-ref components ref)
+     param))
+
 (defn openapi->handlers [openapi-json content-types]
   (let [openapi-spec (keywordize-keys openapi-json)
         components (:components openapi-spec)]
     (for [[url methods] (:paths openapi-spec)
-          [method definition] methods
+          :let [common-parameters (map (partial resolve-ref components) (:parameters methods))]
+          [method definition] (dissoc methods :parameters)
           ;; We only care about things which have a defined operationId, and
           ;; which aren't the associated OPTIONS call.
           :when (and (:operationId definition)
                      (not= :options method))
-          :let [parameters (group-by (comp keyword :in) (:parameters definition))
+          :let [parameters (group-by (comp keyword :in) (concat common-parameters (:parameters definition)))
                 body       (process-body (:requestBody definition) components (:encodes content-types))
                 responses  (process-responses (:responses definition) components (:decodes content-types))]]
       {:path-parts         (vec (tokenise-path url))
