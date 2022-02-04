@@ -1,7 +1,10 @@
 (ns martian.swagger-test
   (:require [clojure.test :refer [deftest is]]
             [schema.core :as s]
-            [martian.swagger :as swagger]))
+            [schema-tools.core :as st]
+            [martian.swagger :as swagger]
+            [martian.test-helpers #?@(:clj [:refer [json-resource]]
+                                      :cljs [:refer-macros [json-resource]])]))
 
 (deftest parameter-schemas-test
   (let [[get-handler]
@@ -88,3 +91,42 @@
             {:status (s/eq 404)
              :body s/Str}]
            (:response-schemas handler)))))
+
+(deftest swagger-sanity-check
+  (is (= {:path "/api/datasets/phones",
+          :method :post,
+          :produces
+          ["application/json"
+           "application/transit+msgpack"
+           "application/transit+json"
+           "application/edn"],
+          :path-schema nil,
+          :query-schema nil,
+          :form-schema nil,
+          :path-parts ["/api/datasets/phones"],
+          :headers-schema nil,
+          :consumes
+          ["application/json"
+           "application/transit+msgpack"
+           "application/transit+json"
+           "application/edn"],
+          :summary "select from table `phones`",
+          :body-schema
+          {:body
+           {(s/optional-key :phone)
+            (s/maybe {:operation (st/default (s/enum "=" "contains" "like" "startswith") "=")
+                      :value s/Str}),
+            (s/optional-key :gender)
+            (s/maybe {:operation (st/default (s/enum "=" "contains" "like" "startswith") "=")
+                      :value s/Str}),
+            (s/optional-key :age)
+            (s/maybe {:operation (st/default (s/enum "=" "contains" "like" "startswith") "=")
+                      :value s/Str})}},
+          :route-name :phones,
+          :response-schemas [{:status (s/eq 'default), :body s/Any}]}
+
+         (->> (json-resource "swagger-issue-111.json")
+              (swagger/swagger->handlers)
+              (filter #(= :phones (:route-name %)))
+              first
+              (#(dissoc % :swagger-definition))))))

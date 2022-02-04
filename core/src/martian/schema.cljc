@@ -105,12 +105,17 @@
 
 (def ^:dynamic *visited-refs* #{})
 
-(defn- denormalise-object-properties [{:keys [required properties]}]
-  (map (fn [[parameter-name param]] (assoc param
-                                           :name parameter-name
-                                           :required (or (:required param)
-                                                         (and (coll? required)
-                                                              (contains? (set required) (name parameter-name))))))
+(defn- denormalise-object-properties [{:keys [required properties] :as s}]
+  (map (fn [[parameter-name param]]
+         (assoc (if (= "object" (:type param))
+                  (assoc param :properties (into {} (map (juxt :name identity)
+                                                         (denormalise-object-properties param))))
+                  param)
+                :name parameter-name
+                :required (or (when-not (= "object" (:type param))
+                                (:required param))
+                              (and (coll? required)
+                                   (contains? (set required) (name parameter-name))))))
        properties))
 
 (defn- make-object-schema [ref-lookup {:keys [additionalProperties] :as schema}]
@@ -152,5 +157,6 @@
 
                 :else
                 (schema-type ref-lookup param))
-        (and (not required) (not= "array" type) (not= "array" (:type schema)))
+        (and (not required)
+             (not= "array" type) (not= "array" (:type schema)))
         s/maybe))))
