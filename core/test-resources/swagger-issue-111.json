@@ -1,0 +1,124 @@
+{
+    "swagger": "2.0",
+    "x-id": [
+        "mango.routes.services/api"
+    ],
+    "info": {
+        "title": "my-api",
+        "description": "https://cljdoc.org/d/metosin/reitit"
+    },
+    "paths": {
+        "/api/datasets/phones": {
+            "post": {
+                "responses": {
+                    "default": {
+                        "description": ""
+                    }
+                },
+                "produces": [
+                    "application/json",
+                    "application/transit+msgpack",
+                    "application/transit+json",
+                    "application/edn"
+                ],
+                "consumes": [
+                    "application/json",
+                    "application/transit+msgpack",
+                    "application/transit+json",
+                    "application/edn"
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "description": "",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "phone": {
+                                    "type": "object",
+                                    "properties": {
+                                        "operation": {
+                                            "title": "Operation",
+                                            "description": "operations on field",
+                                            "enum": [
+                                                "=",
+                                                "contains",
+                                                "startswith",
+                                                "like"
+                                            ],
+                                            "default": "=",
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "type": "string",
+                                            "x-nullable": true
+                                        }
+                                    },
+                                    "required": [
+                                        "operation",
+                                        "value"
+                                    ]
+                                },
+                                "gender": {
+                                    "type": "object",
+                                    "properties": {
+                                        "operation": {
+                                            "title": "Operation",
+                                            "description": "operations on field",
+                                            "enum": [
+                                                "=",
+                                                "startswith",
+                                                "like",
+                                                "contains"
+                                            ],
+                                            "default": "=",
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "type": "string",
+                                            "x-nullable": true
+                                        }
+                                    },
+                                    "required": [
+                                        "operation",
+                                        "value"
+                                    ]
+                                },
+                                "age": {
+                                    "type": "object",
+                                    "properties": {
+                                        "operation": {
+                                            "title": "Operation",
+                                            "description": "operations on field",
+                                            "enum": [
+                                                "=",
+                                                "contains",
+                                                "startswith",
+                                                "like"
+                                            ],
+                                            "default": "=",
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "type": "string",
+                                            "x-nullable": true
+                                        }
+                                    },
+                                    "required": [
+                                        "operation",
+                                        "value"
+                                    ]
+                                }
+                            },
+                            "required": []
+                        }
+                    }
+                ],
+                "summary": "select from table `phones`",
+                "operationId": "phones"
+            }
+        }
+    }
+}
