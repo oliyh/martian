@@ -29,7 +29,7 @@ Take a martian definition and bootstrap it with the extra interceptor `martian.v
 (def m (http/bootstrap "https://foo.com/api"
                        {:interceptors (inject http/default-interceptors
                                               (vcr/record opts)
-                                              :after (:name http/perform-request))}))
+                                              :before (:name http/perform-request))}))
 
 (m/response-for m :load-pet {:id 123})
 ;; the response is recorded and now stored at test-resources/vcr/load-pet/-655390368/0.edn
@@ -45,10 +45,10 @@ Given a directory of responses populated by the record interceptor, you can now 
 or working offline.
 
 ```clj
-(def m (m/bootstrap "https://foo.com/api"
-                    {:interceptors (inject http/default-interceptors
-                                           (vcr/playback opts)
-                                           :before (:name http/perform-request))}))
+(def m (http/bootstrap "https://foo.com/api"
+                       {:interceptors (inject http/default-interceptors
+                                              (vcr/playback opts)
+                                              :replace (:name http/perform-request))}))
 
 (m/response-for m :load-pet {:id 123})
 ;; the response is read from test-resources/vcr/load-pet/-655390368/0.edn and returned
@@ -79,9 +79,10 @@ For Clojure only:
  ```clj
 {:kind :file
  :root-dir "target" ;; where the response files are written
- :pprint? ;; whether to pprint the files (uses fipp)
+ :pprint? true ;; whether to pprint the files (uses fipp)
 }
  ```
+Note that for transit content type you may need to consider how transit objects serialise via reader macros or similar.
 
  ##### Atom store
 
