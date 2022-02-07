@@ -102,3 +102,25 @@
              (openapi->handlers {:encodes ["json"]
                                  :decodes ["json"]})
              count))))
+
+(deftest reffed-params-test
+  (let [openapi-json
+        {:paths {(keyword "/models/{model_id}/{version}")
+                 {:get {:operationId "load-models-id-version-get"
+                        :summary "Loads a pet by id"
+                        :parameters [{:$ref "#/components/parameters/model_id"}
+                                     {:$ref "#/components/parameters/version"}]}}}
+         :components {:parameters {:model_id {:in "path"
+                                              :name "model_id"
+                                              :schema {:type "string"}
+                                              :required true}
+                                   :version {:in "path"
+                                             :name "version"
+                                             :schema {:type "string"}
+                                             :required true}}}}
+        [handler] (openapi->handlers openapi-json {:encodes ["application/json"]
+                                                   :decodes ["application/json"]})]
+    (is (= {:path-parts ["/models/" :model_id "/" :version],
+            :path-schema {:model_id s/Str
+                          :version s/Str}}
+           (select-keys handler [:path-parts :path-schema])))))
