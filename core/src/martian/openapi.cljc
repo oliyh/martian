@@ -2,8 +2,11 @@
   (:require [camel-snake-kebab.core :refer [->kebab-case-keyword]]
             [lambdaisland.uri :as uri]
             [clojure.string :as string]
+            [clojure.set :as set]
             [clojure.walk :refer [keywordize-keys]]
             [schema.core :as s]
+            [martian.encoders :as encoders]
+            [martian.interceptors :as interceptors]
             [martian.schema :refer [leaf-schema wrap-default]]
             #?(:cljs [cljs.reader :refer [read-string]])))
 
@@ -145,9 +148,7 @@
           ;; which aren't the associated OPTIONS call.
           :when (and (:operationId definition)
                      (not= :options method))
-          :let [parameters (group-by (comp keyword :in) (concat common-parameters
-                                                                (map (partial resolve-ref components)
-                                                                     (:parameters definition))))
+          :let [parameters (group-by (comp keyword :in) (concat common-parameters (:parameters definition)))
                 body       (process-body (:requestBody definition) components (:encodes content-types))
                 responses  (process-responses (:responses definition) components (:decodes content-types))]]
       {:path-parts         (vec (tokenise-path url))
@@ -164,3 +165,46 @@
        :description        (:description definition)
        :openapi-definition definition
        :route-name         (->kebab-case-keyword (:operationId definition))})))
+
+(defn- referenced-content-types
+  "Returns a set of all content types referenced in the JSON spec.
+  The content types are the keys of a map that is the value of the :content key."
+  [json]
+  (letfn [(helper [acc x]
+            (cond (map? x)
+                  (reduce-kv (fn [a k v] (if (= :content k) (into a conj (keys v)) (helper a v))) acc x)
+                  (seqable? x) (reduce (fn [a v] (helper a v)) acc x)
+                  :else acc))]
+    (into #{} (map stringify-ns-keyword (helper #{} json)))))
+
+;;; TODO: Maybe consider adding the :as key to the +json encoder/decoder.
+(defn- plus-json-encoders
+  "From the `content-types`, select those of the form \"application/vnd.foo.bar+json\"
+  and return encoder/decoders for them."
+  [content-types json-enc]
+  (reduce (fn [acc ct] (if (and (string/starts-with? ct "application/vnd.")
+                                (string/ends-with? ct "+json"))
+                         (assoc acc ct json-enc)
+                         acc))
+          {} content-types))
+
+(defn augment-with-plus-json-interceptors
+  "Augument the interceptors with those capable of handling all
+  the +json content types specified in the JSON spec."
+  [json interceptors]
+  (let [base-content-types (apply set/union ((juxt :encodes :decodes)
+                                              (interceptors/supported-content-types interceptors)))
+        ref-content-types (referenced-content-types json)
+        new-content-types (set/difference ref-content-types base-content-types)
+        default-encs (encoders/default-encoders)
+        json-enc (get default-encs "application/json")
+        plus-json-encs (plus-json-encoders new-content-types json-enc)
+        encs (merge  default-encs plus-json-encs)
+        augmented-interceptors (if json-enc
+                                 (-> interceptors
+                                     (interceptors/inject (interceptors/encode-body encs)
+                                                          :replace ::interceptors/encode-body)
+                                     (interceptors/inject (interceptors/coerce-response encs)
+                                                          :replace ::interceptors/coerce-response))
+                                 interceptors)]
+    augmented-interceptors))

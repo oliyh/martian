@@ -5,7 +5,7 @@
             [martian.interceptors :as interceptors]
             [martian.parameter-aliases :as parameter-aliases :refer [parameter-aliases alias-schema]]
             [martian.swagger :refer [swagger->handlers]]
-            [martian.openapi :refer [openapi->handlers openapi-schema?]]
+            [martian.openapi :refer [openapi->handlers openapi-schema? augment-with-plus-json-interceptors]]
             [clojure.spec.alpha :as spec]
             [martian.spec :as mspec]))
 
@@ -128,12 +128,17 @@
 (defn bootstrap-openapi
   "Creates a martian instance from an openapi/swagger spec based on the schema provided"
   [api-root json & [opts]]
-  (let [{:keys [interceptors] :or {interceptors default-interceptors} :as opts} (keywordize-keys opts)]
+  (let [{:keys [interceptors plus-json]
+         :or {interceptors default-interceptors plus-json false}
+         :as opts} (keywordize-keys opts)
+        augmented-interceptors (if plus-json
+                                 (augment-with-plus-json-interceptors json interceptors)
+                                 interceptors)]
     (build-instance api-root
                     (map enrich-handler (if (openapi-schema? json)
-                                          (openapi->handlers json (interceptors/supported-content-types interceptors))
+                                          (openapi->handlers json (interceptors/supported-content-types augmented-interceptors))
                                           (swagger->handlers json)))
-                    opts)))
+                    (assoc opts :interceptors augmented-interceptors))))
 
 (def bootstrap-swagger bootstrap-openapi)
 
