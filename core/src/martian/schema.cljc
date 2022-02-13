@@ -87,6 +87,7 @@
                         "uri" (s/cond-pre s/Str URI)
                         s/Str)
     (= "integer" type) s/Int
+    (= "number" type) s/Num
     (= "boolean" type) s/Bool
 
     :else
