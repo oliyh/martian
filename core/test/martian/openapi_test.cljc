@@ -124,3 +124,39 @@
             :path-schema {:model_id s/Str
                           :version s/Str}}
            (select-keys handler [:path-parts :path-schema])))))
+
+(deftest reffed-responses-test
+  (let [openapi-json
+        {:paths {(keyword "/models")
+                 {:get {:operationId "list-models"
+                        :summary "Lists models"
+                        :responses {:401 {:$ref "#/components/responses/Unauthorized"}
+                                    :404 {:$ref "#/components/responses/NotFound"}}}}}
+         :components {:responses {:NotFound
+                                  {:description "The requested resource was not found."
+                                   :content
+                                   {:application/json
+                                    {:schema {:$ref "#/components/schemas/Error"}}}}
+                                  :Unauthorized
+                                  {:description "Unauthorized."
+                                   :content
+                                   {:application/json
+                                    {:schema {:$ref "#/components/schemas/Error"}}}}}
+                      :schemas {:Error
+                                {:type "object"
+                                 :properties
+                                 {:code
+                                  {:description "An enumerated error for machine use.",
+                                   :type "integer",
+                                   :readOnly true},
+                                  :details
+                                  {:description "A human-readable description of the error.",
+                                   :type "string",
+                                   :readOnly true}}}}}}
+        [handler] (openapi->handlers openapi-json {:encodes ["application/json"]
+                                                   :decodes ["application/json"]})]
+    (is (= [{:status (s/eq 401)
+             :body {(s/optional-key :code) s/Int (s/optional-key :details) s/Str}}
+            {:status (s/eq 404)
+             :body {(s/optional-key :code) s/Int (s/optional-key :details) s/Str}}]
+           (:response-schemas handler)))))

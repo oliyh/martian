@@ -135,6 +135,12 @@
      (lookup-ref components ref)
      param))
 
+;; After martian is updated to use Clojure 1.11.0+ then replace this and the uses with update-vals.
+(defn update-vals-future
+  "An implementation of `update-vals` that is in Clojure 1.11.0+."
+  [m f]
+  (zipmap (keys m) (map f (vals m))))
+
 (defn openapi->handlers [openapi-json content-types]
   (let [openapi-spec (keywordize-keys openapi-json)
         components (:components openapi-spec)]
@@ -149,7 +155,9 @@
                                                                 (map (partial resolve-ref components)
                                                                      (:parameters definition))))
                 body       (process-body (:requestBody definition) components (:encodes content-types))
-                responses  (process-responses (:responses definition) components (:decodes content-types))]]
+                responses  (process-responses (update-vals-future (:responses definition)
+                                                                  (partial resolve-ref components))
+                                              components (:decodes content-types))]]
       {:path-parts         (vec (tokenise-path url))
        :method             method
        :path-schema        (process-parameters (:path parameters) components)
