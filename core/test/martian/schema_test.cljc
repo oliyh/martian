@@ -35,6 +35,7 @@
 
 (deftest primitives-test
   (is (= {:id s/Int
+          :weight s/Num
           :name s/Str
           :dog? s/Bool
           :unknown s/Any}
@@ -42,6 +43,10 @@
                                              :in "path"
                                              :required true
                                              :type "integer"}
+                                            {:name "weight"
+                                             :in "path"
+                                             :required true
+                                             :type "number"}
                                             {:name "name"
                                              :in "path"
                                              :required true
