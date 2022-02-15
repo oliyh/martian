@@ -55,22 +55,21 @@
      (wrap schema
            (condp = (if-let [typ (:type schema)]
                       typ
-                      (let [ks (keys schema)]
-                        ;; If a schema has no :type key, and the only key it contains is a :properties key,
-                        ;; then the :type can reasonably be inferred as "object".
-                        ;;
-                        ;; See https://github.com/OAI/OpenAPI-Specification/issues/1657
-                        ;;
-                        ;; Excerpt:
-                        ;; A particularly common form of this is a schema that omits type, but specifies properties.
-                        ;; Strictly speaking, this does not mean that the value must be an object.
-                        ;; It means that if the value is an object, and it includes any of those properties,
-                        ;; the property values must conform to the corresponding property subschemas.
-                        ;;
-                        ;; In reality, this construct almost always means that the user intends type: object,
-                        ;; and I think it would be reasonable for a code generator to assume this,
-                        ;; maybe with a validation: strict|lax config option to control that behavior.
-                        (when (and (= (count ks) 1) (= (first ks) :properties)) "object")))
+                      ;; If a schema has no :type key, and the only key it contains is a :properties key,
+                      ;; then the :type can reasonably be inferred as "object".
+                      ;;
+                      ;; See https://github.com/OAI/OpenAPI-Specification/issues/1657
+                      ;;
+                      ;; Excerpt:
+                      ;; A particularly common form of this is a schema that omits type, but specifies properties.
+                      ;; Strictly speaking, this does not mean that the value must be an object.
+                      ;; It means that if the value is an object, and it includes any of those properties,
+                      ;; the property values must conform to the corresponding property subschemas.
+                      ;;
+                      ;; In reality, this construct almost always means that the user intends type: object,
+                      ;; and I think it would be reasonable for a code generator to assume this,
+                      ;; maybe with a validation: strict|lax config option to control that behavior.
+                      (when (= #{:properties} (set (keys schema))) "object"))
              "array"   [(openapi->schema (:items schema) components seen-set)]
              "object"  (let [required? (set (:required schema))]
                          (into {}
