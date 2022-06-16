@@ -40,7 +40,7 @@ stub code and providing responses that are always up to date. We can write the t
 
   (testing "guest access works"
     (let [m (-> (martian/bootstrap-swagger "https://api.com" user-api-swagger-definition)
-                (martian-test/respond-with-generated {:load-user :error}))]
+                (martian-test/respond-with-generated {:load-user :error}))
           user (find-user m "abc")]
       (is (= "Guest" (:name user)))
       (is (false? (:write-access? user))))))
