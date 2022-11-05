@@ -167,7 +167,13 @@
                                        :tags [{:k nil}]}
                                       nil
                                       true)))))))))
-
+(deftest date-time-test
+  (is (= (s/cond-pre s/Str s/Inst)
+         (schema/make-schema {:definitions {}} {:name "date-time"
+                                                :in "path"
+                                                :required true
+                                                :type "string"
+                                                :format "date-time"}))))
 (deftest uuid-test
   (is (= (s/cond-pre s/Str s/Uuid)
          (schema/make-schema {:definitions {}} {:name "uuid"

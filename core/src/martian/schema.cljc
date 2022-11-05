@@ -85,6 +85,7 @@
     (= "string" type) (case format
                         "uuid" (s/cond-pre s/Str s/Uuid)
                         "uri" (s/cond-pre s/Str URI)
+                        "date-time" (s/cond-pre s/Str s/Inst)
                         s/Str)
     (= "integer" type) s/Int
     (= "number" type) s/Num

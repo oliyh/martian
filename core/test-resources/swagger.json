@@ -300,6 +300,10 @@
         "age": {
           "type": "integer",
           "format": "int64"
+        },
+        "adoptionTime": {
+          "type": "string",
+          "format": "date-time"
         }
       },
       "additionalProperties": false,
@@ -321,6 +325,10 @@
         "age": {
           "type": "integer",
           "format": "int64"
+        },
+        "adoptionTime": {
+          "type": "string",
+          "format": "date-time"
         },
         "id": {
           "type": "string",
