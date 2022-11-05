@@ -167,6 +167,15 @@
                                        :tags [{:k nil}]}
                                       nil
                                       true)))))))))
+;; "int-or-string" (s/cond-pre s/Str s/Int)
+(deftest int-or-string-test
+  (is (= (s/cond-pre s/Str s/Int)
+         (schema/make-schema {:definitions {}} {:name "int-or-string"
+                                                :in "path"
+                                                :required true
+                                                :type "string"
+                                                :format "int-or-string"}))))
+
 (deftest date-time-test
   (is (= (s/cond-pre s/Str s/Inst)
          (schema/make-schema {:definitions {}} {:name "date-time"
