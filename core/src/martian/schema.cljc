@@ -122,8 +122,13 @@
        properties))
 
 (defn- make-object-schema [ref-lookup {:keys [additionalProperties] :as schema}]
-  (cond-> (schemas-for-parameters ref-lookup (denormalise-object-properties schema))
-    additionalProperties (assoc s/Any s/Any)))
+  ;; It's possible for an 'object' to omit properties and
+  ;; additionalProperties. If this is the case - anything is allowed.
+  (if (or (contains? schema :properties)
+          (contains? schema :additionalProperties))
+    (cond-> (schemas-for-parameters ref-lookup (denormalise-object-properties schema))
+      additionalProperties (assoc s/Any s/Any))
+    {s/Any s/Any}))
 
 (defn make-schema
   "Takes a swagger parameter and returns a schema"

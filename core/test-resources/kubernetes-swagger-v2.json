@@ -1,0 +1,704 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Kubernetes",
+    "version": "v1.23.10"
+  },
+  "paths": {
+    "/api/v1/namespaces/{namespace}/secrets/{name}": {
+      "get": {
+        "description": "read the specified Secret",
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "schemes": [
+          "https"
+        ],
+        "tags": [
+          "core_v1"
+        ],
+        "operationId": "readCoreV1NamespacedSecret",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/io.k8s.api.core.v1.Secret"
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "x-kubernetes-action": "get",
+        "x-kubernetes-group-version-kind": {
+          "group": "",
+          "kind": "Secret",
+          "version": "v1"
+        }
+      },
+      "put": {
+        "description": "replace the specified Secret",
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "schemes": [
+          "https"
+        ],
+        "tags": [
+          "core_v1"
+        ],
+        "operationId": "replaceCoreV1NamespacedSecret",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/io.k8s.api.core.v1.Secret"
+            }
+          },
+          {
+            "uniqueItems": true,
+            "type": "string",
+            "description": "When present, indicates that modifications should not be persisted. An invalid or unrecognized dryRun directive will result in an error response and no further processing of the request. Valid values are: - All: all dry run stages will be processed",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "uniqueItems": true,
+            "type": "string",
+            "description": "fieldManager is a name associated with the actor or entity that is making these changes. The value must be less than or 128 characters long, and only contain printable characters, as defined by https://golang.org/pkg/unicode/#IsPrint.",
+            "name": "fieldManager",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/io.k8s.api.core.v1.Secret"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/io.k8s.api.core.v1.Secret"
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "x-kubernetes-action": "put",
+        "x-kubernetes-group-version-kind": {
+          "group": "",
+          "kind": "Secret",
+          "version": "v1"
+        }
+      },
+      "delete": {
+        "description": "delete a Secret",
+        "consumes": [
+          "*/*"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "schemes": [
+          "https"
+        ],
+        "tags": [
+          "core_v1"
+        ],
+        "operationId": "deleteCoreV1NamespacedSecret",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.DeleteOptions"
+            }
+          },
+          {
+            "uniqueItems": true,
+            "type": "string",
+            "description": "When present, indicates that modifications should not be persisted. An invalid or unrecognized dryRun directive will result in an error response and no further processing of the request. Valid values are: - All: all dry run stages will be processed",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "uniqueItems": true,
+            "type": "integer",
+            "description": "The duration in seconds before the object should be deleted. Value must be non-negative integer. The value zero indicates delete immediately. If this value is nil, the default grace period for the specified type will be used. Defaults to a per object value if not specified. zero means delete immediately.",
+            "name": "gracePeriodSeconds",
+            "in": "query"
+          },
+          {
+            "uniqueItems": true,
+            "type": "boolean",
+            "description": "Deprecated: please use the PropagationPolicy, this field will be deprecated in 1.7. Should the dependent objects be orphaned. If true/false, the \"orphan\" finalizer will be added to/removed from the object's finalizers list. Either this field or PropagationPolicy may be set, but not both.",
+            "name": "orphanDependents",
+            "in": "query"
+          },
+          {
+            "uniqueItems": true,
+            "type": "string",
+            "description": "Whether and how garbage collection will be performed. Either this field or OrphanDependents may be set, but not both. The default policy is decided by the existing finalizer set in the metadata.finalizers and the resource-specific default policy. Acceptable values are: 'Orphan' - orphan the dependents; 'Background' - allow the garbage collector to delete the dependents in the background; 'Foreground' - a cascading policy that deletes all dependents in the foreground.",
+            "name": "propagationPolicy",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.Status"
+            }
+          },
+          "202": {
+            "description": "Accepted",
+            "schema": {
+              "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.Status"
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "x-kubernetes-action": "delete",
+        "x-kubernetes-group-version-kind": {
+          "group": "",
+          "kind": "Secret",
+          "version": "v1"
+        }
+      },
+      "patch": {
+        "description": "partially update the specified Secret",
+        "consumes": [
+          "application/json-patch+json",
+          "application/merge-patch+json",
+          "application/strategic-merge-patch+json",
+          "application/apply-patch+yaml"
+        ],
+        "produces": [
+          "application/json",
+          "application/yaml",
+          "application/vnd.kubernetes.protobuf"
+        ],
+        "schemes": [
+          "https"
+        ],
+        "tags": [
+          "core_v1"
+        ],
+        "operationId": "patchCoreV1NamespacedSecret",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.Patch"
+            }
+          },
+          {
+            "uniqueItems": true,
+            "type": "string",
+            "description": "When present, indicates that modifications should not be persisted. An invalid or unrecognized dryRun directive will result in an error response and no further processing of the request. Valid values are: - All: all dry run stages will be processed",
+            "name": "dryRun",
+            "in": "query"
+          },
+          {
+            "uniqueItems": true,
+            "type": "string",
+            "description": "fieldManager is a name associated with the actor or entity that is making these changes. The value must be less than or 128 characters long, and only contain printable characters, as defined by https://golang.org/pkg/unicode/#IsPrint. This field is required for apply requests (application/apply-patch) but optional for non-apply patch types (JsonPatch, MergePatch, StrategicMergePatch).",
+            "name": "fieldManager",
+            "in": "query"
+          },
+          {
+            "uniqueItems": true,
+            "type": "boolean",
+            "description": "Force is going to \"force\" Apply requests. It means user will re-acquire conflicting fields owned by other people. Force flag must be unset for non-apply patch requests.",
+            "name": "force",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/io.k8s.api.core.v1.Secret"
+            }
+          },
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/io.k8s.api.core.v1.Secret"
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "x-kubernetes-action": "patch",
+        "x-kubernetes-group-version-kind": {
+          "group": "",
+          "kind": "Secret",
+          "version": "v1"
+        }
+      },
+      "parameters": [
+        {
+          "uniqueItems": true,
+          "type": "string",
+          "description": "name of the Secret",
+          "name": "name",
+          "in": "path",
+          "required": true
+        },
+        {
+          "uniqueItems": true,
+          "type": "string",
+          "description": "object name and auth scope, such as for teams and projects",
+          "name": "namespace",
+          "in": "path",
+          "required": true
+        },
+        {
+          "uniqueItems": true,
+          "type": "string",
+          "description": "If 'true', then the output is pretty printed.",
+          "name": "pretty",
+          "in": "query"
+        }
+      ]
+		      
+    }
+  },
+  "definitions": {
+    "io.k8s.api.core.v1.Secret": {
+      "description": "Secret holds secret data of a certain type. The total bytes of the values in the Data field must be less than MaxSecretSize bytes.",
+      "type": "object",
+      "properties": {
+	"apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+	},
+	"data": {
+          "description": "Data contains the secret data. Each key must consist of alphanumeric characters, '-', '_' or '.'. The serialized form of the secret data is a base64 encoded string, representing the arbitrary (possibly non-string) data value here. Described in https://tools.ietf.org/html/rfc4648#section-4",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "byte"
+          }
+	},
+	"immutable": {
+          "description": "Immutable, if set to true, ensures that data stored in the Secret cannot be updated (only object metadata can be modified). If not set to true, the field can be modified at any time. Defaulted to nil.",
+          "type": "boolean"
+	},
+	"kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+	},
+	"metadata": {
+          "description": "Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata",
+          "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta"
+	},
+	"stringData": {
+          "description": "stringData allows specifying non-binary secret data in string form. It is provided as a write-only input field for convenience. All keys and values are merged into the data field on write, overwriting any existing values. The stringData field is never output when reading from the API.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+	},
+	"type": {
+          "description": "Used to facilitate programmatic handling of secret data. More info: https://kubernetes.io/docs/concepts/configuration/secret/#secret-types",
+          "type": "string"
+	}
+      },
+      "x-kubernetes-group-version-kind": [
+	{
+          "group": "",
+          "kind": "Secret",
+          "version": "v1"
+	}
+      ]
+    },
+    "io.k8s.apimachinery.pkg.apis.meta.v1.DeleteOptions": {
+      "description": "DeleteOptions may be provided when deleting an API object.",
+      "type": "object",
+      "properties": {
+	"apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+	},
+	"dryRun": {
+          "description": "When present, indicates that modifications should not be persisted. An invalid or unrecognized dryRun directive will result in an error response and no further processing of the request. Valid values are: - All: all dry run stages will be processed",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+	},
+	"gracePeriodSeconds": {
+          "description": "The duration in seconds before the object should be deleted. Value must be non-negative integer. The value zero indicates delete immediately. If this value is nil, the default grace period for the specified type will be used. Defaults to a per object value if not specified. zero means delete immediately.",
+          "type": "integer",
+          "format": "int64"
+	},
+	"kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+	},
+	"orphanDependents": {
+          "description": "Deprecated: please use the PropagationPolicy, this field will be deprecated in 1.7. Should the dependent objects be orphaned. If true/false, the \"orphan\" finalizer will be added to/removed from the object's finalizers list. Either this field or PropagationPolicy may be set, but not both.",
+          "type": "boolean"
+	},
+	"preconditions": {
+          "description": "Must be fulfilled before a deletion is carried out. If not possible, a 409 Conflict status will be returned.",
+          "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.Preconditions"
+	},
+	"propagationPolicy": {
+          "description": "Whether and how garbage collection will be performed. Either this field or OrphanDependents may be set, but not both. The default policy is decided by the existing finalizer set in the metadata.finalizers and the resource-specific default policy. Acceptable values are: 'Orphan' - orphan the dependents; 'Background' - allow the garbage collector to delete the dependents in the background; 'Foreground' - a cascading policy that deletes all dependents in the foreground.",
+          "type": "string"
+	}
+      },
+      "x-kubernetes-group-version-kind": [
+	{
+          "group": "",
+          "kind": "DeleteOptions",
+          "version": "v1"
+	},
+	{
+          "group": "admission.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1"
+	},
+	{
+          "group": "admission.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1beta1"
+	},
+	{
+          "group": "admissionregistration.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1"
+	},
+	{
+          "group": "admissionregistration.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1beta1"
+	},
+	{
+          "group": "apiextensions.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1"
+	},
+	{
+          "group": "apiextensions.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1beta1"
+	},
+	{
+          "group": "apiregistration.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1"
+	},
+	{
+          "group": "apiregistration.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1beta1"
+	},
+	{
+          "group": "apps",
+          "kind": "DeleteOptions",
+          "version": "v1"
+	},
+	{
+          "group": "apps",
+          "kind": "DeleteOptions",
+          "version": "v1beta1"
+	},
+	{
+          "group": "apps",
+          "kind": "DeleteOptions",
+          "version": "v1beta2"
+	},
+	{
+          "group": "authentication.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1"
+	},
+	{
+          "group": "authentication.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1beta1"
+	},
+	{
+          "group": "authorization.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1"
+	},
+	{
+          "group": "authorization.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1beta1"
+	},
+	{
+          "group": "autoscaling",
+          "kind": "DeleteOptions",
+          "version": "v1"
+	},
+	{
+          "group": "autoscaling",
+          "kind": "DeleteOptions",
+          "version": "v2"
+	},
+	{
+          "group": "autoscaling",
+          "kind": "DeleteOptions",
+          "version": "v2beta1"
+	},
+	{
+          "group": "autoscaling",
+          "kind": "DeleteOptions",
+          "version": "v2beta2"
+	},
+	{
+          "group": "batch",
+          "kind": "DeleteOptions",
+          "version": "v1"
+	},
+	{
+          "group": "batch",
+          "kind": "DeleteOptions",
+          "version": "v1beta1"
+	},
+	{
+          "group": "certificates.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1"
+	},
+	{
+          "group": "certificates.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1beta1"
+	},
+	{
+          "group": "coordination.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1"
+	},
+	{
+          "group": "coordination.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1beta1"
+	},
+	{
+          "group": "discovery.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1"
+	},
+	{
+          "group": "discovery.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1beta1"
+	},
+	{
+          "group": "events.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1"
+	},
+	{
+          "group": "events.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1beta1"
+	},
+	{
+          "group": "extensions",
+          "kind": "DeleteOptions",
+          "version": "v1beta1"
+	},
+	{
+          "group": "flowcontrol.apiserver.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1alpha1"
+	},
+	{
+          "group": "flowcontrol.apiserver.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1beta1"
+	},
+	{
+          "group": "flowcontrol.apiserver.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1beta2"
+	},
+	{
+          "group": "imagepolicy.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1alpha1"
+	},
+	{
+          "group": "internal.apiserver.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1alpha1"
+	},
+	{
+          "group": "networking.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1"
+	},
+	{
+          "group": "networking.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1beta1"
+	},
+	{
+          "group": "node.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1"
+	},
+	{
+          "group": "node.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1alpha1"
+	},
+	{
+          "group": "node.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1beta1"
+	},
+	{
+          "group": "policy",
+          "kind": "DeleteOptions",
+          "version": "v1"
+	},
+	{
+          "group": "policy",
+          "kind": "DeleteOptions",
+          "version": "v1beta1"
+	},
+	{
+          "group": "rbac.authorization.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1"
+	},
+	{
+          "group": "rbac.authorization.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1alpha1"
+	},
+	{
+          "group": "rbac.authorization.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1beta1"
+	},
+	{
+          "group": "scheduling.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1"
+	},
+	{
+          "group": "scheduling.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1alpha1"
+	},
+	{
+          "group": "scheduling.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1beta1"
+	},
+	{
+          "group": "storage.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1"
+	},
+	{
+          "group": "storage.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1alpha1"
+	},
+	{
+          "group": "storage.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1beta1"
+	}
+      ]
+    },
+    "io.k8s.apimachinery.pkg.apis.meta.v1.Status": {
+      "description": "Status is a return value for calls that don't return other objects.",
+      "type": "object",
+      "properties": {
+	"apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+	},
+	"code": {
+          "description": "Suggested HTTP return code for this status, 0 if not set.",
+          "type": "integer",
+          "format": "int32"
+	},
+	"details": {
+          "description": "Extended data associated with the reason.  Each reason may define its own extended details. This field is optional and the data returned is not guaranteed to conform to any schema except that defined by the reason type.",
+          "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.StatusDetails"
+	},
+	"kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+	},
+	"message": {
+          "description": "A human-readable description of the status of this operation.",
+          "type": "string"
+	},
+	"metadata": {
+          "description": "Standard list metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ListMeta"
+	},
+	"reason": {
+          "description": "A machine-readable description of why this operation is in the \"Failure\" status. If this value is empty there is no information available. A Reason clarifies an HTTP status code but does not override it.",
+          "type": "string"
+	},
+	"status": {
+          "description": "Status of the operation. One of: \"Success\" or \"Failure\". More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status",
+          "type": "string"
+	}
+      },
+      "x-kubernetes-group-version-kind": [
+	{
+          "group": "",
+          "kind": "Status",
+          "version": "v1"
+	}
+      ]
+    },
+    "io.k8s.apimachinery.pkg.apis.meta.v1.Patch": {
+      "description": "Patch is provided to give a concrete name and type to the Kubernetes PATCH request body.",
+      "type": "object"
+    }
+
+  },
+  "securityDefinitions": {
+    "BearerToken": {
+      "description": "Bearer Token authentication",
+      "type": "apiKey",
+      "name": "authorization",
+      "in": "header"
+    }
+  },
+  "security": [
+    {
+      "BearerToken": []
+    }
+  ]
+}
