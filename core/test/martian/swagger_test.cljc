@@ -66,6 +66,13 @@
                    (s/optional-key :systems) [s/Int]}}
            (:body-schema handler)))))
 
+(deftest body-object-without-any-parameters-takes-values
+  (is (= {:body {s/Any s/Any}}
+         (let [[handler] (->> (json-resource "kubernetes-swagger-v2.json")
+                              (swagger/swagger->handlers)
+                              (filter #(= (:route-name %) :patch-core-v-1-namespaced-secret)))]
+           (:body-schema handler)))))
+
 (deftest response-schema-test
   (let [swagger-json
         {:paths {(keyword "/pets/{id}")
