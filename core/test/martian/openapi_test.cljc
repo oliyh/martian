@@ -1,6 +1,6 @@
 (ns martian.openapi-test
-  (:require [martian.test-helpers #?@(:clj [:refer [json-resource]]
-                                      :cljs [:refer-macros [json-resource]])]
+  (:require [martian.test-helpers #?@(:clj [:refer [json-resource yaml-resource]]
+                                      :cljs [:refer-macros [json-resource yaml-resource]])]
             [schema-tools.core :as st]
             [clojure.test :refer [deftest is testing]]
             [schema.core :as s]
@@ -14,6 +14,9 @@
 
 (def jira-openapi-v3-json
   (json-resource "jira-openapi-v3.json"))
+
+(def kubernetes-openapi-v3-yaml
+  (yaml-resource "kubernetes-openapi-v3-converted.yaml"))
 
 (deftest openapi-sanity-check
   (testing "parses each handler"
@@ -187,3 +190,12 @@
     (is (= [{:status (s/eq 404)
              :body {(s/optional-key :code) s/Int (s/optional-key :details) s/Str}}]
            (:response-schemas handler)))))
+
+(deftest body-object-without-any-parameters-takes-values
+  (is (= {:body {s/Any s/Any}}
+         (let [[handler] (filter #(= (:route-name %) :patch-core-v-1-namespaced-secret)
+                                 (openapi->handlers kubernetes-openapi-v3-yaml
+                                                    {:encodes ["application/json-patch+json"]
+                                                     :decodes ["application/json"]}))]
+
+           (:body-schema handler)))))
