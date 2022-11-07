@@ -72,13 +72,16 @@
                       (when (= #{:properties} (set (keys schema))) "object"))
              "array"   [(openapi->schema (:items schema) components seen-set)]
              "object"  (let [required? (set (:required schema))]
-                         (into {}
-                               (map (fn [[k v]]
-                                      {(if (required? (name k))
-                                         (keyword k)
-                                         (s/optional-key (keyword k)))
-                                       (openapi->schema v components seen-set)}))
-                               (:properties schema)))
+                         (if (or (contains? schema :properties)
+                                 (contains? schema :additionalProperties))
+                           (into {}
+                                 (map (fn [[k v]]
+                                        {(if (required? (name k))
+                                           (keyword k)
+                                           (s/optional-key (keyword k)))
+                                         (openapi->schema v components seen-set)}))
+                                 (:properties schema))
+                           {s/Any s/Any}))
              (leaf-schema schema))))))
 
 (defn- stringify-ns-keyword [k]
