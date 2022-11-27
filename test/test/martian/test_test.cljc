@@ -81,6 +81,14 @@
 
 (deftest simulate-implementation-responses-test
   #?(:clj
+     (testing "hato"
+       (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
+                   (martian-test/respond-as :hato)
+                   (martian-test/respond-with-generated {:load-pet :success}))]
+
+         (is (= 200 (:status (martian/response-for m :load-pet {:id 123})))))))
+
+  #?(:clj
      (testing "clj-http"
        (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
                    (martian-test/respond-as :clj-http)
