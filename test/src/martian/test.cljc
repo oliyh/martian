@@ -63,6 +63,11 @@
                    (assoc :response (future (:response (tc/execute ctx))))))}))
 
 #?(:clj
+   (def hato-responder
+     {:name ::hato-responder
+      :leave identity}))
+
+#?(:clj
    (def clj-http-responder
      {:name ::clj-http-responder
       :leave identity}))
@@ -77,6 +82,7 @@
 
 (def ^:private http-interceptors
   #?(:clj {"martian.httpkit" httpkit-responder
+           "martian.hato" hato-responder
            "martian.clj-http" clj-http-responder}
      :cljs {"martian.cljs-http" cljs-http-responder}))
 
@@ -110,8 +116,8 @@
   "You only need to call this if you have a martian which was created without martian's standard http-specific interceptors,
    i.e. those found in martian.httpkit and so on.
 
-  Implementations of http requests - as provided by martian httpkit, clj-http and cljs-http - give
-  implementation-specific response types; promises, data and core.async channels respectively.
+  Implementations of http requests - as provided by martian httpkit, hato, clj-http and cljs-http - give
+  implementation-specific response types; promises, data, data and core.async channels respectively.
   As your production code will expect these response types this interceptor lets you simulate those response wrappers.
   Removes all interceptors that would perform real HTTP operations"
   [martian implementation-name]
