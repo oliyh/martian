@@ -47,7 +47,9 @@
 (defn constant-responses [responses]
   {:name ::constant-responses
    :leave (fn [{:keys [handler] :as ctx}]
-            (assoc ctx :response (get responses (:route-name handler))))})
+            (let [responder (get responses (:route-name handler))
+                  response (if (fn? responder) (responder (:request ctx)) responder)]
+              (assoc ctx :response response)))})
 
 (defn response-generator [{:keys [handlers]} route-name]
   (let [{:keys [response-schemas]} (martian/find-handler handlers route-name)]
@@ -76,15 +78,24 @@
    (def cljs-http-responder
      {:name ::cljs-http-responder
       :leave (fn [ctx]
-               (let [c (a/chan)]
-                 (a/put! c (:response ctx))
-                 (assoc ctx :response c)))}))
+               (-> ctx
+                   interceptors/remove-stack
+                   (assoc :response (a/to-chan [(:response ctx)]))))}))
+
+#?(:cljs
+   (def cljs-http-promise-responder
+     {:name ::cljs-http-promise-responder
+      :leave (fn [ctx]
+               (-> ctx
+                   interceptors/remove-stack
+                   (assoc :response (.resolve js/Promise (:response ctx)))))}))
 
 (def ^:private http-interceptors
   #?(:clj {"martian.httpkit" httpkit-responder
            "martian.hato" hato-responder
            "martian.clj-http" clj-http-responder}
-     :cljs {"martian.cljs-http" cljs-http-responder}))
+     :cljs {"martian.cljs-http" cljs-http-responder
+            "martian.cljs-http-promise" cljs-http-promise-responder}))
 
 (defn- replace-http-interceptors [martian]
   (update martian :interceptors
@@ -97,12 +108,15 @@
                  (remove (comp (set (keys http-interceptors)) namespace :name))
                  (remove (comp #{::interceptors/encode-body ::interceptors/coerce-response} :name))))))
 
-(defn respond-with-constant
-  "Adds an interceptor that simulates the server constantly responding with the supplied response.
+(defn respond-with
+  "Adds an interceptor that simulates the server responding with the supplied response.
+   The response may be a function that, given the request, returns a response, or just a response value.
    Removes all interceptors that would perform real HTTP operations."
   [martian responses]
   (-> (replace-http-interceptors martian)
       (update :interceptors concat [(constant-responses responses)])))
+
+(def respond-with-constant respond-with)
 
 (defn respond-with-generated
   "Adds an interceptor that simulates the server responding to operations by generating responses of the supplied response-type
