@@ -79,6 +79,26 @@
 
     (tct/assert-check (tc/quick-check 100 p))))
 
+(deftest respond-with-constant-test
+  (testing "value"
+    (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
+                (martian-test/respond-with {:load-pet {:status 200
+                                                       :body "constant"}}))]
+
+      (is (= {:status 200
+              :body "constant"}
+             (martian/response-for m :load-pet {:id 123})))))
+
+  (testing "function"
+    (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
+                (martian-test/respond-with {:load-pet (fn [request]
+                                                        {:status 200
+                                                         :body (select-keys request [:method])})}))]
+
+      (is (= {:status 200
+              :body {:method :get}}
+             (martian/response-for m :load-pet {:id 123}))))))
+
 (deftest simulate-implementation-responses-test
   #?(:clj
      (testing "hato"
@@ -113,7 +133,19 @@
                             (martian-test/respond-with-generated {:load-pet :success}))]
 
                   (is (= 200 (:status (a/<! (martian/response-for m :load-pet {:id 123})))))
-                  (done)))))))
+                  (done))))))
+
+  #?(:cljs
+     (testing "cljs-http-promise"
+       (async done
+              (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
+                          (martian-test/respond-as :cljs-http-promise)
+                          (martian-test/respond-with-generated {:load-pet :success}))]
+
+                (.then (martian/response-for m :load-pet {:id 123})
+                       (fn [response]
+                         (is (= 200 (:status response)))
+                         (done))))))))
 
 #?(:clj
    (deftest test-pedestal-api
