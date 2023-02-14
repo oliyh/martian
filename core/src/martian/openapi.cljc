@@ -188,6 +188,7 @@
        :produces           (vec (keep :content-type responses))
        :consumes           [(:content-type body)]
        :summary            (:summary definition)
+       :deprecated         (boolean (:deprecated definition))
        :description        (:description definition)
        :openapi-definition definition
        :route-name         (->kebab-case-keyword (:operationId definition))})))

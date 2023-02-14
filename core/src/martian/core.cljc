@@ -107,8 +107,9 @@
 (defn explore
   ([martian] (mapv (juxt :route-name :summary) (:handlers (resolve-instance martian))))
   ([martian route-name]
-   (when-let [{:keys [parameter-aliases summary] :as handler} (find-handler (:handlers (resolve-instance martian)) route-name)]
+   (when-let [{:keys [parameter-aliases summary deprecated] :as handler} (find-handler (:handlers (resolve-instance martian)) route-name)]
      {:summary summary
+      :deprecated deprecated
       :parameters (reduce (fn [params parameter-key]
                             (merge params (alias-schema (get parameter-aliases parameter-key) (get handler parameter-key))))
                           {}
