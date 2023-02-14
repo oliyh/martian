@@ -107,16 +107,16 @@
 (defn explore
   ([martian] (mapv (juxt :route-name :summary) (:handlers (resolve-instance martian))))
   ([martian route-name]
-   (when-let [{:keys [parameter-aliases summary deprecated] :as handler} (find-handler (:handlers (resolve-instance martian)) route-name)]
-     {:summary summary
-      :deprecated deprecated
-      :parameters (reduce (fn [params parameter-key]
-                            (merge params (alias-schema (get parameter-aliases parameter-key) (get handler parameter-key))))
-                          {}
-                          parameter-schemas)
-      :returns (->> (:response-schemas handler)
-                    (map (juxt (comp :v :status) :body))
-                    (into {}))})))
+   (when-let [{:keys [parameter-aliases summary deprecated?] :as handler} (find-handler (:handlers (resolve-instance martian)) route-name)]
+     (-> {:summary summary
+          :parameters (reduce (fn [params parameter-key]
+                                (merge params (alias-schema (get parameter-aliases parameter-key) (get handler parameter-key))))
+                              {}
+                              parameter-schemas)
+          :returns (->> (:response-schemas handler)
+                        (map (juxt (comp :v :status) :body))
+                        (into {}))}
+         (cond-> deprecated? (assoc :deprecated? true))))))
 
 (defn- build-instance [api-root handlers {:keys [interceptors] :as opts}]
   (->Martian api-root handlers (or interceptors default-interceptors) (dissoc opts :interceptors)))
