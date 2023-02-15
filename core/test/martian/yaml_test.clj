@@ -8,6 +8,20 @@
 (def openapi-yaml
   (yaml-resource "openapi.yaml"))
 
+(defn map-vals [f m]
+  (->> (map (fn [[k v]] [k (f v)]) m)
+       (into {})))
+
+(defn deprecate-all
+  "Adds the deprecated field to all paths"
+  [yml]
+  (update yml :paths
+          (fn [paths]
+            (map-vals (fn [path]
+                        (map-vals #(assoc % :deprecated true)
+                                  path))
+                      paths))))
+
 (deftest openapi-sanity-check
   (testing "parses each handler"
     (is (= {:summary        "Update an existing pet"
@@ -64,4 +78,14 @@
                                    :decodes ["application/json"]})
                (->> (filter #(= (:route-name %) :update-pet)))
                first
-               (select-keys [:consumes :produces]))))))
+               (select-keys [:consumes :produces])))))
+
+  (testing "deprecated? correctly set"
+    (is (= {:deprecated? true}
+           (-> openapi-yaml
+               (yaml/cleanup)
+               deprecate-all
+               (openapi->handlers {})
+               (->> (filter #(= (:route-name %) :update-pet)))
+               first
+               (select-keys [:deprecated?]))))))

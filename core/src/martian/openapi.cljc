@@ -177,17 +177,18 @@
                 responses  (process-responses (update-vals-future (:responses definition)
                                                                   (partial resolve-ref components))
                                               components (:decodes content-types))]]
-      {:path-parts         (vec (tokenise-path url))
-       :method             method
-       :path-schema        (process-parameters (:path parameters) components)
-       :query-schema       (process-parameters (:query parameters) components)
-       :body-schema        (:schema body)
-       :form-schema        (process-parameters (:form parameters) components)
-       :headers-schema     (process-parameters (:header parameters) components)
-       :response-schemas   (vec (keep #(dissoc % :content-type) responses))
-       :produces           (vec (keep :content-type responses))
-       :consumes           [(:content-type body)]
-       :summary            (:summary definition)
-       :description        (:description definition)
-       :openapi-definition definition
-       :route-name         (->kebab-case-keyword (:operationId definition))})))
+      (-> {:path-parts         (vec (tokenise-path url))
+           :method             method
+           :path-schema        (process-parameters (:path parameters) components)
+           :query-schema       (process-parameters (:query parameters) components)
+           :body-schema        (:schema body)
+           :form-schema        (process-parameters (:form parameters) components)
+           :headers-schema     (process-parameters (:header parameters) components)
+           :response-schemas   (vec (keep #(dissoc % :content-type) responses))
+           :produces           (vec (keep :content-type responses))
+           :consumes           [(:content-type body)]
+           :summary            (:summary definition)
+           :description        (:description definition)
+           :openapi-definition definition
+           :route-name         (->kebab-case-keyword (:operationId definition))}
+          (cond-> (:deprecated definition) (assoc :deprecated? true))))))
