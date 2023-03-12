@@ -38,7 +38,8 @@
                                                tu/input-stream->byte-array)
                                     :cljs #(encoders/transit-decode % :json)))))))
 
-      #?(:clj
+      #?(:bb nil
+         :clj
          (testing "+msgpack"
            (is (= {:body body
                    :headers {"Content-Type" "application/transit+msgpack"}}
@@ -77,7 +78,8 @@
           (is (= body
                  (-> (tc/execute ctx) :response :body)))))
 
-      #?(:clj
+      #?(:bb nil
+         :clj
          (testing "+msgpack"
            (let [ctx (tc/enqueue* {} [i (stub-response "application/transit+msgpack"
                                                        (tu/input-stream->byte-array (encoders/transit-encode body :msgpack)))])]
