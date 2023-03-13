@@ -37,12 +37,15 @@
   ([] (default-encoders keyword))
   ([key-fn]
    (merge
-    #?(:clj
+    #?(:bb
        {"application/transit+json"    {:encode #(transit-encode % :json)
-                                       :decode #(transit-decode (.getBytes ^String %) :json)}
-        "application/transit+msgpack" {:encode #(transit-encode % :msgpack)
+                                       :decode #(transit-decode % :json)}})
+    #?(:clj
+       {"application/transit+msgpack" {:encode #(transit-encode % :msgpack)
                                        :decode #(transit-decode % :msgpack)
-                                       :as :byte-array}})
+                                       :as :byte-array}
+        "application/transit+json"    {:encode #(transit-encode % :json)
+                                       :decode #(transit-decode (.getBytes ^String %) :json)}})
     #?(:cljs
        {"application/transit+json"    {:encode #(transit-encode % :json)
                                        :decode #(transit-decode % :json)}})
