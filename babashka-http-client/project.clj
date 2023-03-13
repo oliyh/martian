@@ -5,6 +5,7 @@
             :url "http://opensource.org/licenses/MIT"}
   :plugins [[lein-modules "0.3.11"]]
   :dependencies [[com.github.oliyh/martian :version]
+                 [babashka/process "0.4.16"]
                  [org.babashka/json "0.1.1"]
                  [org.babashka/http-client "0.1.6"]]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.11.1"]]}

@@ -38,11 +38,11 @@
   ([key-fn]
    (merge
     #?(:clj
-       {"application/transit+msgpack" {:encode #(transit-encode % :msgpack)
+       {"application/transit+json"    {:encode #(transit-encode % :json)
+                                       :decode #(transit-decode (.getBytes ^String %) :json)}
+        "application/transit+msgpack" {:encode #(transit-encode % :msgpack)
                                        :decode #(transit-decode % :msgpack)
-                                       :as :byte-array}
-        "application/transit+json"    {:encode #(transit-encode % :json)
-                                       :decode #(transit-decode (.getBytes ^String %) :json)}})
+                                       :as :byte-array}})
     #?(:cljs
        {"application/transit+json"    {:encode #(transit-encode % :json)
                                        :decode #(transit-decode % :json)}})

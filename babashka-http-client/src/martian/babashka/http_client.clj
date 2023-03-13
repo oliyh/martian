@@ -13,10 +13,16 @@
   (cond-> request
     (not (:uri request))
     (assoc :uri (:url request))
+
     (= :byte-array (:as request))
     (assoc :as :bytes)
+
+    (= :text (:as request))
+    (dissoc :as)
+
     (:throw-exceptions? request)
     (assoc :throw false)
+
     (= :http-1.1 (:version request))
     (assoc :version :http1.1)))
 
@@ -75,7 +81,7 @@
   (martian/bootstrap api-root concise-handlers (merge default-opts opts)))
 
 (defn bootstrap-openapi [url & [{:keys [server-url] :as opts} get-swagger-opts]]
-  (let [body (:body (http/get url (dissoc get-swagger-opts :as)))
+  (let [body (:body (http/get url (normalize-request get-swagger-opts)))
         definition (if (yaml/yaml-url? url)
                      (yaml/yaml->edn body)
                      (json/read-str body))

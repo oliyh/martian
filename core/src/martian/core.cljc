@@ -9,6 +9,20 @@
             [clojure.spec.alpha :as spec]
             [martian.spec :as mspec]))
 
+#?(:bb
+   ;; reflection issue in babasha -- TODO, submit patch upstream?
+   (do (defn- exception->ex-info [^Throwable exception execution-id interceptor stage]
+         (ex-info (str "Interceptor Exception: " #?(:clj  (.getMessage exception)
+                                                    :cljs (.-message exception)))
+                  (merge {:execution-id execution-id
+                          :stage        stage
+                          :interceptor  (:name interceptor)
+                          :type         (type exception)
+                          :exception    exception}
+                         (ex-data exception))
+                  exception))
+       (alter-var-root #'tc/exception->ex-info (constantly exception->ex-info))))
+
 (def default-interceptors
   [interceptors/keywordize-params
    interceptors/set-method
