@@ -1,0 +1,9 @@
+{:deps {com.github.oliyh/martian {:local/root "."}}
+ :tasks
+ {test:bb {:extra-paths ["test" "test-resources" "../test-common"]
+           :extra-deps {io.github.cognitect-labs/test-runner
+                        {:git/tag "v0.5.0" :git/sha "b3fd0d2"}}
+           :requires ([martian.core-test]
+                      [martian.interceptors-test]
+                      [martian.openapi-test])
+           :task cognitect.test-runner/-main #_(clojure.test/run-tests 'martian.core-test)}}}

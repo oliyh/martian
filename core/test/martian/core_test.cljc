@@ -4,7 +4,7 @@
             [clojure.spec.test.alpha :as stest]
             #?(:clj [clojure.test :refer [deftest testing is]]
                :cljs [cljs.test :refer-macros [deftest testing is]]))
-  #?(:clj (:import [martian Martian])))
+  #?@(:bb [] :clj [(:import [martian Martian])]))
 
 #?(:cljs
    (def Throwable js/Error))
@@ -412,7 +412,8 @@
               :returns {}}
              (martian/explore m :create-camel))))))
 
-#?(:clj
+#?(:bb nil
+   :clj
    (deftest java-api-test
      (let [swagger-definition
            {"paths" {"/pets/{id}"                         {"get" {"operationId" "load-pet"

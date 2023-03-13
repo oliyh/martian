@@ -5,8 +5,8 @@
 
 #?(:clj
    (defmacro json-resource [resource-name]
-     (json/parse-string (slurp (io/resource resource-name)))))
+     (list 'quote (json/parse-string (slurp (io/resource resource-name))))))
 
 #?(:clj
    (defmacro yaml-resource [resource-name]
-     (yaml/parse-string (slurp (io/resource resource-name)))))
+     (list 'quote (yaml/parse-string (slurp (io/resource resource-name))))))

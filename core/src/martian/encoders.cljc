@@ -1,6 +1,6 @@
 (ns martian.encoders
   (:require [clojure.string :as string]
-            [linked.core :as linked]
+            [flatland.ordered.map :as linked]
             [cognitect.transit :as transit]
             #?(:clj [clojure.edn :as edn]
                :cljs [cljs.reader :as edn])
@@ -36,6 +36,9 @@
   ([] (default-encoders keyword))
   ([key-fn]
    (merge
+    #?(:bb
+       {"application/transit+json"    {:encode #(transit-encode % :json)
+                                       :decode #(transit-decode % :json)}})
     #?(:clj
        {"application/transit+msgpack" {:encode #(transit-encode % :msgpack)
                                        :decode #(transit-decode % :msgpack)
@@ -45,7 +48,7 @@
     #?(:cljs
        {"application/transit+json"    {:encode #(transit-encode % :json)
                                        :decode #(transit-decode % :json)}})
-    (linked/map
+    (linked/ordered-map
 
      "application/edn"             {:encode pr-str
                                     :decode edn/read-string}
