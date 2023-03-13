@@ -1,6 +1,5 @@
 (ns martian.encoders
   (:require [clojure.string :as string]
-            #_[linked.core :as linked]
             [flatland.ordered.map :as linked]
             [cognitect.transit :as transit]
             #?(:clj [clojure.edn :as edn]
