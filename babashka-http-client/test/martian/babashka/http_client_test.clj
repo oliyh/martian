@@ -22,22 +22,38 @@
     (require '[martian.server-stub :refer [with-server swagger-url openapi-url openapi-test-url openapi-yaml-url openapi-test-yaml-url]])
     (use-fixtures :once with-server)))
 
+(defn- decode-body
+  "transit+msgpack is not available when running in BB, but is on the JVM"
+  [body]
+  (if-bb
+    (encoders/transit-decode (input-stream->byte-array body) :json)
+    (encoders/transit-decode (input-stream->byte-array body) :msgpack)))
+
 (deftest swagger-http-test
   (let [m (martian-http/bootstrap-swagger swagger-url)]
 
     (testing "default encoders"
-      (is (= {:method :post
-              :url "http://localhost:8888/pets/"
-              :body {:name "Doggy McDogFace", :type "Dog", :age 3}
-              :headers {"Accept" "application/transit+json"
-                        "Content-Type" "application/transit+json"}
-              :as :text
-              :version :http-1.1}
+      (is (= (if-bb
+              {:method :post
+               :url "http://localhost:8888/pets/"
+               :body {:name "Doggy McDogFace", :type "Dog", :age 3}
+               :headers {"Accept" "application/transit+json"
+                         "Content-Type" "application/transit+json"}
+               :as :text
+               :version :http-1.1}
+
+              {:method :post
+               :url "http://localhost:8888/pets/"
+               :body {:name "Doggy McDogFace", :type "Dog", :age 3}
+               :headers {"Accept" "application/transit+msgpack"
+                         "Content-Type" "application/transit+msgpack"}
+               :as :byte-array
+               :version :http-1.1})
+
              (-> (martian/request-for m :create-pet {:pet {:name "Doggy McDogFace"
                                                            :type "Dog"
                                                            :age 3}})
-                 (update :body #(encoders/transit-decode (input-stream->byte-array %) :json))))))
-
+                 (update :body decode-body)))))
 
     (let [response (martian/response-for m :create-pet {:pet {:name "Doggy McDogFace"
                                                               :type "Dog"
@@ -55,18 +71,26 @@
 (deftest async-test
   (let [m (martian-http/bootstrap-swagger swagger-url {:interceptors martian-http/default-interceptors-async})]
     (testing "default encoders"
-      (is (= {:method :post
-              :url "http://localhost:8888/pets/"
-              :body {:name "Doggy McDogFace", :type "Dog", :age 3}
-              :headers {"Accept" "application/transit+json"
-                        "Content-Type" "application/transit+json"}
-              :as :text
-              :version :http-1.1}
+      (is (= (if-bb
+              {:method :post
+               :url "http://localhost:8888/pets/"
+               :body {:name "Doggy McDogFace", :type "Dog", :age 3}
+               :headers {"Accept" "application/transit+json"
+                         "Content-Type" "application/transit+json"}
+               :as :text
+               :version :http-1.1}
+
+              {:method :post
+               :url "http://localhost:8888/pets/"
+               :body {:name "Doggy McDogFace", :type "Dog", :age 3}
+               :headers {"Accept" "application/transit+msgpack"
+                         "Content-Type" "application/transit+msgpack"}
+               :as :byte-array
+               :version :http-1.1})
              (-> (martian/request-for m :create-pet {:pet {:name "Doggy McDogFace"
                                                            :type "Dog"
                                                            :age 3}})
-                 (update :body #(encoders/transit-decode (input-stream->byte-array %) :json))))))
-
+                 (update :body decode-body)))))
 
     (let [response @(martian/response-for m :create-pet {:pet {:name "Doggy McDogFace"
                                                                :type "Dog"
@@ -80,6 +104,7 @@
               :type "Dog"
               :age 3}
              (:body response))))))
+
 (deftest error-handling-test
   (testing "remote exceptions"
 
