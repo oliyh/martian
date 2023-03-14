@@ -12,9 +12,10 @@ jobs:
       # Validate docs/cljdoc.edn
       - run: curl -fsSL https://raw.githubusercontent.com/cljdoc/cljdoc/master/script/verify-cljdoc-edn | bash -s docs/cljdoc.edn
 
+      - run: sudo bash < <(curl -s https://raw.githubusercontent.com/babashka/babashka/master/install)
+
       - run: lein test
 
-      - run: sudo bash < <(curl -s https://raw.githubusercontent.com/babashka/babashka/master/install)
       - run: |
           cd core
           bb test:bb
