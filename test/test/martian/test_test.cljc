@@ -152,13 +152,13 @@
      ;; this is an example of how to take a real martian, bootstrapped from a real source, and use it in testing
      ;; the respond-with fn removes http interceptors and replaces them with the test interceptors
 
-     (let [real-martian (martian-http/bootstrap-swagger "https://pedestal-api.herokuapp.com/swagger.json")]
+     (let [real-martian (martian-http/bootstrap-swagger "https://petstore.swagger.io/v2/swagger.json")]
 
-       (let [test-martian (martian-test/respond-with-generated real-martian {:get-pet :success})]
+       (let [test-martian (martian-test/respond-with-generated real-martian {:get-pet-by-id :success})]
 
          (is (every? #{"martian.interceptors" "martian.test"} (map (comp namespace :name) (:interceptors test-martian))))
          (is (contains? (set (:interceptors test-martian)) martian-test/httpkit-responder))
-         (is (= 200 (:status @(martian/response-for test-martian :get-pet {:id 123})))))
+         (is (= 200 (:status @(martian/response-for test-martian :get-pet-by-id {:pet-id 123})))))
 
-       (let [test-martian (martian-test/respond-with-generated real-martian {:get-pet :error})]
-         (is (contains? #{400 404 500} (:status @(martian/response-for test-martian :get-pet {:id 123}))))))))
+       (let [test-martian (martian-test/respond-with-generated real-martian {:get-pet-by-id :error})]
+         (is (contains? #{400 404 500} (:status @(martian/response-for test-martian :get-pet-by-id {:pet-id 123}))))))))
