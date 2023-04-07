@@ -32,7 +32,6 @@ ensuring that your response handling code is also correct. Examples are below.
 
 ## Latest versions & API docs
 
-**Attention** as of 2021-07-13 the Clojars artifacts have been moved to a fully qualified group e.g. `com.github.oliyh/martian` (previously was just `martian`).
 
 [![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian.svg)](https://clojars.org/com.github.oliyh/martian) [![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian)](https://cljdoc.org/d/com.github.oliyh/martian/CURRENT)
 
