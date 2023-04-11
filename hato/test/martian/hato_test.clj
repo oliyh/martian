@@ -122,3 +122,9 @@
 
     (is (contains? (set (map first (martian/explore m)))
                    :get-order-by-id))))
+
+(deftest local-file-test
+  (let [m (martian-http/bootstrap-openapi "public/openapi-test.json")]
+    (is (= "https://sandbox.example.com" (:api-root m)))
+    (is (= [[:list-items "Gets a list of items."]]
+           (martian/explore m)))))
