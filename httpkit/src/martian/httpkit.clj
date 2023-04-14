@@ -1,6 +1,7 @@
 (ns martian.httpkit
   (:require [org.httpkit.client :as http]
             [martian.core :as martian]
+            [martian.file :as file]
             [martian.interceptors :as interceptors]
             [martian.openapi :as openapi]
             [martian.yaml :as yaml]
@@ -29,13 +30,17 @@
 (defn bootstrap [api-root concise-handlers & [opts]]
   (martian/bootstrap api-root concise-handlers (merge default-opts opts)))
 
-(defn bootstrap-openapi [url & [{:keys [server-url] :as opts} get-swagger-opts]]
-  (let [definition @(http/get url
-                              (merge {:as :text} get-swagger-opts)
-                              (fn [{:keys [body]}]
-                                (if (yaml/yaml-url? url)
-                                  (yaml/yaml->edn body)
-                                  (json/decode body keyword))))
+(defn- load-definition [url load-opts]
+  (or (file/local-resource url)
+      @(http/get url
+                 (merge {:as :text} load-opts)
+                 (fn [{:keys [body]}]
+                   (if (yaml/yaml-url? url)
+                     (yaml/yaml->edn body)
+                     (json/decode body keyword))))))
+
+(defn bootstrap-openapi [url & [{:keys [server-url] :as opts} load-opts]]
+  (let [definition (load-definition url load-opts)
         base-url (openapi/base-url url server-url definition)]
     (martian/bootstrap-openapi base-url definition (merge default-opts opts))))
 

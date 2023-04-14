@@ -1,10 +1,10 @@
 (ns martian.hato
   (:require [hato.client :as http]
             [martian.core :as martian]
+            [martian.file :as file]
             [martian.interceptors :as interceptors]
             [martian.openapi :as openapi]
             [martian.yaml :as yaml]
-            [martian.file :as file]
             [clojure.walk :refer [keywordize-keys stringify-keys]]
             [tripod.context :as tc]))
 

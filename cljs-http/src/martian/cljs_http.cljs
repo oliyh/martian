@@ -3,7 +3,7 @@
             [cljs.core.async :refer [<!]]
             [martian.core :as martian]
             [martian.interceptors :as i]
-            [martian.openapi :refer [openapi-schema?] :as openapi]
+            [martian.openapi :as openapi]
             [tripod.context :as tc]
             [clojure.string :as string])
   (:require-macros [cljs.core.async.macros :refer [go]]))

@@ -1,6 +1,7 @@
 (ns martian.clj-http-lite
   (:require [clj-http.lite.client :as http]
             [cheshire.core :as json]
+            [martian.file :as file]
             [martian.yaml :as yaml]
             [martian.core :as martian]
             [martian.interceptors :as interceptors]
@@ -24,12 +25,16 @@
 (defn bootstrap [api-root concise-handlers & [opts]]
   (martian/bootstrap api-root concise-handlers (merge default-opts opts)))
 
-(defn bootstrap-openapi [url & [{:keys [server-url] :as opts} get-swagger-opts]]
-  (let [body (:body (http/get url (or get-swagger-opts {})))
-        ;; clj-http-lite does not support {:as :json} body conversion (yet) so we do it right here
-        definition (if (yaml/yaml-url? url)
-                     (yaml/yaml->edn body)
-                     (json/parse-string body keyword))
+(defn- load-definition [url load-opts]
+  (or (file/local-resource url)
+      (let [body (:body (http/get url (or load-opts {})))]
+        (if (yaml/yaml-url? url)
+          (yaml/yaml->edn body)
+          ;; clj-http-lite does not support {:as :json} body conversion (yet) so we do it right here
+          (json/parse-string body keyword)))))
+
+(defn bootstrap-openapi [url & [{:keys [server-url] :as opts} load-opts]]
+  (let [definition (load-definition url load-opts)
         base-url (openapi/base-url url server-url definition)]
     (martian/bootstrap-openapi base-url definition (merge default-opts opts))))
 
