@@ -2,7 +2,8 @@
   (:require [martian.cljs-http-promise :as martian-http]
             [martian.core :as martian]
             [cljs.test :refer-macros [deftest is async]]
-            [promesa.core :as prom]))
+            [promesa.core :as prom])
+  (:require-macros [martian.file :refer [load-local-resource]]))
 
 (def swagger-url "http://localhost:8888/swagger.json")
 (def openapi-url "http://localhost:8888/openapi.json")
@@ -52,3 +53,9 @@
                               :get-order-by-id)))
              (prom/finally (fn []
                              (done))))))
+
+(deftest local-file-test
+  (let [m (martian/bootstrap-openapi "https://sandbox.example.com" (load-local-resource "public/openapi-test.json") martian-http/default-opts)]
+    (is (= "https://sandbox.example.com" (:api-root m)))
+    (is (= [[:list-items "Gets a list of items."]]
+           (martian/explore m)))))

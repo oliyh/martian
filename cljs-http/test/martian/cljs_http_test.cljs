@@ -1,9 +1,10 @@
 (ns martian.cljs-http-test
   (:require [martian.cljs-http :as martian-http]
             [martian.core :as martian]
-            [cljs.test :refer-macros [deftest testing is run-tests async]]
-            [cljs.core.async :refer [<! timeout]])
-  (:require-macros [cljs.core.async.macros :refer [go]]))
+            [cljs.test :refer-macros [deftest is async]]
+            [cljs.core.async :refer [<!]])
+  (:require-macros [cljs.core.async.macros :refer [go]]
+                   [martian.file :refer [load-local-resource]]))
 
 (def swagger-url "http://localhost:8888/swagger.json")
 (def openapi-url "http://localhost:8888/openapi.json")
@@ -50,3 +51,9 @@
                (is (contains? (set (map first (martian/explore m)))
                               :get-order-by-id)))
              (done))))
+
+(deftest local-file-test
+  (let [m (martian/bootstrap-openapi "https://sandbox.example.com" (load-local-resource "public/openapi-test.json") martian-http/default-opts)]
+    (is (= "https://sandbox.example.com" (:api-root m)))
+    (is (= [[:list-items "Gets a list of items."]]
+           (martian/explore m)))))

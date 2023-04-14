@@ -14,3 +14,6 @@
       (yaml/yaml-url? url) (yaml/yaml->edn r)
       (str/ends-with? url ".edn") (read-string r)
       (str/ends-with? url ".json") (json/decode r keyword))))
+
+(defmacro load-local-resource [url]
+  (local-resource url))
