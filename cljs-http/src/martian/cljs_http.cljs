@@ -3,7 +3,7 @@
             [cljs.core.async :refer [<!]]
             [martian.core :as martian]
             [martian.interceptors :as i]
-            [martian.openapi :refer [openapi-schema?] :as openapi]
+            [martian.openapi :as openapi]
             [tripod.context :as tc]
             [clojure.string :as string])
   (:require-macros [cljs.core.async.macros :refer [go]]))
@@ -28,8 +28,8 @@
 (defn bootstrap [api-root concise-handlers & [opts]]
   (martian/bootstrap api-root concise-handlers (merge default-opts opts)))
 
-(defn bootstrap-openapi [url & [{:keys [server-url trim-base-url?] :as opts} get-swagger-opts]]
-  (go (let [definition (:body (<! (http/get url (merge {:as :json} get-swagger-opts))))
+(defn bootstrap-openapi [url & [{:keys [server-url trim-base-url?] :as opts} load-opts]]
+  (go (let [definition (:body (<! (http/get url (merge {:as :json} load-opts))))
             raw-base-url (openapi/base-url url server-url definition)
             base-url (if trim-base-url?
                        (string/replace raw-base-url #"/$" "")

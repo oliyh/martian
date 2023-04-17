@@ -28,8 +28,8 @@
 (defn bootstrap [api-root concise-handlers & [opts]]
   (martian/bootstrap api-root concise-handlers (merge default-opts opts)))
 
-(defn bootstrap-openapi [url & [{:keys [server-url trim-base-url?] :as opts}]]
-  (prom/then (http/get url {:as :json})
+(defn bootstrap-openapi [url & [{:keys [server-url trim-base-url?] :as opts} load-opts]]
+  (prom/then (http/get url (merge {:as :json} load-opts))
              (fn [response]
                (let [definition (:body response)
                      raw-base-url (openapi/base-url url server-url definition)

@@ -2,6 +2,7 @@
   (:require [babashka.http-client :as http]
             [babashka.json :as json]
             [martian.core :as martian]
+            [martian.file :as file]
             [martian.interceptors :as interceptors]
             [martian.openapi :as openapi]
             [martian.yaml :as yaml]
@@ -80,13 +81,16 @@
 (defn bootstrap [api-root concise-handlers & [opts]]
   (martian/bootstrap api-root concise-handlers (merge default-opts opts)))
 
-(defn bootstrap-openapi [url & [{:keys [server-url] :as opts} get-swagger-opts]]
-  (let [body (:body (http/get url (normalize-request get-swagger-opts)))
-        definition (if (yaml/yaml-url? url)
-                     (yaml/yaml->edn body)
-                     (json/read-str body))
+(defn- load-definition [url load-opts]
+  (or (file/local-resource url)
+      (let [body (:body (http/get url (normalize-request load-opts)))]
+        (if (yaml/yaml-url? url)
+          (yaml/yaml->edn body)
+          (json/read-str body)))))
+
+(defn bootstrap-openapi [url & [{:keys [server-url] :as opts} load-opts]]
+  (let [definition (load-definition url load-opts)
         base-url (openapi/base-url url server-url definition)]
     (martian/bootstrap-openapi base-url definition (merge default-opts opts))))
 
 (def bootstrap-swagger bootstrap-openapi)
-

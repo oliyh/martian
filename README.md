@@ -54,7 +54,7 @@ ensuring that your response handling code is also correct. Examples are below.
 [![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-vcr.svg)](https://clojars.org/com.github.oliyh/martian-vcr) [![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-vcr)](https://cljdoc.org/d/com.github.oliyh/martian-vcr/CURRENT)
 
 ## Features
-- Bootstrap an instance from just a OpenAPI/Swagger url or provide your own API mapping
+- Bootstrap an instance from just a OpenAPI/Swagger url, a local definition file or provide your own API mapping
 - Modular with support for [clj-http](https://github.com/dakrone/clj-http), [clj-http-lite](https://github.com/hiredman/clj-http-lite), [httpkit](https://github.com/http-kit/http-kit), [hato](https://github.com/gnarroway/hato) (Clojure), [cljs-http](https://github.com/r0man/cljs-http) and [cljs-http-promise](https://github.com/oliyh/cljs-http-promise) (ClojureScript)
 - Build urls and request maps from code or generate and perform the request, returning the response
 - Validate requests and responses to ensure they are correct before the data leaves/enters your system
@@ -125,6 +125,12 @@ like that provided by [pedestal-api](https://github.com/oliyh/pedestal-api):
   ;; the name of the body object can also be used to nest the body parameters
   (let [pet-id (-> (martian/response-for m :create-pet {:pet {:name "Doggy McDogFace" :type "Dog" :age 3}})
                    (get-in [:body :id]))]))
+```
+
+Note that when calling `bootstrap-openapi` you can also provide a url to a local resource, e.g. `(martian-http/bootstrap-openapi "public/openapi.json")`.
+For ClojureScript the file can only be read at compile time, so a slightly different form is required using the `martian.file/load-local-resource` macro:
+```clj
+(martian/bootstrap-openapi "https://sandbox.example.com" (load-local-resource "openapi-test.json") martian-http/default-opts)
 ```
 
 ## No Swagger, no problem
