@@ -1,4 +1,4 @@
-(defproject com.github.oliyh/martian-babashka-http-client "0.1.23-SNAPSHOT"
+(defproject com.github.oliyh/martian-babashka-http-client "0.1.23"
   :description "babashka http-client implementation for martian"
   :url "https://github.com/oliyh/martian"
   :license {:name "The MIT License"
