@@ -117,7 +117,7 @@
                                                            (denormalise-object-properties param))))
                     param)
                   :name parameter-name
-                  ;:denormalised true
+                  :denormalised true
                   :required (or (when-not (= "object" (:type param))
                                   (:required param))
                                 (and (coll? required)
