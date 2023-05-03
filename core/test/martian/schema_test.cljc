@@ -1,5 +1,6 @@
 (ns martian.schema-test
   (:require [martian.schema :as schema]
+            [matcher-combinators.test]
             [schema.core :as s]
             [schema-tools.core :as st]
             #?(:clj [clojure.test :refer [deftest testing is]]
@@ -135,7 +136,7 @@
                                       {:name "Brachiosaurus"
                                        :address {:city nil}}
                                       nil
-                                       true))))
+                                      true))))
 
          (testing "adds missing keys"
            (is (= {:name "Brachiosaurus"
@@ -394,3 +395,65 @@
 
     (is (= (s/maybe {(s/optional-key :b) (s/maybe {(s/optional-key :a) s/Any})})
            schema))))
+
+
+(def definition {:org.chaos-mesh.v1alpha1.NetworkChaos {:description "NetworkChaos is the Schema for the networkchaos API",
+                                                        :type "object",
+                                                        :required ["spec"],
+                                                        :properties {:apiVersion {:description "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+                                                                                  :type "string"},
+                                                                     :kind {:description "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+                                                                            :type "string"},
+                                                                     :metadata {:description "Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata",
+                                                                                :$ref "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta"},
+                                                                     :spec {:description "Spec defines the behavior of a pod chaos experiment",
+                                                                            :type "object",
+                                                                            :required ["action" "mode" "selector"],
+                                                                            :properties {:selector {:description "Selector is used to select pods that are used to inject chaos action.",
+                                                                                                    :type "object",
+                                                                                                    :required ["namespaces" "fieldSelectors"]
+                                                                                                    :properties {:namespaces {:description "Namespaces is a set of namespace to which objects belong."
+                                                                                                                              :type "array"
+                                                                                                                              :items {:type "string"}}
+                                                                                                                 :fieldSelectors {:description "Map of string keys and values that can be used to select objects. A selector based on fields."
+                                                                                                                                  :type "object"
+                                                                                                                                  :additionalProperties {:type "string"}}
+                                                                                                                 :pods {:description "Pods is a map of string keys and a set values that used to select pods. The key defines the namespace which pods belong, and the each values is a set of pod names."
+                                                                                                                        :type "object"
+                                                                                                                        :additionalProperties {:type "array"
+                                                                                                                                               :items {:type "string"}}}}}
+                                                                                         :mode {:description "Mode defines the mode to run chaos action. Supported mode: one / all / fixed / fixed-percent / random-max-percent",
+                                                                                                :type "string",
+                                                                                                :enum ["one"
+                                                                                                       "all"
+                                                                                                       "fixed"
+                                                                                                       "fixed-percent"
+                                                                                                       "random-max-percent"]},
+                                                                                         :duration {:description "Duration represents the duration of the chaos action",
+                                                                                                    :type "string"},
+                                                                                         :action {:description "Action defines the specific network chaos action. Supported action: partition, netem, delay, loss, duplicate, corrupt Default action: delay",
+                                                                                                  :type "string",
+                                                                                                  :enum ["netem"
+                                                                                                         "delay"
+                                                                                                         "loss"
+                                                                                                         "duplicate"
+                                                                                                         "corrupt"
+                                                                                                         "partition"
+                                                                                                         "bandwidth"]}}}}
+                                                        :x-kubernetes-group-version-kind [{:group "chaos-mesh.org"
+                                                                                           :kind "NetworkChaos"
+                                                                                           :version "v1alpha1"}]}})
+
+(deftest require-nested-objects
+  (let [schema (schema/make-schema {:definitions definition}
+                                   {:name "body",
+                                    :in "body",
+                                    :required true,
+                                    :schema {:$ref "#/definitions/org.chaos-mesh.v1alpha1.NetworkChaos"}})]
+    (is (match? {:spec {:mode any?
+                        :action any?
+                        :selector {:namespaces any?
+                                   :fieldSelectors any?
+                                   (s/optional-key :pods) any?}
+                        (s/optional-key :duration) any?}}
+                schema))))
