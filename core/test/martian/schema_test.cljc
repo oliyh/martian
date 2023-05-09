@@ -136,45 +136,45 @@
                                        nil
                                        true))))
 
-         (testing "adds missing values when there are defaults"
-           (is (= {:name "Brachiosaurus"
+          (testing "adds missing values when there are defaults"
+            (is (= {:name "Brachiosaurus"
                     :address {:city "trondheim"}}
-                  (schema/coerce-data schema
-                                      {:name "Brachiosaurus"
-                                       :address {:city nil}}
-                                      nil
-                                      true))))
+                   (schema/coerce-data schema
+                                       {:name "Brachiosaurus"
+                                        :address {:city nil}}
+                                       nil
+                                       true))))
 
-         (testing "adds missing keys"
-           (is (= {:name "Brachiosaurus"
-                   :address {:city "trondheim"}}
-                  (schema/coerce-data schema
-                                      {:name "Brachiosaurus"
-                                       :address {}}
-                                      nil
-                                      true))))
+          (testing "adds missing keys"
+            (is (= {:name "Brachiosaurus"
+                    :address {:city "trondheim"}}
+                   (schema/coerce-data schema
+                                       {:name "Brachiosaurus"
+                                        :address {}}
+                                       nil
+                                       true))))
 
-         (testing "removing extra keys"
-           (is (= {:name "Brachiosaurus"
-                   :address {:city "trondheim"}}
-                  (schema/coerce-data schema
-                                      {:name "Brachiosaurus"
-                                       :extra "key"
-                                       :address {}}
-                                      nil
-                                      true))))
+          (testing "removing extra keys"
+            (is (= {:name "Brachiosaurus"
+                    :address {:city "trondheim"}}
+                   (schema/coerce-data schema
+                                       {:name "Brachiosaurus"
+                                        :extra "key"
+                                        :address {}}
+                                       nil
+                                       true))))
 
-         ;; doesn't work - a limitation of spec-tools?
-         #_(testing "works inside arrays"
-           (is (= {:name "Brachiosaurus"
-                   :address {:city "stavanger"}
-                   :tags [{}]}
-                  (schema/coerce-data schema
-                                      {:name "Brachiosaurus"
-                                       :address {:city "stavanger"}
-                                       :tags [{:k nil}]}
-                                      nil
-                                      true)))))))))
+          ;; doesn't work - a limitation of spec-tools?
+          #_(testing "works inside arrays"
+              (is (= {:name "Brachiosaurus"
+                      :address {:city "stavanger"}
+                      :tags [{}]}
+                     (schema/coerce-data schema
+                                         {:name "Brachiosaurus"
+                                          :address {:city "stavanger"}
+                                          :tags [{:k nil}]}
+                                         nil
+                                         true)))))))))
 ;; "int-or-string" (s/cond-pre s/Str s/Int)
 (deftest int-or-string-test
   (is (= (s/cond-pre s/Str s/Int)
@@ -240,13 +240,13 @@
                     :required true
                     :schema {:$ref "#/parameters/Pet"}}
         parameters {:Pet {:type "object"
-                           :properties {:id {:type "integer"
-                                             :required true}
-                                        :name {:type "string"
-                                               :required true}
-                                        :tags {:type "array"
-                                               :required true
-                                               :items {:type "string"}}}}}]
+                          :properties {:id {:type "integer"
+                                            :required true}
+                                       :name {:type "string"
+                                              :required true}
+                                       :tags {:type "array"
+                                              :required true
+                                              :items {:type "string"}}}}}]
 
     (is (= {:id s/Int
             :name s/Str
@@ -434,32 +434,35 @@
    {:description "NetworkChaos is the Schema for the networkchaos API"
     :type "object"
     :required ["spec"]
-    :properties {:spec {:type "object"
-                        :required ["action" "mode" "selector"]
-                        :properties {:selector {:type "object"
-                                                :required ["namespaces" "fieldSelectors"]
-                                                :properties {:namespaces {:type "array"
-                                                                          :items {:type "string"}}
-                                                             :fieldSelectors {:type "object"
-                                                                              :additionalProperties {:type "string"}}
-                                                             :pods {:type "object"
-                                                                    :additionalProperties {:type "array"
-                                                                                           :items {:type "string"}}}}}
-                                     :mode {:type "string"
-                                            :enum ["one"
-                                                   "all"
-                                                   "fixed"
-                                                   "fixed-percent"
-                                                   "random-max-percent"]}
-                                     :duration {:type "string"}
-                                     :action {:type "string"
-                                              :enum ["netem"
-                                                     "delay"
-                                                     "loss"
-                                                     "duplicate"
-                                                     "corrupt"
-                                                     "partition"
-                                                     "bandwidth"]}}}}}})
+    :properties
+    {:spec {:type "object"
+            :required ["action" "mode" "selector"]
+            :properties
+            {:selector {:type "object"
+                        :required ["namespaces" "fieldSelectors"]
+                        :properties
+                        {:namespaces {:type "array"
+                                      :items {:type "string"}}
+                         :fieldSelectors {:type "object"
+                                          :additionalProperties {:type "string"}}
+                         :pods {:type "object"
+                                :additionalProperties {:type "array"
+                                                       :items {:type "string"}}}}}
+             :mode {:type "string"
+                    :enum ["one"
+                           "all"
+                           "fixed"
+                           "fixed-percent"
+                           "random-max-percent"]}
+             :duration {:type "string"}
+             :action {:type "string"
+                      :enum ["netem"
+                             "delay"
+                             "loss"
+                             "duplicate"
+                             "corrupt"
+                             "partition"
+                             "bandwidth"]}}}}}})
 
 (deftest require-nested-objects
   (let [schema (schema/make-schema {:definitions definition}
