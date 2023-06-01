@@ -29,7 +29,9 @@
 
 (defn- response-schemas [ref-lookup swagger-responses]
   (for [[status response] swagger-responses
-        :let [status-code (if (number? status) status (utils/string->int (name status)))]]
+        :let [status-code (cond (number? status) status
+                                (= "default" (name status)) 'default
+                                :else (utils/string->int (name status)))]]
     {:status (s/eq status-code)
      :body (schema/make-schema ref-lookup (assoc (:schema response) :required true))}))
 
