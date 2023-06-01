@@ -5,7 +5,7 @@
             [clojure.walk :refer [keywordize-keys]]
             [schema.core :as s]
             [martian.schema :refer [leaf-schema wrap-default]]
-            #?(:cljs [cljs.reader :refer [read-string]])))
+            [martian.utils :as utils]))
 
 (defn openapi-schema? [json]
   (some #(get json %) [:openapi "openapi"]))
@@ -126,7 +126,7 @@
                              [json-schema content-type] (get-matching-schema value content-types "Content-Type")]]
     {:status       (if (= status-code "default")
                      s/Any
-                     (s/eq (if (number? status-code) status-code (read-string (name status-code)))))
+                     (s/eq (if (number? status-code) status-code (utils/string->int (name status-code)))))
      :body         (and json-schema (openapi->schema json-schema components))
      :content-type content-type}))
 
