@@ -5,7 +5,7 @@
             [clojure.walk :refer [keywordize-keys]]
             [martian.schema :as schema]
             [schema.core :as s]
-            #?(:cljs [cljs.reader :refer [read-string]])))
+            [martian.utils :as utils]))
 
 (defn- body-schema [ref-lookup swagger-params]
   (when-let [body-params (not-empty (filter #(= "body" (:in %)) swagger-params))]
@@ -29,7 +29,7 @@
 
 (defn- response-schemas [ref-lookup swagger-responses]
   (for [[status response] swagger-responses
-        :let [status-code (if (number? status) status (read-string (name status)))]]
+        :let [status-code (if (number? status) status (utils/string->int (name status)))]]
     {:status (s/eq status-code)
      :body (schema/make-schema ref-lookup (assoc (:schema response) :required true))}))
 
