@@ -186,7 +186,8 @@
            :headers-schema     (process-parameters (:header parameters) components)
            :response-schemas   (vec (keep #(dissoc % :content-type) responses))
            :produces           (vec (keep :content-type responses))
-           :consumes           [(:content-type body)]
+           :consumes           (when-let [content-type (:content-type body)]
+                                 [content-type])
            :summary            (:summary definition)
            :description        (:description definition)
            :openapi-definition definition
