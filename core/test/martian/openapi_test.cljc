@@ -84,7 +84,7 @@
             :form-schema nil,
             :path-parts ["/project/" :projectKey],
             :headers-schema {(s/optional-key :userAuthToken) s/Str},
-            :consumes [nil],
+            :consumes nil
             :summary "Get specific values from a configuration for a specific project",
             :body-schema nil,
             :route-name :get-project-configuration,
