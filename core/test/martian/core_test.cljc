@@ -333,7 +333,13 @@
                                  :form-schema {:camelHumps (s/maybe s/Int)}}])]
 
     (is (= "https://camels.org/camels/1"
-           (martian/url-for m :create-camel {:camel-id 1})))
+           (martian/url-for m :create-camel {:camel-id 1
+                                             :camel-version 2})))
+
+    (is (= "https://camels.org/camels/1?camelVersion=2"
+           (martian/url-for m :create-camel {:camel-id 1
+                                             :camel-version 2}
+                            {:include-query? true})))
 
     (is (= {:path-schema {[] {:camel-id :camelId}},
             :query-schema {[] {:camel-version :camelVersion}},

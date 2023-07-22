@@ -7,7 +7,8 @@
             [martian.swagger :refer [swagger->handlers]]
             [martian.openapi :refer [openapi->handlers openapi-schema?]]
             [clojure.spec.alpha :as spec]
-            [martian.spec :as mspec]))
+            [martian.spec :as mspec]
+            [lambdaisland.uri :refer [map->query-string]]))
 
 #?(:bb
    ;; reflection issue in babasha -- TODO, submit patch upstream?
@@ -84,11 +85,17 @@
 
 (defn url-for
   ([martian route-name] (url-for martian route-name {}))
-  ([martian route-name params]
+  ([martian route-name params] (url-for martian route-name params {}))
+  ([martian route-name params opts]
    (let [{:keys [api-root handlers]} (resolve-instance martian)]
      (when-let [handler (find-handler handlers route-name)]
-       (let [params (interceptors/coerce-data handler :path-schema (keywordize-keys params) (:opts martian))]
-         (str api-root (string/join (map #(get params % %) (:path-parts handler)))))))))
+       (let [path-params (interceptors/coerce-data handler :path-schema (keywordize-keys params) (:opts martian))
+             query-params (when (:include-query? opts)
+                            (interceptors/coerce-data handler :query-schema (keywordize-keys params) (:opts martian)))]
+         (str api-root (string/join (map #(get path-params % %) (:path-parts handler)))
+              (if query-params
+                (str "?" (map->query-string query-params))
+                "")))))))
 
 (defn request-for
   ([martian route-name] (request-for martian route-name {}))
