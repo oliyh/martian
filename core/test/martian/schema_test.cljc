@@ -38,6 +38,7 @@
           :weight s/Num
           :name s/Str
           :dog? s/Bool
+          :timestamp s/Inst
           :unknown s/Any}
          (schema/schemas-for-parameters {} [{:name "id"
                                              :in "path"
@@ -55,6 +56,10 @@
                                              :in "path"
                                              :required true
                                              :type "boolean"}
+                                            {:name "timestamp"
+                                             :in "path"
+                                             :required true
+                                             :type "date-time"}
                                             {:name "unknown"
                                              :in "path"
                                              :required true

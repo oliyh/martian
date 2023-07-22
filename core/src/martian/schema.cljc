@@ -81,16 +81,17 @@
 
 (defn leaf-schema [{:keys [type enum format]}]
   (cond
-    enum (apply s/enum enum)
-    (= "string" type) (case format
-                        "uuid" (s/cond-pre s/Str s/Uuid)
-                        "uri" (s/cond-pre s/Str URI)
-                        "date-time" (s/cond-pre s/Str s/Inst)
-                        "int-or-string" (s/cond-pre s/Str s/Int)
-                        s/Str)
-    (= "integer" type) s/Int
-    (= "number" type) s/Num
-    (= "boolean" type) s/Bool
+    enum                 (apply s/enum enum)
+    (= "string" type)    (case format
+                           "uuid" (s/cond-pre s/Str s/Uuid)
+                           "uri" (s/cond-pre s/Str URI)
+                           "date-time" (s/cond-pre s/Str s/Inst)
+                           "int-or-string" (s/cond-pre s/Str s/Int)
+                           s/Str)
+    (= "integer" type)   s/Int
+    (= "number" type)    s/Num
+    (= "boolean" type)   s/Bool
+    (= "date-time" type) s/Inst
 
     :else
     s/Any))

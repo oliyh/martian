@@ -27,7 +27,9 @@
                        :properties {:id {:type "integer"
                                          :required true}
                                     :name {:type "string"
-                                           :required true}}}}})
+                                           :required true}
+                                    :timestamp {:type "date-time"
+                                                :required true}}}}})
 
 (deftest generate-response-test
   (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
@@ -39,7 +41,8 @@
     (is (nil? (s/check (s/conditional
                         #(= 200 (:status %)) {:status (s/eq 200)
                                               :body {:id s/Int
-                                                     :name s/Str}}
+                                                     :name s/Str
+                                                     :timestamp s/Inst}}
                         #(= 404 (:status %)) {:status (s/eq 404)
                                               :body s/Str})
                        (martian/response-for m :load-pet {:id 123}))))))
@@ -50,7 +53,8 @@
 
     (is (nil? (s/check {:status (s/eq 200)
                         :body {:id s/Int
-                               :name s/Str}}
+                               :name s/Str
+                               :timestamp s/Inst}}
                        (martian/response-for m :load-pet {:id 123}))))))
 
 (deftest generate-error-response-test
