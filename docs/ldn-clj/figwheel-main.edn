@@ -1,0 +1,2 @@
+;; Contains figwheel-configuration for all builds
+{:css-dirs ["resources/public/css"]}

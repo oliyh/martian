@@ -1,0 +1,13 @@
+<configuration>
+  <!-- Root logger: Log level set to WARNING -->
+  <root level="WARN">
+    <appender-ref ref="CONSOLE" />
+  </root>
+
+  <!-- Console appender: Prints logs to the console -->
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n</pattern>
+    </encoder>
+  </appender>
+</configuration>
