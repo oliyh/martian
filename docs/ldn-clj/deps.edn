@@ -1,0 +1,14 @@
+{:deps {org.clojure/clojure {:mvn/version "1.11.1"}
+        org.clojure/clojurescript {:mvn/version "1.11.60"}
+        org.slf4j/slf4j-api {:mvn/version "2.0.7"}
+        ch.qos.logback/logback-classic {:mvn/version "1.4.8"}
+        com.bhauman/figwheel-main {:mvn/version "0.2.18"}
+        com.bhauman/rebel-readline-cljs {:mvn/version "0.1.4"}
+        org.clojure/core.async {:mvn/version "1.6.673"}
+        hiccups/hiccups {:mvn/version "0.3.0"}}
+ :paths ["src" "target" "resources"]
+ :aliases {:fig {:main-opts ["-m" "figwheel.main" "-b" "dev" "--repl"]}
+           :fig/simple {:main-opts ["-m" "figwheel.main" "-O" "simple" "-bo" "dev"]}
+           :fig/min {:main-opts ["-m" "figwheel.main" "-O" "advanced" "-bo" "dev"]}
+           :outdated {:extra-deps {olical/depot {:mvn/version "2.3.0"}}
+                      :main-opts ["-m" "depot.outdated.main"]}}}

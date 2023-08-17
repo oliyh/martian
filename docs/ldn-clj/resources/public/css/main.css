@@ -1,0 +1,11 @@
+@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@700&display=swap');
+
+.reveal h1, .reveal h5 {
+    color: chocolate;
+    font-family: 'Figtree', sans-serif;
+    text-transform: lowercase;
+}
+
+.reveal pre {
+    width: 100%;
+}
