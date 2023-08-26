@@ -17,9 +17,9 @@
    [:aside.notes
     [:ul
      [:li "Writing a UI for a risk system that traders used to track their profit, loss and risk"]
-     [:li "Lots of data to be sourced from lots of endpoints on lots of different services, all via HTTP, to materialise a view of the world"]
-     [:li "The parameters we provided and the shape of the data varied a lot between these services, the business domain was complex"]
-     [:li "At the same time a lot of HTTP domain language, like hosts, ports, verbs, serialisation, authentication, logging and metrics was leaking into our business code"]]]])
+     [:li "Lots of data from lots of endpoints on lots of different services, all via HTTP, to materialise a view of the world"]
+     [:li "The parameters and the shape of the data varied a lot between these services, the business domain was complex"]
+     [:li "A lot of HTTP domain language, like hosts, ports, verbs, serialisation, authentication, logging and metrics was leaking into business code"]]]])
 
 (def in-a-nutshell
   [:section
@@ -27,9 +27,9 @@
    [:p "Martian uses a description of an HTTP API's functionality to provide a simple, functional, idiomatic interface that is agnostic of HTTP"]
    [:aside.notes
     [:ul [:li "(read the text)"]
-     [:li "It's important to distinguish here the difference between what you can do with an API - its functionality - and how you invoke it"]
-     [:li "An API specification can be implemented in many different ways - a native client library, an HTTP server, a database driver"]
-     [:li "An API can be implemented using just HTTP terminology - urls, methods, headers - but other implementations like SOAP and GraphQL use HTTP more as a transport for their own protocol"]
+     [:li "Important to distinguish the difference between what you can do with an API - its functionality - and how you invoke it"]
+     [:li "An API specification can be implemented in many ways - native client library, HTTP server, database driver"]
+     [:li "Can be implemented using just HTTP terminology - urls, methods, headers - but other implementations like SOAP and GraphQL use HTTP more as a transport for their own protocol"]
      [:li "Regardless of how many ways your API can be called, the functionality remains the same, and is what actually delivers value"]]]])
 
 (def why-use-http
@@ -55,8 +55,8 @@
 "]]
    [:aside.notes
     [:ul
-     [:li "There are lots of bits of HTTP that you might want to hide away from your business domain"]
-     [:li "Here we've got to know the method, how to build a url, what parameters are query params, body params"]
+     [:li "Lots of HTTP that you don't want in business domain"]
+     [:li "Need to know the method, how to build a url, what parameters are query params, body params"]
      [:li "How the request is encoded, how the response is encoded"]
      [:li "At least we've hidden it in this function and the function arguments still reflect the business domain"]]]])
 
@@ -73,12 +73,13 @@
                 :headers {\"Content-Type\" \"application/json\"
                           \"Authorization\" (str \"Token \" creds)}})))"          ]]
    [:aside.notes
-    [:ul [:li "But sometimes despite our good intentions these things might leak out"]
+    [:ul
+     [:li "But sometimes despite our good intentions these things might leak out"]
      [:li "Here host and port have made it into our function arguments"]
      [:li "Also because this is going over the network to another machine we need to authenticate with it so we send in credentials"]
      [:li "Going over the network means things can be delayed, go wrong, the other machine might be busy"]
-     [:li "So we add metrics and logging to help track that, these are implicit to it being HTTP call"]
-     [:li "But now our function has more non-functional arguments than functional ones! The signal to noise ratio here is very low"]]]])
+     [:li "So we add metrics and logging to help track that, implicit cost of it being HTTP"]
+     [:li "Now our function has more non-functional arguments than functional ones! The signal to noise ratio very low"]]]])
 
 (def server
   [:section
@@ -97,16 +98,15 @@
      [:li "We leave things like authentication and serialisation to middleware so that our request handlers can focus on the actual functionality"]
      [:li "Why can't the client side be more like this?"]]]])
 
-
-
 (def martian-one-liner
   [:section
-   [:h1 "Martian"]
-   [:pre [:code {:data-trim true}
-          "(let [m (m/bootstrap-openapi \"\")]
-  (m/response-for m :create-pet {:name \"Charlie\"
+   [:h1 "Martian one-liner"]
+   [:pre [:code {:data-trim true :data-line-numbers "1|3-5"}
+          "(def m (m/bootstrap-openapi \"https://api.io\"))"
+
+          "(m/response-for m :create-pet {:name \"Charlie\"
                                      :species \"Dog\"
-                                     :age 3}))"]]
+                                     :age 3})"]]
    [:aside.notes
     [:ul
      [:li "Martian uses a declaration of an API to build a machine that takes care of all the incidental HTTPness"]
@@ -132,6 +132,117 @@
      [:li "Should work well out of the box but be flexible enough for the user to add their own auth, logging etc"]]]])
 
 
+(def coercion-and-validation
+  [:section
+   [:h1 "Coercion and validation"]
+   [:pre [:code {:data-trim true :data-line-numbers "1|3-5"}
+          "(m/response-for m :create-pet {:name \"Charlie\"
+                                     :age \"3\"})"
+
+          ";; => ExceptionInfo Value cannot be coerced to match schema:
+;;                  {:species missing-required-key}
+"]]
+
+
+
+   [:aside.notes
+    [:ul
+     [:li "Martian is implemented using plumatic schema - old but good library"]
+     [:li "Can take care of simple coercion for you"]
+     [:li "Can throw errors when you have bad data"]
+     [:li "Gives you good local error messages instead of perhaps hard to understand remote error codes"]]]])
+
+
+(def interceptors
+  [:section
+   [:h1 "Interceptors"]
+   [:pre [:code {:data-trim true}
+          "(this is code)"]]
+   [:aside.notes
+    [:ul
+     [:li "Martian exposes almost all its code as interceptors"]
+     [:li "Interceptors are functions that are chained together to collaborate on building up a request"]
+     [:li "Each one has a separate job like forming the URL, building headers, encoding the body etc"]
+     [:li "After the request the response is handled by the same chain, in a 'leave' phase"]
+     [:li "The user can add their own interceptors, remove others, reorder them - even at run time"]]]])
+
+(def your-own-interceptor
+  [:section
+   [:h1 "Authentication"]
+   [:pre [:code {:data-trim true}
+          "(def authentication
+  {:name ::authentication
+   :enter (fn [ctx]
+            (assoc-in ctx [:request :headers \"Authorization\"]
+                      \"Token 12456abc\"))})
+"]]
+   [:aside.notes
+    [:ul
+     [:li "Your own interceptors might be for authentication, metrics, logging etc"]
+     [:li "Interceptors are the best way of allowing users to extend and enhance your library"]
+     [:li "It has allowed martian to stay clean, minimal and true to its goals"]
+     [:li "Yet still be very flexible"]]]])
+
+(def testing
+  [:section
+   [:h1 "Testing"]
+   [:pre [:code {:data-trim true} "todo"]]
+   [:aside.notes
+    [:ul
+     [:li "Mocks or stubs generally only cover specific scenarios that you write a test for"]
+     [:li "They can drift away from the real API's functionality"]
+     [:li "HTTPness will again try to infiltrate your code, obscuring the intention of the test"]]]])
+
+(def testing-better
+  [:section
+   [:h1 "Testing better"]
+   [:pre [:code {:data-trim true} "todo"]]
+   [:aside.notes
+    [:ul
+     [:li "Libraries you use in your source code should keep your code testable"]
+     [:li "Martian goes further and enhances your tests with its core behaviour and testing library"]
+     [:li "Request validation means you know if you are producing incorrect requests without having to make them, like an assertive mock server"]
+     [:li "It uses the same API definition as your production code, so it's always up-to-date"]
+     [:li "martian-test creates a mock server that you can control that hides the HTTPness"]
+     [:li "It even supports generative testing by generating all possible responses"]]]])
+
+(def vcr
+  [:section
+   [:h1 "VCR"]
+   [:img {:src "img/vcr.jpg"}]
+   [:aside.notes
+    [:ul
+     [:li "Another martian library is called VCR, for all you young people a VCR is like the record button on your phone"]
+     [:li "It is an interceptor that can be injected into your martian instance and record all the outgoing requests and responses"]
+     [:li "Another interceptor can be used to play back the server responses"]
+     [:li "This can build a complete stub server for you with real data"]
+     [:li "Useful for functional tests, load testing, data analysis"]]]])
+
+(def http-libraries
+  [:section
+   [:h1 "HTTP libraries"]
+   [:div
+    (for [lib ["clj-http" "clj-http-lite" "httpkit" "hato" "cljs-http" "cljs-http-promise" "babashka"]]
+      [:div {:style "display: inline-block; width: calc(50% - 2rem); margin: 1rem; border: 2px solid white;"} lib])]
+   [:aside.notes
+    [:ul
+     [:li "If you're not sold yet you might be thinking that martian will tie you into some HTTP library you don't want to use"]
+     [:li "The answer is no, supporting any HTTP library is usually just another interceptor at the end of the chain"]
+     [:li "Martian supports seven HTTP libraries, helpfully all based on the excellent ring specification"]
+     [:li "In one project we started with clj-http, moved to httpkit for speed but suffered with SSL, then moved to hato with minimal fuss"]]]])
+
+(def community
+  [:section
+   [:h1 "Community"]
+   [:img {:src "img/contributors.svg"}]
+   [:aside.notes
+    [:ul
+     [:li "Martian has had code contributions from 24 amazing people (myself included of course)"]
+     [:li "These included new http libraries like babashka, support for Open API v3 and much more"]
+     [:li "Over the years my projects, roles and teams have changed and I haven't always had the time I'd like for open source"]
+     [:li "Keeping martian simple and well-tested has hopefully encouraged people to contribute"]]]])
+
+
 (defn all
   []
   [welcome
@@ -147,21 +258,26 @@
    martian-one-liner
    goals
 
-   ;; things you can do with core martian
-   ;; - coercion / validation
-   ;; - idiomatic params
-   ;; - add / remove interceptors
-   ;; - any http library
+   coercion-and-validation
+   interceptors
+   your-own-interceptor
 
+   testing
+   testing-better
 
-   ;; testing etc
+   vcr
+   http-libraries
 
-   ;; expansion to other http libraries, babashka, vcr etc
+   community
 
-   ;; interceptors
-
-   ;; adoption and community support
+   ;; the future
+   ;; closing thoughts
+   ;; thanks / questions
    ])
 
 ;; todo
 ;; - picture for first slide
+;; - split some slides up?
+;; make code align nicely
+;; make titles always at the top?
+;; colour theme?
