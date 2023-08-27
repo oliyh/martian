@@ -4,6 +4,7 @@
   [:section
    [:h1 "Martian"]
    [:h5 "Abstracting HTTP since 2016"]
+   [:img {:src "img/perseverance.jpg"}]
    [:aside.notes
     [:ul
      [:li "Hello"]
@@ -14,6 +15,7 @@
 (def genesis
   [:section
    [:h1 "Genesis"]
+   [:img {:src "img/mars.jpeg"}]
    [:aside.notes
     [:ul
      [:li "Writing a UI for a risk system that traders used to track their profit, loss and risk"]
@@ -24,7 +26,11 @@
 (def in-a-nutshell
   [:section
    [:h1 "In a nutshell"]
-   [:p "Martian uses a description of an HTTP API's functionality to provide a simple, functional, idiomatic interface that is agnostic of HTTP"]
+   [:p "Martian uses descriptions of HTTP APIs"
+    [:br]
+    [:em "to provide"]
+    [:br]
+    "simple, functional interfaces agnostic of HTTP"]
    [:aside.notes
     [:ul [:li "(read the text)"]
      [:li "Important to distinguish the difference between what you can do with an API - its functionality - and how you invoke it"]
@@ -34,7 +40,7 @@
 
 (def why-use-http
   [:section
-   [:h1 "What's great about HTTP?"]
+   [:h1 "♥ HTTP"]
    [:aside.notes
     [:ul
      [:li "HTTP is (mostly) simple to understand, generally human-readable"]
@@ -42,9 +48,9 @@
      [:li "It's broad enough to make most things achievable but narrow enough that it's easy to reason about"]
      [:li "Ecosystem is very powerful - browsers, javascript, stable specifications"]]]])
 
-(def complecting
+(def the-bad
   [:section
-   [:h1 "Complecting"] ;; todo better title?
+   [:h1 "The bad"]
    [:pre [:code {:data-trim true :data-line-numbers "1-6|2|3|4-5|6"}
           "(defn create-pet [species name age]
   (http/post (format \"https://api.io/pets/%s\" species)
@@ -60,18 +66,19 @@
      [:li "How the request is encoded, how the response is encoded"]
      [:li "At least we've hidden it in this function and the function arguments still reflect the business domain"]]]])
 
-(def complecplecting
+(def the-ugly
   [:section
-   [:h1 "Complecplecting"]
-   [:pre [:code {:data-trim true :data-line-numbers "1-8|2|3|8|1"}
+   [:h1 "The ugly"]
+   [:pre [:code {:data-trim true :data-line-numbers "1-9|4|9|2|1"}
 "(defn create-pet [metrics host port creds species name age]
   (timing metrics \"create-pet\"
-    (http/post (format \"https://%s:%s/create-pet/%s\" host port species)
-               {:as :json
-                :query-params {:age age}
-                :body (json/encode {:name name))
-                :headers {\"Content-Type\" \"application/json\"
-                          \"Authorization\" (str \"Token \" creds)}})))"          ]]
+    (http/post
+      (format \"https://%s:%s/create-pet/%s\" host port species)
+      {:as :json
+       :query-params {:age age}
+       :body (json/encode {:name name))
+       :headers {\"Content-Type\" \"application/json\"
+                 \"Authorization\" (str \"Token \" creds)}})))"]]
    [:aside.notes
     [:ul
      [:li "But sometimes despite our good intentions these things might leak out"]
@@ -90,7 +97,9 @@
                 :query-params {:age Age}
                 :body-params  {:name Name}}
    :responses {201 {:body {:id Id}}}}
-   ...)"]]
+   (fn [{:keys [params]}]
+     (let [{:keys [name species age]} params]
+       ...)"]]
    [:aside.notes
     [:ul
      [:li "Servers and clients need a symmetric understanding of the API - both what it can do, and how it can be invoked"]
@@ -100,13 +109,13 @@
 
 (def martian-one-liner
   [:section
-   [:h1 "Martian one-liner"]
+   [:h1 "One liner"]
    [:pre [:code {:data-trim true :data-line-numbers "1|3-5"}
-          "(def m (m/bootstrap-openapi \"https://api.io\"))"
+          "(def m (m/bootstrap-openapi \"https://api.io/swagger.json\"))
 
-          "(m/response-for m :create-pet {:name \"Charlie\"
-                                     :species \"Dog\"
-                                     :age 3})"]]
+(m/response-for m :create-pet {:name \"Charlie\"
+                               :species \"Dog\"
+                               :age 3})"]]
    [:aside.notes
     [:ul
      [:li "Martian uses a declaration of an API to build a machine that takes care of all the incidental HTTPness"]
@@ -134,16 +143,14 @@
 
 (def coercion-and-validation
   [:section
-   [:h1 "Coercion and validation"]
-   [:pre [:code {:data-trim true :data-line-numbers "1|3-5"}
-          "(m/response-for m :create-pet {:name \"Charlie\"
-                                     :age \"3\"})"
+   [:h1 "Coercion & validation"]
+   [:pre [:code {:data-trim true :data-line-numbers "1-2|4-5"}
+"
+(m/response-for m :create-pet {:name \"Charlie\"
+                               :age \"3\"})
 
-          ";; => ExceptionInfo Value cannot be coerced to match schema:
-;;                  {:species missing-required-key}
-"]]
-
-
+;; => ExceptionInfo Value cannot be coerced to match schema:
+;;    {:species missing-required-key}"]]
 
    [:aside.notes
     [:ul
@@ -156,8 +163,8 @@
 (def interceptors
   [:section
    [:h1 "Interceptors"]
-   [:pre [:code {:data-trim true}
-          "(this is code)"]]
+   [:img {:src "img/interceptors.svg"
+          :style "background-color: #eee; padding: 1rem;"}]
    [:aside.notes
     [:ul
      [:li "Martian exposes almost all its code as interceptors"]
@@ -174,14 +181,22 @@
   {:name ::authentication
    :enter (fn [ctx]
             (assoc-in ctx [:request :headers \"Authorization\"]
-                      \"Token 12456abc\"))})
-"]]
+                          \"Token 12456abc\"))})"]]
    [:aside.notes
     [:ul
      [:li "Your own interceptors might be for authentication, metrics, logging etc"]
      [:li "Interceptors are the best way of allowing users to extend and enhance your library"]
      [:li "It has allowed martian to stay clean, minimal and true to its goals"]
      [:li "Yet still be very flexible"]]]])
+
+(def insert-interceptor
+  [:section
+   [:h1 "Intercept!"]
+   [:img {:src "img/insert-interceptor.svg"
+          :style "background-color: #eee; padding: 1rem;"}]
+   [:aside.notes
+    [:ul
+     [:li "The whole call stack is exposed as data for you to manipulate at will"]]]])
 
 (def testing
   [:section
@@ -196,7 +211,8 @@
 (def testing-better
   [:section
    [:h1 "Testing better"]
-   [:pre [:code {:data-trim true} "todo"]]
+   [:img {:src "img/test.svg"
+          :style "background-color: #eee; padding: 1rem;"}]
    [:aside.notes
     [:ul
      [:li "Libraries you use in your source code should keep your code testable"]
@@ -242,6 +258,35 @@
      [:li "Over the years my projects, roles and teams have changed and I haven't always had the time I'd like for open source"]
      [:li "Keeping martian simple and well-tested has hopefully encouraged people to contribute"]]]])
 
+(def the-future
+  [:section
+   [:h1 "The future"]
+   [:img {:src "img/delorean.webp"}]
+   [:aside.notes
+    [:ul
+     [:li "The library is stable, but ideas and requests still trickle in"]
+     [:li "After schema which was fairly universal came clojure.spec and malli, resulting in a bit of a schism"]
+     [:li "Perhaps these could be pluggable, although it would take a lot of work"]
+     [:li "Even today it feels that not many APIs on the internet seem to use OpenAPI, so perhaps there is still growth"]]]])
+
+(def closing-thoughts ;; todo
+  [:section
+   [:h1 "Closing thoughts"]
+   [:img {:src "img/the-martian.webp"}]
+   [:aside.notes
+    [:ul
+     [:li ""]]]])
+
+(def questions ;; todo
+  [:section
+   [:h1 "Questions?"]
+   [:img {:src "img/github.png" :style "width: 30%; display: block; margin: 0 auto;"}]
+   [:a {:href "https://github.com/oliyh/martian"}
+    "oliyh/martian"]
+   [:aside.notes
+    [:ul
+     [:li "Thanks for listening, any questions?"]]]])
+
 
 (defn all
   []
@@ -250,9 +295,8 @@
    in-a-nutshell
    why-use-http
 
-   ;; what goes wrong
-   complecting
-   complecplecting
+   the-bad
+   the-ugly
 
    server
    martian-one-liner
@@ -261,6 +305,7 @@
    coercion-and-validation
    interceptors
    your-own-interceptor
+   insert-interceptor
 
    testing
    testing-better
@@ -270,14 +315,11 @@
 
    community
 
-   ;; the future
-   ;; closing thoughts
-   ;; thanks / questions
+   the-future
+   closing-thoughts
+   questions
    ])
 
 ;; todo
-;; - picture for first slide
 ;; - split some slides up?
 ;; make code align nicely
-;; make titles always at the top?
-;; colour theme?
