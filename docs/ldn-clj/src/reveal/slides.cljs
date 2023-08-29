@@ -29,9 +29,10 @@
    [:aside.notes
     [:ul
      [:li "HTTP is (mostly) simple to understand, generally human-readable transport mechanism"]
+     [:li "Language agnostic"]
      [:li "Webservers are easy to build and run"]
      [:li "It's broad enough to make most things achievable but narrow enough that it's easy to reason about"]
-     [:li "Ecosystem is very powerful - browsers, javascript, stable specifications"]]]])
+     [:li "Ecosystem is very powerful - browsers, javascript, libraries, stable specifications"]]]])
 
 (def the-bad
   [:section
@@ -99,6 +100,7 @@
    [:img {:src "img/cognitive-load.webp"}]
    [:aside.notes
     [:ul
+     [:li "Here's the human brain. Really makes you think, doesn't it?"]
      [:li "The business domain is complicated enough to learn and understand without being obscured"]
      [:li "Cognitive load theory calls this extra noise 'extraneous load', essentially stuff that gets in your way"]
      [:li "If you can remove or reduce it, you can focus on the 'germane load' which actually adds business value"]]]])
@@ -114,7 +116,8 @@
     [:ul
      [:li "Hide HTTPness from the point of calling the API"]
      [:li "Understand OpenAPI / Swagger descriptions, i.e. support declarative APIs"]
-     [:li "Should work well out of the box but be flexible enough for the user to add their own auth, logging etc"]]]])
+     [:li "Should work well out of the box but be flexible enough for the user to add their own auth, logging etc"]
+     [:li "These are goals for martian by the way. My personal goal for the last 3 years is to do a marathon, but this has become a running joke now"]]]])
 
 (def in-a-nutshell
   [:section
@@ -130,6 +133,7 @@
      [:li "Important to distinguish the difference between what you can do with an API - its functionality - and how you invoke it"]
      [:li "An API specification can be implemented in many ways - native client library, HTTP server, database driver"]
      [:li "Can be implemented using just HTTP terminology - urls, methods, headers - but other implementations like SOAP and GraphQL use HTTP more as a transport for their own protocol"]
+     [:li "I used to be addicted to SOAP, but I'm clean now"]
      [:li "Regardless of how many ways your API can be called, the functionality remains the same, and is what actually delivers value"]]]])
 
 (def martian-one-liner
@@ -214,6 +218,8 @@
                           \"Token 12456abc\"))})"]]
    [:aside.notes
     [:ul
+     [:li "Let's work through an example of injecting an auth token into all requests we make"]
+     [:li "Here's our secret password. I use my cat's name as a password, but I keep getting hacked. I've had to rename the cat three times"]
      [:li "Your own interceptors might be for authentication, metrics, logging etc"]
      [:li "Interceptors are the best way of allowing users to extend and enhance your library"]
      [:li "It has allowed martian to stay clean, minimal and true to its goals"]
@@ -281,6 +287,7 @@
      [:li "If you're not sold yet you might be thinking that martian will tie you into some HTTP library you don't want to use"]
      [:li "The answer is no, supporting any HTTP library is usually just another interceptor at the end of the chain"]
      [:li "Martian supports seven HTTP libraries, helpfully all based on the excellent ring specification"]
+     [:li "This list is more impressive than my local library. It's a one storey building"]
      [:li "In one project we started with clj-http, moved to httpkit for speed but suffered with SSL, then moved to hato with minimal fuss"]]]])
 
 (def community
@@ -300,6 +307,7 @@
    [:img {:src "img/delorean.webp"}]
    [:aside.notes
     [:ul
+     [:li "I was going to tell a time travel joke here, but you guys didn't like it"]
      [:li "The library is stable, but ideas and requests still trickle in"]
      [:li "After schema which was fairly universal came clojure.spec and malli, resulting in a bit of a schism"]
      [:li "Perhaps these could be pluggable, although it would take a lot of work"]
