@@ -71,7 +71,7 @@ ensuring that your response handling code is also correct. Examples are below.
 - Write generative, realistic tests using [martian-test](https://github.com/oliyh/martian/tree/master/test) to generate response data
 - Record and play back HTTP calls using [martian-vcr](https://github.com/oliyh/martian/tree/master/vcr)
 
-For more details and rationale you can [watch the talk given at ClojureX Bytes](https://skillsmatter.com/skillscasts/8843-clojure-bytes#video).
+For more details and rationale you can [watch the talk given to London Clojurians](https://www.youtube.com/watch?v=smzc8XlvlSQ) or there is also an older [talk given at ClojureX Bytes](https://skillsmatter.com/skillscasts/8843-clojure-bytes#video).
 
 ## Clojure / ClojureScript
 
