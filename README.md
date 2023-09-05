@@ -3,7 +3,7 @@ Calling HTTP endpoints can be complicated. You have to construct the right URL w
 what the query parameters are, what method to use, how to encode the body and many other things that leak into your codebase.
 
 **Martian** takes a description of these details (either from your [OpenAPI/Swagger](http://swagger.io/) server,
-or just as lovely Clojure data) and provides a client interface to the API that abstracts you away from HTTP and lets you
+or just as [lovely Clojure data](#no-swagger-no-problem)) and provides a client interface to the API that abstracts you away from HTTP and lets you
 simply call operations with parameters, keeping your codebase clean.
 
 You can bootstrap it in one line and start calling the server:
