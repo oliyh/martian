@@ -19,8 +19,7 @@ You can bootstrap it in one line and start calling the server:
   ;; => {:status 200 :body {:name "Doggy McDogFace" :type "Dog" :age 3}}
 ```
 
-Implementations using [clj-http](https://github.com/dakrone/clj-http), [clj-http-lite](https://github.com/clj-commons/clj-http-lite), [httpkit](https://github.com/http-kit/http-kit),
-[hato](https://github.com/gnarroway/hato), [cljs-http](https://github.com/r0man/cljs-http) and [cljs-http-promise](https://github.com/oliyh/cljs-http-promise) are supplied as modules,
+Implementations for many popular HTTP client libraries are supplied as modules (see below),
 but any other HTTP library can be used due to the extensibility of Martian's interceptor chain.
 It also allows custom behaviour to be injected in a uniform and powerful way.
 
