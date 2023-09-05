@@ -277,12 +277,9 @@ For example, if you wish to add an authentication header and a timer to all requ
 
 (let [m (martian-http/bootstrap-openapi
                "https://pedestal-api.herokuapp.com/swagger.json"
-               {:interceptors (concat martian/default-interceptors
-                                      [add-authentication-header
-                                       martian-http/encode-body
-                                       (martian-http/coerce-response)
-                                       request-timer
-                                       martian-http/perform-request])})]
+               {:interceptors (concat
+                                [add-authentication-header request-timer]
+                                martian-http/default-interceptors)})]
 
         (martian/response-for m :all-pets {:id 123}))
         ;; Request to :all-pets took 38ms
