@@ -44,7 +44,7 @@ Support for various HTTP client libraries:
 |[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-httpkit.svg)](https://clojars.org/com.github.oliyh/martian-httpkit)|✔||✔|[![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-httpkit)](https://cljdoc.org/d/com.github.oliyh/martian-httpkit/CURRENT)|
 |[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-cljs-http.svg)](https://clojars.org/com.github.oliyh/martian-cljs-http)||✔||[![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-cljs-http)](https://cljdoc.org/d/com.github.oliyh/martian-cljs-http/CURRENT)|
 |[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-cljs-http-promise.svg)](https://clojars.org/com.github.oliyh/martian-cljs-http-promise)||✔||[![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-cljs-http-promise)](https://cljdoc.org/d/com.github.oliyh/martian-cljs-http-promise/CURRENT)|
-|[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-babashka-http-client.svg)](https://clojars.org/com.github.oliyh/martian-babashka-http-client)|||✔|[![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-babashka-http-client)](https://cljdoc.org/d/com.github.oliyh/martian-babashka-http-client/CURRENT)|
+|[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-babashka-http-client.svg)](https://clojars.org/com.github.oliyh/martian-babashka-http-client)|✔||✔|[![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-babashka-http-client)](https://cljdoc.org/d/com.github.oliyh/martian-babashka-http-client/CURRENT)|
 
 Testing and other interop libraries:
 
