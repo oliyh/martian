@@ -68,8 +68,8 @@
 (deftest default-values-test
   (testing "explaining and printing"
     (is (= '(default Int 123)
-           (s/explain (schema/wrap-default 123 s/Int))))
-    (is (= nil (s/explain (schema/wrap-default "inf" s/Int)))))
+           (s/explain (schema/wrap-default {:default 123} s/Int))))
+    (is (= '(default Int) (take 2 (s/explain (schema/wrap-default {:default "inf"} s/Int))))))
 
   (let [schema (schema/schemas-for-parameters {} [{:name "id"
                                                    :in "path"
