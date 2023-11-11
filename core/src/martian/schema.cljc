@@ -102,7 +102,7 @@
           ;patch for `inf` as a default value
           (if (and (= schema s/Int) (= default "inf"))
             #?(:clj Long/MAX_VALUE
-               :cljs 9223372036854775807) ;FIXME Hard coded to java Long/MAX_VALUE
+               :cljs (Math/pow 10 1000))
             default)]
       (st/default schema default))
     schema))

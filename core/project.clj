@@ -1,4 +1,4 @@
-(defproject io.github.robertluo/martian "0.1.26-SNAPSHOT"
+(defproject com.github.oliyh/martian "0.1.26-SNAPSHOT"
   :description "Client routing for Swagger APIs"
   :url "https://github.com/oliyh/martian"
   :license {:name "The MIT License"
@@ -33,4 +33,4 @@
             "fig:build" ["trampoline" "run" "-m" "figwheel.main" "-b" "dev" "-r"]
             "fig:min"   ["run" "-m" "figwheel.main" "-O" "advanced" "-bo" "dist"]
             "fig:test"  ["run" "-m" "figwheel.main" "-co" "test.cljs.edn" "-m" martian.test-runner]
-            "test" ["do" ["clean"] ["test"]]})
+            "test" ["do" ["clean"] ["test"] ["fig:test"]]})
