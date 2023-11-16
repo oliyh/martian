@@ -123,12 +123,15 @@
 (defn- process-responses [responses components content-types]
   (for [[status-code value] responses
         :let                [status-code (name status-code)
-                             [json-schema content-type] (get-matching-schema value content-types "Content-Type")]]
-    {:status       (if (= status-code "default")
-                     s/Any
-                     (s/eq (if (number? status-code) status-code (utils/string->int (name status-code)))))
-     :body         (and json-schema (openapi->schema json-schema components))
-     :content-type content-type}))
+                             [json-schema content-type] (get-matching-schema value content-types "Content-Type")
+                             body-schema (and json-schema (openapi->schema json-schema components))]]
+    (merge
+     {:status       (if (= status-code "default")
+                      s/Any
+                      (s/eq (if (number? status-code) status-code (utils/string->int (name status-code)))))
+      :content-type content-type}
+     (when body-schema
+       {:body body-schema}))))
 
 (defn- sanitise [x]
   (if (string? x)

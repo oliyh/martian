@@ -376,7 +376,8 @@ non-strict mode will allow it. Strict mode defaults to false.
 
 ## Defaults
 
-Martian can read `default` directives from Swagger, or you can supply them if bootstrapping from data. They can be seen using `explore` and merged with your params if you set the optional `use-defaults?` option.
+Martian can read `default` directives from Swagger, or you can supply them if bootstrapping from data.
+They can be seen using `explore` and merged with your params if you set the optional `use-defaults?` option.
 
 ```clojure
 (require '[schema-tools.core :as st])

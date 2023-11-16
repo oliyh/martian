@@ -14,6 +14,15 @@
 #?(:cljs
    (def Throwable js/Error))
 
+(def pet-schema
+  {:type "object"
+   :properties {:id {:type "integer"
+                     :required true}
+                :name {:type "string"
+                       :required true}
+                :timestamp {:type "date-time"
+                            :required true}}})
+
 (def swagger-definition
   {:paths {(keyword "/pets/{id}") {:get {:operationId "load-pet"
                                          :parameters [{:in "path"
@@ -22,14 +31,19 @@
                                                        :required true}]
                                          :responses {:200 {:description "A pet"
                                                            :schema {:$ref "#/definitions/Pet"}}
-                                                     :404 {:schema {:type "string"}}}}}}
-   :definitions {:Pet {:type "object"
-                       :properties {:id {:type "integer"
-                                         :required true}
-                                    :name {:type "string"
-                                           :required true}
-                                    :timestamp {:type "date-time"
-                                                :required true}}}}})
+                                                     :404 {:schema {:type "string"}}}}}
+           (keyword "/no-body") {:get {:operationId "no-body"
+                                       :responses {:204 {:description "There is no response schema for this endpoint"}}}}}
+   :definitions {:Pet pet-schema}})
+
+(def openapi-definition
+  {"openapi" "3.0.1",
+   "paths" {"/load-pet" {"get" {"operationId" "load-pet",
+                                "responses" {"200" {"description" "A pet"
+                                                    "content" {"application/json" {"schema" {"$ref" "#/components/schemas/Pet"}}}}}}}
+            "/nil-body-response" {"get" {"operationId" "no-body",
+                                         "responses" {"204" {"description" "an empty response"}}}}}
+   "components" {"schemas" {"Pet" pet-schema}}})
 
 (deftest generate-response-test
   (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
@@ -48,14 +62,37 @@
                        (martian/response-for m :load-pet {:id 123}))))))
 
 (deftest generate-successful-response-test
-  (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
-              (martian-test/respond-with-generated {:load-pet :success}))]
+  (testing "swagger"
+    (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
+                (martian-test/respond-with-generated {:load-pet :success}))]
 
-    (is (nil? (s/check {:status (s/eq 200)
-                        :body {:id s/Int
-                               :name s/Str
-                               :timestamp s/Inst}}
-                       (martian/response-for m :load-pet {:id 123}))))))
+      (testing "generates response body"
+        (is (nil? (s/check {:status (s/eq 200)
+                            :body {:id s/Int
+                                   :name s/Str
+                                   :timestamp s/Inst}}
+                           (martian/response-for m :load-pet {:id 123})))))
+
+      (testing "happy without response schema"
+        (is (nil? (s/check {:status (s/eq 204)
+                            :body s/Any}
+                           (martian/response-for m :no-body {})))))))
+
+  (testing "openapi"
+    (let [m (-> (martian/bootstrap-openapi "https://api.com" openapi-definition)
+
+                (martian-test/respond-with-generated {:load-pet :success}))]
+
+      (testing "generates response body"
+        (is (nil? (s/check {:status (s/eq 200)
+                            :body {:id s/Int
+                                   :name s/Str
+                                   :timestamp s/Inst}}
+                           (martian/response-for m :load-pet {:id 123})))))
+
+      (testing "happy without response schema"
+        (is (nil? (s/check {:status (s/eq 204)}
+                           (martian/response-for m :no-body {}))))))))
 
 (deftest generate-error-response-test
   (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
