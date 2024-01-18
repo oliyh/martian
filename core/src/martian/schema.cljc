@@ -75,6 +75,11 @@
   (let [[_ category k] (re-find #"#/(definitions|parameters)/(.*)" ref)]
     (get-in ref-lookup [(keyword category) (keyword k)])))
 
+(defn resolve-ref-param [ref-lookup param]
+  (if-let [ref (:$ref param)]
+    (resolve-ref ref-lookup ref)
+    param))
+
 (def URI
   #?(:clj java.net.URI
      :cljs goog.Uri))

@@ -7,24 +7,30 @@
             [schema.core :as s]
             [martian.utils :as utils]))
 
+(defn resolve-swagger-params [ref-lookup swagger-params category]
+  (->> swagger-params
+       (map (partial schema/resolve-ref-param ref-lookup))
+       (filter #(= category (:in %)))
+       not-empty))
+
 (defn- body-schema [ref-lookup swagger-params]
-  (when-let [body-params (not-empty (filter #(= "body" (:in %)) swagger-params))]
+  (when-let [body-params (resolve-swagger-params ref-lookup swagger-params "body")]
     (schema/schemas-for-parameters ref-lookup body-params)))
 
 (defn- form-schema [ref-lookup swagger-params]
-  (when-let [form-params (not-empty (filter #(= "formData" (:in %)) swagger-params))]
+  (when-let [form-params (resolve-swagger-params ref-lookup swagger-params "formData")]
     (schema/schemas-for-parameters ref-lookup form-params)))
 
 (defn- path-schema [ref-lookup swagger-params]
-  (when-let [path-params (not-empty (filter #(= "path" (:in %)) swagger-params))]
+  (when-let [path-params (resolve-swagger-params ref-lookup swagger-params "path")]
     (schema/schemas-for-parameters ref-lookup path-params)))
 
 (defn- query-schema [ref-lookup swagger-params]
-  (when-let [query-params (not-empty (filter #(= "query" (:in %)) swagger-params))]
+  (when-let [query-params (resolve-swagger-params ref-lookup swagger-params "query")]
     (schema/schemas-for-parameters ref-lookup query-params)))
 
 (defn- headers-schema [ref-lookup swagger-params]
-  (when-let [header-params (not-empty (filter #(= "header" (:in %)) swagger-params))]
+  (when-let [header-params (resolve-swagger-params ref-lookup swagger-params "header")]
     (schema/schemas-for-parameters ref-lookup header-params)))
 
 (defn- response-schemas [ref-lookup swagger-responses]
