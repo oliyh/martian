@@ -9,7 +9,7 @@
 
 (defn resolve-swagger-params [ref-lookup swagger-params category]
   (->> swagger-params
-       (map (partial schema/resolve-ref-param ref-lookup))
+       (map (schema/resolve-ref-fn ref-lookup))
        (filter #(= category (:in %)))
        not-empty))
 

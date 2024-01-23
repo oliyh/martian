@@ -5,6 +5,7 @@
             [schema.coerce :as sc]
             [schema-tools.core :as st]
             [schema-tools.coerce :as stc]
+            [clojure.string :as string]
             [martian.parameter-aliases :refer [unalias-data]])
   #?(:clj (:import [schema.core AnythingSchema Maybe EnumSchema EqSchema])))
 
@@ -71,14 +72,31 @@
                (make-schema ref-lookup param)}))
        (into {})))
 
-(defn- resolve-ref [ref-lookup ref]
-  (let [[_ category k] (re-find #"#/(definitions|parameters)/(.*)" ref)]
-    (get-in ref-lookup [(keyword category) (keyword k)])))
+(defn lookup-ref
+  [ref ref-lookup]
+  (if (string/starts-with? ref "#/")
+    (or (get-in ref-lookup (drop 1 (map keyword (string/split ref #"/"))))
+        (throw (ex-info "Cannot find reference"
+                        {:reference ref})))
+    (throw (ex-info "Non-local references are not supported yet. References should start ref with '#/'"
+                    {:reference ref}))))
 
-(defn resolve-ref-param [ref-lookup param]
-  (if-let [ref (:$ref param)]
-    (resolve-ref ref-lookup ref)
-    param))
+(defn resolve-ref-object
+  "resolve-ref-object receives a map with '$ref` key and returns the referenced object.
+  Throws an exception if the reference is cyclic, it doesn't exist or is not supported"
+  ([ref-object ref-lookup]
+   (resolve-ref-object ref-object ref-lookup nil))
+  ([ref-object ref-lookup visited-list]
+   (if-let [ref (:$ref ref-object)]
+     (if (contains? (set visited-list) ref)
+       (throw (ex-info "Cyclic reference" {:type :cyclic-reference :reference ref :visited visited-list}))
+       (resolve-ref-object (lookup-ref ref ref-lookup) ref-lookup (conj (vec visited-list) ref)))
+     ref-object)))
+
+(defn resolve-ref-fn
+  "returns a function that receives an object and resolves it using resolve-ref-object"
+  [ref-lookup]
+  (fn [obj] (resolve-ref-object obj ref-lookup)))
 
 (def URI
   #?(:clj java.net.URI
@@ -145,7 +163,6 @@
 (defn make-schema
   "Takes a swagger parameter and returns a schema"
   [ref-lookup {:keys [required type schema $ref items] :as param}]
-
   (if (let [ref (or $ref (:$ref schema))]
         (and ref (contains? *visited-refs* ref)))
     s/Any ;; avoid potential recursive loops
@@ -154,12 +171,12 @@
       $ref
       (binding [*visited-refs* (conj *visited-refs* $ref)]
         (make-schema ref-lookup (-> (dissoc param :$ref)
-                                    (merge (resolve-ref ref-lookup $ref)))))
+                                    (merge (resolve-ref-object param ref-lookup)))))
 
       (:$ref schema)
       (binding [*visited-refs* (conj *visited-refs* (:$ref schema))]
         (make-schema ref-lookup (-> (dissoc param :schema)
-                                    (merge (resolve-ref ref-lookup (:$ref schema))))))
+                                    (merge (resolve-ref-object schema ref-lookup)))))
 
       :else
       (cond-> (cond

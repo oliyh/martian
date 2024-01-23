@@ -23,14 +23,6 @@
              api-root
              (get json :basePath ""))))))
 
-(defn- lookup-ref [components reference]
-  (if (string/starts-with? reference "#/components/")
-    (or (get-in components (drop 2 (map keyword (string/split reference #"/"))))
-        (throw (ex-info "Cannot find reference"
-                        {:reference reference})))
-    (throw (ex-info "References start with something other than #/components/ aren't supported yet. :("
-                    {:reference reference}))))
-
 (defn- wrap-nullable [{:keys [nullable]} schema]
   (if nullable
     (s/maybe schema)
@@ -49,7 +41,7 @@
      (if (contains? seen-set reference)
        s/Any ; If we've already seen this, then we're in a loop. Rather than
              ; trying to solve for the fixpoint, just return Any.
-       (recur (lookup-ref components reference)
+       (recur (martian.schema/lookup-ref reference {:components components})
               components
               (conj seen-set reference)))
      (wrap schema
@@ -144,17 +136,6 @@
             (keyword param-name)
             %) parts)))
 
-(defn- resolve-ref
-  "`components` are the keywordized value of the :components key from an
-   OpenAPI specification.
-   `param` is one of the values from
-   [:paths <some path> <some HTTP method> :parameters] of an OpenAPI spec."
-  [components param]
-  (if-let [ref (:$ref param)]
-     (lookup-ref components ref)
-     param))
-
-;; After martian is updated to use Clojure 1.11.0+ then replace this and the uses with update-vals.
 (defn update-vals-future
   "An implementation of `update-vals` that is in Clojure 1.11.0+."
   [m f]
@@ -162,20 +143,20 @@
 
 (defn openapi->handlers [openapi-json content-types]
   (let [openapi-spec (keywordize-keys openapi-json)
+        resolve-ref (martian.schema/resolve-ref-fn openapi-spec)
         components (:components openapi-spec)]
     (for [[url methods] (:paths openapi-spec)
-          :let [common-parameters (map (partial resolve-ref components) (:parameters methods))]
+          :let [common-parameters (map resolve-ref (:parameters methods))]
           [method definition] (dissoc methods :parameters)
           ;; We only care about things which have a defined operationId, and
           ;; which aren't the associated OPTIONS call.
           :when (and (:operationId definition)
                      (not= :options method))
           :let [parameters (group-by (comp keyword :in) (concat common-parameters
-                                                                (map (partial resolve-ref components)
-                                                                     (:parameters definition))))
+                                                                (map resolve-ref (:parameters definition))))
                 body       (process-body (:requestBody definition) components (:encodes content-types))
                 responses  (process-responses (update-vals-future (:responses definition)
-                                                                  (partial resolve-ref components))
+                                                                  resolve-ref)
                                               components (:decodes content-types))]]
       (-> {:path-parts         (vec (tokenise-path url))
            :method             method
