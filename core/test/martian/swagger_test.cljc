@@ -18,6 +18,28 @@
     (is (= {:id s/Str} (:path-schema get-handler)))
     (is (= nil (:query-schema get-handler)))))
 
+(deftest parameter-schemas-ref-test
+  (let [params {:idParam {:name     "id"
+                         :in       "path"
+                         :type     "string"
+                         :required "true"}}]
+    (is (= {:id s/Str} (-> {:definitions params
+                            "paths"      {"/pets/{id}"
+                                          {"get" {"operationId" "getPetById"
+                                                  "method"      "get"
+                                                  "parameters"  [{"$ref" "#/definitions/idParam"}]}}}}
+                           swagger/swagger->handlers
+                           first
+                           :path-schema)))
+    (is (= {:id s/Str} (-> {:definitions params
+                            "paths"      {"/pets/{id}"
+                                          {"parameters" [{"$ref" "#/definitions/idParam"}]
+                                           "get"        {"operationId" "getPetById"
+                                                         "method"      "get"}}}}
+                           swagger/swagger->handlers
+                           first
+                           :path-schema)))))
+
 (deftest path-item-obj-parameters-test
   (let [[get-handler delete-handler]
         (swagger/swagger->handlers {"paths" {"/pets/{id}"
