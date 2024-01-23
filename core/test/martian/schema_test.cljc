@@ -3,7 +3,8 @@
             [schema.core :as s]
             [schema-tools.core :as st]
             #?(:clj [clojure.test :refer [deftest testing is]]
-               :cljs [cljs.test :refer-macros [deftest testing is]])))
+               :cljs [cljs.test :refer-macros [deftest testing is]]))
+  #?(:clj (:import [clojure.lang ExceptionInfo])))
 
 (deftest free-form-object-test
   (let [schema (schema/make-schema {:definitions
@@ -401,10 +402,13 @@
     (is (= (s/maybe {(s/optional-key :b) (s/maybe {(s/optional-key :a) s/Any})})
            schema))))
 
+
+
 (deftest resolve-ref-object-test
   (let [params       {:idParam {:name "id" :in "query"}}
         swagger-spec {:definitions params}
-        openapi-spec {:components {:parameters params}}]
+        openapi-spec {:components {:parameters params}}
+        #?(:cljs ExceptionInfo) #?(:cljs js/Error)]
     (testing "resolve simple references"
       (is (= {:name "id" :in "query"} (schema/resolve-ref-object {:$ref "#/definitions/idParam"} swagger-spec)))
       (is (= {:name "id" :in "query"} (schema/resolve-ref-object {:$ref "#/components/parameters/idParam"} openapi-spec))))
@@ -415,16 +419,16 @@
                                                                  {:components {:parameters (assoc params :allId {:$ref "#/components/parameters/idParam"})}})))
       )
     (testing "throws non local references"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"^Non-local references are not supported yet.*"
+      (is (thrown-with-msg? ExceptionInfo #"^Non-local references are not supported yet.*"
                             (schema/resolve-ref-object {:$ref "parameters.json#/definitions/idParam"} swagger-spec)))
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"^Non-local references are not supported yet.*"
+      (is (thrown-with-msg? ExceptionInfo #"^Non-local references are not supported yet.*"
                             (schema/resolve-ref-object {:$ref "parameters.json#/components/parameters/idParam"} openapi-spec))))
     (testing "throws on cyclic references"
       (let [cyclic-params {:idParam {:$ref "#/definitions/id"}
                            :id {:$ref "#/definitions/idParam"}}]
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"^Cyclic reference.*"
+        (is (thrown-with-msg? ExceptionInfo #"^Cyclic reference.*"
                               (schema/resolve-ref-object {:$ref "#/definitions/idParam"} {:definitions cyclic-params})))
         ))
     (testing "throws when does not find reference"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"^Cannot find reference.*" (schema/resolve-ref-object {:$ref "#/definitions/otherParam"} swagger-spec)))
+      (is (thrown-with-msg? ExceptionInfo #"^Cannot find reference.*" (schema/resolve-ref-object {:$ref "#/definitions/otherParam"} swagger-spec)))
       )))
