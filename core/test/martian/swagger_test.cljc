@@ -143,14 +143,14 @@
           :body-schema
           {:body
            {(s/optional-key :phone)
-            (s/maybe {:operation (st/default (s/enum "=" "contains" "like" "startswith") "=")
-                      :value s/Str}),
+            {:operation (st/default (s/enum "=" "contains" "like" "startswith") "=")
+             :value s/Str},
             (s/optional-key :gender)
-            (s/maybe {:operation (st/default (s/enum "=" "contains" "like" "startswith") "=")
-                      :value s/Str}),
+            {:operation (st/default (s/enum "=" "contains" "like" "startswith") "=")
+             :value s/Str},
             (s/optional-key :age)
-            (s/maybe {:operation (st/default (s/enum "=" "contains" "like" "startswith") "=")
-                      :value s/Str})}},
+            {:operation (st/default (s/enum "=" "contains" "like" "startswith") "=")
+             :value s/Str}}},
           :route-name :phones,
           :response-schemas [{:status (s/eq 'default), :body s/Any}]}
 

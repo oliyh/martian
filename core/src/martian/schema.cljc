@@ -7,7 +7,7 @@
             [schema-tools.coerce :as stc]
             [clojure.string :as string]
             [martian.parameter-aliases :refer [unalias-data]])
-  #?(:clj (:import [schema.core AnythingSchema Maybe EnumSchema EqSchema])))
+  #?(:clj (:import [schema.core AnythingSchema Maybe EnumSchema EqSchema OptionalKey])))
 
 (defn- keyword->string [s]
   (if (keyword? s) (name s) s))
@@ -65,9 +65,11 @@
   "Given a collection of swagger parameters returns a schema map"
   [ref-lookup parameters]
   (->> parameters
-       (map (fn [{:keys [name required] :as param}]
+       (map (fn [{:keys [name required required?] :as param}]
               {(cond-> (keyword name)
-                 (not required)
+                 (not (or required?
+                          (and (boolean? required) required)
+                          (and (string? required) (= "true" required))))
                  s/optional-key)
                (make-schema ref-lookup param)}))
        (into {})))
@@ -140,15 +142,12 @@
 
 (defn- denormalise-object-properties [{:keys [required properties] :as s}]
   (map (fn [[parameter-name param]]
-         (assoc (if (= "object" (:type param))
-                  (assoc param :properties (into {} (map (juxt :name identity)
-                                                         (denormalise-object-properties param))))
-                  param)
+         (assoc param
                 :name parameter-name
-                :required (or (when-not (= "object" (:type param))
-                                (:required param))
-                              (and (coll? required)
-                                   (contains? (set required) (name parameter-name))))))
+                :required? (or (when-not (= "object" (:type param))
+                                 (:required param))
+                               (and (coll? required)
+                                    (contains? (set required) (name parameter-name))))))
        properties))
 
 (defn- make-object-schema [ref-lookup {:keys [additionalProperties] :as schema}]
@@ -162,7 +161,7 @@
 
 (defn make-schema
   "Takes a swagger parameter and returns a schema"
-  [ref-lookup {:keys [required type schema $ref items] :as param}]
+  [ref-lookup {:keys [required required? type schema $ref items] :as param}]
   (if (let [ref (or $ref (:$ref schema))]
         (and ref (contains? *visited-refs* ref)))
     s/Any ;; avoid potential recursive loops
@@ -194,6 +193,9 @@
 
                 :else
                 (schema-type ref-lookup param))
-        (and (not required)
+        (and (or (not required)
+                 ;;(= "object" type) ;; todo work out something better here
+                 )
+             (not required?)
              (not= "array" type) (not= "array" (:type schema)))
         s/maybe))))

@@ -1,5 +1,6 @@
 (ns martian.schema-test
   (:require [martian.schema :as schema]
+            [matcher-combinators.test]
             [schema.core :as s]
             [schema-tools.core :as st]
             #?(:clj [clojure.test :refer [deftest testing is]]
@@ -135,45 +136,45 @@
                                        nil
                                        true))))
 
-         (testing "adds missing values when there are defaults"
-           (is (= {:name "Brachiosaurus"
+          (testing "adds missing values when there are defaults"
+            (is (= {:name "Brachiosaurus"
                     :address {:city "trondheim"}}
-                  (schema/coerce-data schema
-                                      {:name "Brachiosaurus"
-                                       :address {:city nil}}
-                                      nil
+                   (schema/coerce-data schema
+                                       {:name "Brachiosaurus"
+                                        :address {:city nil}}
+                                       nil
                                        true))))
 
-         (testing "adds missing keys"
-           (is (= {:name "Brachiosaurus"
-                   :address {:city "trondheim"}}
-                  (schema/coerce-data schema
-                                      {:name "Brachiosaurus"
-                                       :address {}}
-                                      nil
-                                      true))))
+          (testing "adds missing keys"
+            (is (= {:name "Brachiosaurus"
+                    :address {:city "trondheim"}}
+                   (schema/coerce-data schema
+                                       {:name "Brachiosaurus"
+                                        :address {}}
+                                       nil
+                                       true))))
 
-         (testing "removing extra keys"
-           (is (= {:name "Brachiosaurus"
-                   :address {:city "trondheim"}}
-                  (schema/coerce-data schema
-                                      {:name "Brachiosaurus"
-                                       :extra "key"
-                                       :address {}}
-                                      nil
-                                      true))))
+          (testing "removing extra keys"
+            (is (= {:name "Brachiosaurus"
+                    :address {:city "trondheim"}}
+                   (schema/coerce-data schema
+                                       {:name "Brachiosaurus"
+                                        :extra "key"
+                                        :address {}}
+                                       nil
+                                       true))))
 
-         ;; doesn't work - a limitation of spec-tools?
-         #_(testing "works inside arrays"
-           (is (= {:name "Brachiosaurus"
-                   :address {:city "stavanger"}
-                   :tags [{}]}
-                  (schema/coerce-data schema
-                                      {:name "Brachiosaurus"
-                                       :address {:city "stavanger"}
-                                       :tags [{:k nil}]}
-                                      nil
-                                      true)))))))))
+          ;; doesn't work - a limitation of spec-tools?
+          #_(testing "works inside arrays"
+              (is (= {:name "Brachiosaurus"
+                      :address {:city "stavanger"}
+                      :tags [{}]}
+                     (schema/coerce-data schema
+                                         {:name "Brachiosaurus"
+                                          :address {:city "stavanger"}
+                                          :tags [{:k nil}]}
+                                         nil
+                                         true)))))))))
 ;; "int-or-string" (s/cond-pre s/Str s/Int)
 (deftest int-or-string-test
   (is (= (s/cond-pre s/Str s/Int)
@@ -239,13 +240,13 @@
                     :required true
                     :schema {:$ref "#/parameters/Pet"}}
         parameters {:Pet {:type "object"
-                           :properties {:id {:type "integer"
-                                             :required true}
-                                        :name {:type "string"
-                                               :required true}
-                                        :tags {:type "array"
-                                               :required true
-                                               :items {:type "string"}}}}}]
+                          :properties {:id {:type "integer"
+                                            :required true}
+                                       :name {:type "string"
+                                              :required true}
+                                       :tags {:type "array"
+                                              :required true
+                                              :items {:type "string"}}}}}]
 
     (is (= {:id s/Int
             :name s/Str
@@ -402,8 +403,6 @@
     (is (= (s/maybe {(s/optional-key :b) (s/maybe {(s/optional-key :a) s/Any})})
            schema))))
 
-
-
 (deftest resolve-ref-object-test
   (let [params       {:idParam {:name "id" :in "query"}}
         swagger-spec {:definitions params}
@@ -416,8 +415,7 @@
       (is (= {:name "id" :in "query"} (schema/resolve-ref-object {:$ref "#/definitions/allId"}
                                                                  {:definitions (assoc params :allId {:$ref "#/definitions/idParam"})})))
       (is (= {:name "id" :in "query"} (schema/resolve-ref-object {:$ref "#/components/parameters/allId"}
-                                                                 {:components {:parameters (assoc params :allId {:$ref "#/components/parameters/idParam"})}})))
-      )
+                                                                 {:components {:parameters (assoc params :allId {:$ref "#/components/parameters/idParam"})}}))))
     (testing "throws non local references"
       (is (thrown-with-msg? ExceptionInfo #"^Non-local references are not supported yet.*"
                             (schema/resolve-ref-object {:$ref "parameters.json#/definitions/idParam"} swagger-spec)))
@@ -427,8 +425,55 @@
       (let [cyclic-params {:idParam {:$ref "#/definitions/id"}
                            :id {:$ref "#/definitions/idParam"}}]
         (is (thrown-with-msg? ExceptionInfo #"^Cyclic reference.*"
-                              (schema/resolve-ref-object {:$ref "#/definitions/idParam"} {:definitions cyclic-params})))
-        ))
+                              (schema/resolve-ref-object {:$ref "#/definitions/idParam"} {:definitions cyclic-params})))))
     (testing "throws when does not find reference"
-      (is (thrown-with-msg? ExceptionInfo #"^Cannot find reference.*" (schema/resolve-ref-object {:$ref "#/definitions/otherParam"} swagger-spec)))
-      )))
+      (is (thrown-with-msg? ExceptionInfo #"^Cannot find reference.*" (schema/resolve-ref-object {:$ref "#/definitions/otherParam"} swagger-spec))))))
+
+(def definition
+  {:org.chaos-mesh.v1alpha1.NetworkChaos
+   {:description "NetworkChaos is the Schema for the networkchaos API"
+    :type "object"
+    :required ["spec"]
+    :properties
+    {:spec {:type "object"
+            :required ["action" "mode" "selector"]
+            :properties
+            {:selector {:type "object"
+                        :required ["namespaces" "fieldSelectors"]
+                        :properties
+                        {:namespaces {:type "array"
+                                      :items {:type "string"}}
+                         :fieldSelectors {:type "object"
+                                          :additionalProperties {:type "string"}}
+                         :pods {:type "object"
+                                :additionalProperties {:type "array"
+                                                       :items {:type "string"}}}}}
+             :mode {:type "string"
+                    :enum ["one"
+                           "all"
+                           "fixed"
+                           "fixed-percent"
+                           "random-max-percent"]}
+             :duration {:type "string"}
+             :action {:type "string"
+                      :enum ["netem"
+                             "delay"
+                             "loss"
+                             "duplicate"
+                             "corrupt"
+                             "partition"
+                             "bandwidth"]}}}}}})
+
+(deftest require-nested-objects
+  (let [schema (schema/make-schema {:definitions definition}
+                                   {:name "body",
+                                    :in "body",
+                                    :required true,
+                                    :schema {:$ref "#/definitions/org.chaos-mesh.v1alpha1.NetworkChaos"}})]
+    (is (match? {:spec {:mode any?
+                        :action any?
+                        :selector {:namespaces any?
+                                   :fieldSelectors any?
+                                   (s/optional-key :pods) any?}
+                        (s/optional-key :duration) any?}}
+                schema))))
