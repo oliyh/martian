@@ -7,7 +7,7 @@
             [schema-tools.coerce :as stc]
             [clojure.string :as string]
             [martian.parameter-aliases :refer [unalias-data]])
-  #?(:clj (:import [schema.core AnythingSchema Maybe EnumSchema EqSchema])))
+  #?(:clj (:import [schema.core AnythingSchema Maybe EnumSchema EqSchema OptionalKey])))
 
 (defn- keyword->string [s]
   (if (keyword? s) (name s) s))
@@ -66,6 +66,8 @@
   [ref-lookup parameters]
   (->> parameters
        (map (fn [{:keys [name required] :as param}]
+              (when (= name :selector)
+                (def a param))
               {(cond-> (keyword name)
                  (not required)
                  s/optional-key)
@@ -140,15 +142,18 @@
 
 (defn- denormalise-object-properties [{:keys [required properties] :as s}]
   (map (fn [[parameter-name param]]
-         (assoc (if (= "object" (:type param))
-                  (assoc param :properties (into {} (map (juxt :name identity)
-                                                         (denormalise-object-properties param))))
-                  param)
-                :name parameter-name
-                :required (or (when-not (= "object" (:type param))
-                                (:required param))
-                              (and (coll? required)
-                                   (contains? (set required) (name parameter-name))))))
+         (if (:denormalised param)
+           param
+           (assoc (if (= "object" (:type param))
+                    (assoc param :properties (into {} (map (juxt :name identity)
+                                                           (denormalise-object-properties param))))
+                    param)
+                  :name parameter-name
+                  :denormalised true
+                  :required (or (when-not (= "object" (:type param))
+                                  (:required param))
+                                (and (coll? required)
+                                     (contains? (set required) (name parameter-name)))))))
        properties))
 
 (defn- make-object-schema [ref-lookup {:keys [additionalProperties] :as schema}]
@@ -197,3 +202,47 @@
         (and (not required)
              (not= "array" type) (not= "array" (:type schema)))
         s/maybe))))
+
+(comment
+  (require '[matcher-combinators.standalone])
+
+  (def parameter-object {:name "body",
+                         :in "body",
+                         :required ["spec"],
+                         :description "NetworkChaos is the Schema for the networkchaos API",
+                         :type "object",
+                         :properties {:apiVersion {:description "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+                                                   :type "string"},
+                                      :kind {:description "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+                                             :type "string"},
+                                      :metadata {:description "Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata",
+                                                 :$ref "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta"},
+                                      :spec {:description "Spec defines the behavior of a pod chaos experiment",
+                                             :type "object",
+                                             :required ["action" "mode" "selector" "duration"],
+                                             :properties {:selector {:description "Selector is used to select pods that are used to inject chaos action.",
+                                                                     :type "object",
+                                                                     :required ["abc" "namespaces"],
+                                                                     :properties {:namespaces {:description "Namespaces is a set of namespace to which objects belong.",
+                                                                                               :type "array",
+                                                                                               :items {:type "string"}},
+                                                                                  :abc2 {:description "Map of string keys and values that can be used to select objects. A selector based on fields.",
+                                                                                         :type "object",
+                                                                                         :additionalProperties {:type "string"}},
+                                                                                  :abc {:description "Map of string keys and values that can be used to select objects. A selector based on fields.",
+                                                                                        :type "object",
+                                                                                        :additionalProperties {:type "string"}}}},
+                                                          :mode {:description "Mode defines the mode to run chaos action. Supported mode: one / all / fixed / fixed-percent / random-max-percent",
+                                                                 :type "string",
+                                                                 :enum ["one" "all" "fixed" "fixed-percent" "random-max-percent"]},
+                                                          :duration {:description "Duration represents the duration of the chaos action",
+                                                                     :type "string"},
+                                                          :action {:description "Action defines the specific network chaos action. Supported action: partition, netem, delay, loss, duplicate, corrupt Default action: delay",
+                                                                   :type "string",
+                                                                   :enum ["netem" "delay" "loss" "duplicate" "corrupt" "partition" "bandwidth"]}}}},
+                         :x-kubernetes-group-version-kind [{:group "chaos-mesh.org", :kind "NetworkChaos", :version "v1alpha1"}]})
+
+  ; this two shouldn't differ!
+  (matcher-combinators.standalone/match
+    (denormalise-object-properties (-> parameter-object :properties :spec))
+    (denormalise-object-properties (first (filter #(= :spec (:name %)) (denormalise-object-properties parameter-object))))))
