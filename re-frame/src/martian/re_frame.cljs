@@ -75,7 +75,7 @@
  (fn [db [_ instance-id]]
    (get-in db [::martian (or instance-id ::default-id) :pending])))
 
-(defn init [swagger-url & [params]]
+(defn init [swagger-url & [params load-opts]]
   (go (let [instance-id (::instance-id params)
-            martian (<! (martian-http/bootstrap-openapi swagger-url (dissoc params ::instance-id)))]
+            martian (<! (martian-http/bootstrap-openapi swagger-url (dissoc params ::instance-id) load-opts))]
         (re-frame/dispatch-sync [::init martian instance-id]))))
