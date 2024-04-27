@@ -61,7 +61,9 @@
                       ;; In reality, this construct almost always means that the user intends type: object,
                       ;; and I think it would be reasonable for a code generator to assume this,
                       ;; maybe with a validation: strict|lax config option to control that behavior.
-                      (when (= #{:properties} (set (keys schema))) "object"))
+                      (if (map? schema)
+                        (when (= #{:properties} (set (keys schema))) "object")
+                        (throw (ex-info "Properties item have to be map" {:schema schema})))
              "array"   [(openapi->schema (:items schema) components seen-set)]
              "object"  (let [required? (set (:required schema))]
                          (if (or (contains? schema :properties)
