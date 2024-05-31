@@ -1,5 +1,6 @@
 (ns martian.core
   (:require [tripod.context :as tc]
+            [clojure.core.protocols]
             [clojure.string :as string]
             [clojure.walk :refer [keywordize-keys]]
             [martian.interceptors :as interceptors]
@@ -125,8 +126,17 @@
                             :params params
                             :opts (:opts martian)))))))))
 
+(declare explore)
+(defn- navize-routes
+  [martian routes]
+  (with-meta
+    routes
+    {`clojure.core.protocols/nav
+     (fn [_coll _k [route-name _route-description]]
+       (explore martian route-name))}))
+
 (defn explore
-  ([martian] (mapv (juxt :route-name :summary) (:handlers (resolve-instance martian))))
+  ([martian] (navize-routes martian (mapv (juxt :route-name :summary) (:handlers (resolve-instance martian)))))
   ([martian route-name]
    (when-let [{:keys [parameter-aliases summary deprecated?] :as handler} (find-handler (:handlers (resolve-instance martian)) route-name)]
      (-> {:summary summary
