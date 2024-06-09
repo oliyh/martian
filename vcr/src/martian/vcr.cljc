@@ -49,10 +49,19 @@
                     (pr-str response))))))
 
 #?(:clj
+   (defn ^:private unreadable-entry-handler
+     [tag form]
+     {:tag tag
+      :form form
+      :error "Unreadable entry in from vcr"}))
+
+#?(:clj
    (defmethod load-response :file [{:keys [extra-requests] :as opts} ctx]
      (let [file (response-file opts ctx)]
        (if (.exists file)
-         (edn/read-string (slurp file))
+         (edn/read-string
+          {:default unreadable-entry-handler}
+          (slurp file))
          (some->
           (condp = extra-requests
             :repeat-last (last-response opts ctx)
