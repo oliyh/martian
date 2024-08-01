@@ -12,6 +12,16 @@
 (defn- keyword->string [s]
   (if (keyword? s) (name s) s))
 
+(defn- seq->string [schema]
+  (let [separator (get {"csv" ","
+                        "ssv" " "
+                        "tsv" "\t"
+                        "pipes" "|"}
+                       (-> schema meta :collection-format))]
+    (when separator
+      (fn [l]
+        (string/join separator l)))))
+
 (defn- string-enum-matcher [schema]
   (when (or (and (instance? EnumSchema schema)
                  (every? string? (.-vs ^EnumSchema schema)))
@@ -21,6 +31,7 @@
 
 (defn coercion-matchers [schema]
   (or (sc/string-coercion-matcher schema)
+      (and (:collection-format (meta schema)) (seq->string schema))
       ({s/Str keyword->string} schema)
       (string-enum-matcher schema)))
 
@@ -159,6 +170,11 @@
       additionalProperties (assoc s/Any s/Any))
     {s/Any s/Any}))
 
+(defn- wrap-collection-format [array-schema collection-format]
+  (if (and collection-format (not= "multi" collection-format) (= [s/Str] array-schema))
+    (vary-meta (st/schema s/Str) assoc :collection-format collection-format)
+    array-schema))
+
 (defn make-schema
   "Takes a swagger parameter and returns a schema"
   [ref-lookup {:keys [required required? type schema $ref items] :as param}]
@@ -198,4 +214,7 @@
                  )
              (not required?)
              (not= "array" type) (not= "array" (:type schema)))
-        s/maybe))))
+        s/maybe
+
+        (and (= "array" type) (:collectionFormat param))
+        (wrap-collection-format (:collectionFormat param))))))

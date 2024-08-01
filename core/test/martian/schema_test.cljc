@@ -2,6 +2,7 @@
   (:require [martian.schema :as schema]
             [matcher-combinators.test]
             [schema.core :as s]
+            [schema.coerce :as sc]
             [schema-tools.core :as st]
             #?(:clj [clojure.test :refer [deftest testing is]]
                :cljs [cljs.test :refer-macros [deftest testing is]]))
@@ -214,6 +215,31 @@
                                                 :required true
                                                 :type "array"
                                                 :items {:type "string"}}))))
+
+(deftest arrays-with-collection-format-test
+  (let [make-schema (fn [collection-format]
+                      (schema/make-schema {:definitions {}}
+                                          {:name "tags"
+                                           :in "body"
+                                           :required true
+                                           :type "array"
+                                           :collectionFormat collection-format
+                                           :items {:type "string"}}))]
+    (testing "csv"
+      (is (= "foo,bar" (schema/coerce-data (make-schema "csv") ["foo" "bar"]))))
+
+    (testing "ssv"
+      (is (= "foo bar" (schema/coerce-data (make-schema "ssv") ["foo" "bar"]))))
+
+    (testing "tsv"
+      (is (= "foo\tbar" (schema/coerce-data (make-schema "tsv") ["foo" "bar"]))))
+
+    (testing "pipes"
+      (is (= "foo|bar" (schema/coerce-data (make-schema "pipes") ["foo" "bar"]))))
+
+    (testing "leaves multi alone"
+      (is (= ["foo" "bar"] (schema/coerce-data (make-schema "multi") ["foo" "bar"]))))))
+
 
 (deftest objects-test
   (let [body-param {:name "Pet"
