@@ -7,7 +7,8 @@
                :cljs [cljs.reader :as edn])
             #?(:clj [cheshire.core :as json])
             #?(:clj [clojure.java.io :as io])
-            #?(:clj [ring.util.codec :as codec]))
+            #?@(:bb []
+                :clj [[ring.util.codec :as codec]]))
   #?(:clj (:import [java.io ByteArrayInputStream ByteArrayOutputStream])))
 
 (defn transit-decode [body type]
@@ -72,6 +73,11 @@
      "application/json"            {:encode json-encode
                                     :decode #(json-decode % key-fn)})
 
-    {"application/x-www-form-urlencoded" {:encode #?(:clj codec/form-encode :cljs form-encode)
-                                          :decode #?(:clj (comp keywordize-keys codec/form-decode)
-                                                     :cljs form-decode)}})))
+    #?(:bb nil
+
+       :clj
+       {"application/x-www-form-urlencoded" {:encode codec/form-encode
+                                             :decode (comp keywordize-keys codec/form-decode)}}
+       :cljs
+       {"application/x-www-form-urlencoded" {:encode form-encode
+                                             :decode form-decode}}))))
