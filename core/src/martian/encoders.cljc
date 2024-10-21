@@ -34,6 +34,21 @@
      (if-let [v (if-not (string/blank? body) (js/JSON.parse body))]
        (js->clj v :keywordize-keys key-fn))))
 
+#?(:cljs
+   (defn- form-encode [body]
+     (str (js/URLSearchParams. (clj->js body)))))
+
+#?(:cljs
+   (defn- form-decode [body]
+     (let [params (js/URLSearchParams. body)]
+       (reduce (fn [acc k]
+                 (let [v (.getAll params k)]
+                   (assoc acc (keyword k) (if (= 1 (count v))
+                                            (first v)
+                                            (vec v)))))
+               {}
+               (.keys params)))))
+
 (defn default-encoders
   ([] (default-encoders keyword))
   ([key-fn]
@@ -57,6 +72,6 @@
      "application/json"            {:encode json-encode
                                     :decode #(json-decode % key-fn)})
 
-    #?(:clj
-       {"application/x-www-form-urlencoded" {:encode codec/form-encode
-                                             :decode (comp keywordize-keys codec/form-decode)}}))))
+    {"application/x-www-form-urlencoded" {:encode #?(:clj codec/form-encode :cljs form-encode)
+                                          :decode #?(:clj (comp keywordize-keys codec/form-decode)
+                                                     :cljs form-decode)}})))

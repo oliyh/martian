@@ -13,16 +13,16 @@
 (deftest encode-body-test
   (let [i i/default-encode-body]
 
-    #?(:clj
-       (testing "simple encoders"
-         (let [body {:the "wheels"
-                     :on "the"
-                     :bus ["go" "round" "and" "round"]}]
-           (testing "form"
-             (is (= {:body "the=wheels&on=the&bus=go&bus=round&bus=and&bus=round"
-                     :headers {"Content-Type" "application/x-www-form-urlencoded"}}
-                    (:request ((:enter i) {:request {:body body}
-                                           :handler {:consumes ["application/x-www-form-urlencoded"]}}))))))))
+    (testing "simple encoders"
+      (let [body {:the "wheels"
+                  :on "the"
+                  :bus ["go" "round" "and" "round"]}]
+        (testing "form"
+          (is (= {:body #?(:clj "the=wheels&on=the&bus=go&bus=round&bus=and&bus=round"
+                           :cljs "the=wheels&on=the&bus=go%2Cround%2Cand%2Cround")
+                  :headers {"Content-Type" "application/x-www-form-urlencoded"}}
+                 (:request ((:enter i) {:request {:body body}
+                                        :handler {:consumes ["application/x-www-form-urlencoded"]}})))))))
 
     (testing "complex encoders"
       (let [body {:the {:wheels ["on" "the" "bus"]}
@@ -70,15 +70,14 @@
 (deftest coerce-response-test
   (let [i i/default-coerce-response]
 
-    #?(:clj
-       (testing "simple decoders"
-         (let [body {:the "wheels"
-                     :on "the"
-                     :bus ["go" "round" "and" "round"]}]
-           (testing "form"
-             (let [ctx (tc/enqueue* {} [i (stub-response "application/x-www-form-urlencoded" "the=wheels&on=the&bus=go&bus=round&bus=and&bus=round")])]
-               (is (= body
-                      (-> (tc/execute ctx) :response :body))))))))
+    (testing "simple decoders"
+      (let [body {:the "wheels"
+                  :on "the"
+                  :bus ["go" "round" "and" "round"]}]
+        (testing "form"
+          (let [ctx (tc/enqueue* {} [i (stub-response "application/x-www-form-urlencoded" "the=wheels&on=the&bus=go&bus=round&bus=and&bus=round")])]
+            (is (= body
+                   (-> (tc/execute ctx) :response :body)))))))
 
     (testing "complex decoders"
       (let [body {:the {:wheels ["on" "the" "bus"]}
@@ -172,9 +171,9 @@
                                                                          :as :magic}))]
 
       (is (= {:encodes #?(:clj #{"application/json" "application/transit+msgpack" "application/transit+json" "application/edn" "application/x-www-form-urlencoded"}
-                          :cljs #{"application/json" "application/transit+json" "application/edn"})
+                          :cljs #{"application/json" "application/transit+json" "application/edn" "application/x-www-form-urlencoded"})
               :decodes #?(:clj #{"application/json" "text/magical+json" "application/transit+msgpack" "application/transit+json" "application/edn" "application/x-www-form-urlencoded"}
-                          :cljs #{"application/json" "text/magical+json" "application/transit+json" "application/edn"})}
+                          :cljs #{"application/json" "text/magical+json" "application/transit+json" "application/edn" "application/x-www-form-urlencoded"})}
              (i/supported-content-types [encode-body coerce-response]))))))
 
 (deftest validate-response-test
