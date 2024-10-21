@@ -3,7 +3,6 @@
             [martian.encoders :as encoders]
             [tripod.context :as tc]
             [schema.core :as s]
-            [schema-tools.core :as st]
             #?(:clj [clojure.test :refer [deftest is testing]]
                :cljs [cljs.test :refer-macros [deftest testing is]])
             #?(:clj [martian.test-utils :as tu])))
@@ -12,42 +11,55 @@
    (def Throwable js/Error))
 
 (deftest encode-body-test
-  (let [i i/default-encode-body
-        body {:the {:wheels ["on" "the" "bus"]}
-              :go {:round {:and "round"}}}]
-    (testing "json"
-      (is (= {:body (encoders/json-encode body)
-              :headers {"Content-Type" "application/json"}}
-             (:request ((:enter i) {:request {:body body}
-                                    :handler {:consumes ["application/json"]}})))))
+  (let [i i/default-encode-body]
 
-    (testing "edn"
-      (is (= {:body (pr-str body)
-              :headers {"Content-Type" "application/edn"}}
-             (:request ((:enter i) {:request {:body body}
-                                    :handler {:consumes ["application/edn"]}})))))
+    #?(:clj
+       (testing "simple encoders"
+         (let [body {:the "wheels"
+                     :on "the"
+                     :bus ["go" "round" "and" "round"]}]
+           (testing "form"
+             (is (= {:body "the=wheels&on=the&bus=go&bus=round&bus=and&bus=round"
+                     :headers {"Content-Type" "application/x-www-form-urlencoded"}}
+                    (:request ((:enter i) {:request {:body body}
+                                           :handler {:consumes ["application/x-www-form-urlencoded"]}}))))))))
 
-    (testing "transit"
-      (testing "+json"
-        (is (= {:body body
-                :headers {"Content-Type" "application/transit+json"}}
-               (-> ((:enter i) {:request {:body body}
-                                :handler {:consumes ["application/transit+json"]}})
-                   :request
-                   (update :body #?(:clj (comp #(encoders/transit-decode % :json)
-                                               tu/input-stream->byte-array)
-                                    :cljs #(encoders/transit-decode % :json)))))))
+    (testing "complex encoders"
+      (let [body {:the {:wheels ["on" "the" "bus"]}
+                  :go {:round {:and "round"}}}]
+        (testing "json"
+          (is (= {:body (encoders/json-encode body)
+                  :headers {"Content-Type" "application/json"}}
+                 (:request ((:enter i) {:request {:body body}
+                                        :handler {:consumes ["application/json"]}})))))
 
-      #?(:bb nil
-         :clj
-         (testing "+msgpack"
-           (is (= {:body body
-                   :headers {"Content-Type" "application/transit+msgpack"}}
-                  (-> ((:enter i) {:request {:body body}
-                                   :handler {:consumes ["application/transit+msgpack"]}})
-                      :request
-                      (update :body (comp #(encoders/transit-decode % :msgpack)
-                                          tu/input-stream->byte-array))))))))))
+        (testing "edn"
+          (is (= {:body (pr-str body)
+                  :headers {"Content-Type" "application/edn"}}
+                 (:request ((:enter i) {:request {:body body}
+                                        :handler {:consumes ["application/edn"]}})))))
+
+        (testing "transit"
+          (testing "+json"
+            (is (= {:body body
+                    :headers {"Content-Type" "application/transit+json"}}
+                   (-> ((:enter i) {:request {:body body}
+                                    :handler {:consumes ["application/transit+json"]}})
+                       :request
+                       (update :body #?(:clj (comp #(encoders/transit-decode % :json)
+                                                   tu/input-stream->byte-array)
+                                        :cljs #(encoders/transit-decode % :json)))))))
+
+          #?(:bb nil
+             :clj
+             (testing "+msgpack"
+               (is (= {:body body
+                       :headers {"Content-Type" "application/transit+msgpack"}}
+                      (-> ((:enter i) {:request {:body body}
+                                       :handler {:consumes ["application/transit+msgpack"]}})
+                          :request
+                          (update :body (comp #(encoders/transit-decode % :msgpack)
+                                              tu/input-stream->byte-array))))))))))))
 
 (defn- stub-response [content-type body]
   {:name ::stub-response
@@ -56,35 +68,46 @@
                                   :headers {:content-type content-type}}))})
 
 (deftest coerce-response-test
-  (let [i i/default-coerce-response
-        body {:the {:wheels ["on" "the" "bus"]}
-              :go {:round {:and "round"}}}]
+  (let [i i/default-coerce-response]
 
-    (testing "json"
-      (let [ctx (tc/enqueue* {} [i (stub-response "application/json" (encoders/json-encode body))])]
-        (is (= body
-               (-> (tc/execute ctx) :response :body)))))
+    #?(:clj
+       (testing "simple decoders"
+         (let [body {:the "wheels"
+                     :on "the"
+                     :bus ["go" "round" "and" "round"]}]
+           (testing "form"
+             (let [ctx (tc/enqueue* {} [i (stub-response "application/x-www-form-urlencoded" "the=wheels&on=the&bus=go&bus=round&bus=and&bus=round")])]
+               (is (= body
+                      (-> (tc/execute ctx) :response :body))))))))
 
-    (testing "edn"
-      (let [ctx (tc/enqueue* {} [i (stub-response "application/edn" (pr-str body))])]
-        (is (= body
-               (-> (tc/execute ctx) :response :body)))))
+    (testing "complex decoders"
+      (let [body {:the {:wheels ["on" "the" "bus"]}
+                  :go {:round {:and "round"}}}]
+        (testing "json"
+          (let [ctx (tc/enqueue* {} [i (stub-response "application/json" (encoders/json-encode body))])]
+            (is (= body
+                   (-> (tc/execute ctx) :response :body)))))
 
-    (testing "transit"
-      (testing "+json"
-        (let [ctx (tc/enqueue* {} [i (stub-response "application/transit+json"
-                                                    #?(:clj (slurp (encoders/transit-encode body :json))
-                                                       :cljs (encoders/transit-encode body :json)))])]
-          (is (= body
-                 (-> (tc/execute ctx) :response :body)))))
+        (testing "edn"
+          (let [ctx (tc/enqueue* {} [i (stub-response "application/edn" (pr-str body))])]
+            (is (= body
+                   (-> (tc/execute ctx) :response :body)))))
 
-      #?(:bb nil
-         :clj
-         (testing "+msgpack"
-           (let [ctx (tc/enqueue* {} [i (stub-response "application/transit+msgpack"
-                                                       (tu/input-stream->byte-array (encoders/transit-encode body :msgpack)))])]
-             (is (= body
-                    (-> (tc/execute ctx) :response :body)))))))))
+        (testing "transit"
+          (testing "+json"
+            (let [ctx (tc/enqueue* {} [i (stub-response "application/transit+json"
+                                                        #?(:clj (slurp (encoders/transit-encode body :json))
+                                                           :cljs (encoders/transit-encode body :json)))])]
+              (is (= body
+                     (-> (tc/execute ctx) :response :body)))))
+
+          #?(:bb nil
+             :clj
+             (testing "+msgpack"
+               (let [ctx (tc/enqueue* {} [i (stub-response "application/transit+msgpack"
+                                                           (tu/input-stream->byte-array (encoders/transit-encode body :msgpack)))])]
+                 (is (= body
+                        (-> (tc/execute ctx) :response :body)))))))))))
 
 (deftest custom-encoding-test
   (testing "a user can support an encoding that martian doesn't know about by default"
@@ -148,9 +171,9 @@
                                                                          :decode #(encoders/json-decode % keyword)
                                                                          :as :magic}))]
 
-      (is (= {:encodes #?(:clj #{"application/json" "application/transit+msgpack" "application/transit+json" "application/edn"}
+      (is (= {:encodes #?(:clj #{"application/json" "application/transit+msgpack" "application/transit+json" "application/edn" "application/x-www-form-urlencoded"}
                           :cljs #{"application/json" "application/transit+json" "application/edn"})
-              :decodes #?(:clj #{"application/json" "text/magical+json" "application/transit+msgpack" "application/transit+json" "application/edn"}
+              :decodes #?(:clj #{"application/json" "text/magical+json" "application/transit+msgpack" "application/transit+json" "application/edn" "application/x-www-form-urlencoded"}
                           :cljs #{"application/json" "text/magical+json" "application/transit+json" "application/edn"})}
              (i/supported-content-types [encode-body coerce-response]))))))
 
