@@ -199,3 +199,21 @@
                                                      :decodes ["application/json"]}))]
 
            (:body-schema handler)))))
+
+(deftest form-encoded-schemas-test
+  (let [openapi-json
+        {:paths {(keyword "/models")
+                 {:post {:operationId "create-thing"
+                         :summary "Creates things"
+                         :requestBody {:required true,
+                                       :content
+                                       {:application/x-www-form-urlencoded
+                                        {:schema
+                                         {:type "object"
+                                          :properties {:foo {:type "string"} :bar {:type "number"}}
+                                          :required ["foo" "bar"]}}}}}}}}
+        [handler] (openapi->handlers openapi-json {:encodes ["application/x-www-form-urlencoded"]
+                                                   :decodes ["application/json"]})]
+    (testing "parses parameters"
+      (is (= {:body {:foo s/Str :bar s/Num}}
+             (:body-schema handler))))))
