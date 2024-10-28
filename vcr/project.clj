@@ -1,4 +1,4 @@
-(defproject com.github.oliyh/martian-vcr "0.1.28"
+(defproject com.github.oliyh/martian-vcr "0.1.29-SNAPSHOT"
   :description "Recording and playback for Martian"
   :url "https://github.com/oliyh/martian"
   :license {:name "The MIT License"
