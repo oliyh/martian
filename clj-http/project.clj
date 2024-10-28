@@ -1,4 +1,4 @@
-(defproject com.github.oliyh/martian-clj-http "0.1.27"
+(defproject com.github.oliyh/martian-clj-http "0.1.28-SNAPSHOT"
   :description "clj-http implementation for martian"
   :url "https://github.com/oliyh/martian"
   :license {:name "The MIT License"
