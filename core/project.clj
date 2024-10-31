@@ -16,7 +16,8 @@
 
                  [com.cognitect/transit-clj "1.0.324"]
                  [com.cognitect/transit-cljs "0.8.269"]
-                 [org.flatland/ordered "1.15.10"]]
+                 [org.flatland/ordered "1.15.10"]
+                 [ring/ring-codec "1.2.0"]]
   :java-source-paths ["src"]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.10.3"]
                                        [org.clojure/clojurescript "1.10.866"]]}
