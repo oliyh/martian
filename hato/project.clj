@@ -1,4 +1,4 @@
-(defproject com.github.oliyh/martian-hato "0.1.27-SNAPSHOT"
+(defproject com.github.oliyh/martian-hato "0.1.30-SNAPSHOT"
   :description "hato implementation for martian"
   :url "https://github.com/oliyh/martian"
   :license {:name "The MIT License"
