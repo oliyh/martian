@@ -11,21 +11,31 @@
 
 #?(:cljs (def Exception js/Error))
 
-(def interceptors
-  "Like default-interceptors but adds response coercion to ensure the interceptor chain actually runs completely (including the :leave stage)."
-  (conj m/default-interceptors mi/default-coerce-response))
-
 (def dummy-response
   {:status 200
    :headers {"Content-Type" "application/json"}
    :body "{\"foo\": \"bar\"}"})
 
-(def cooked-response
-  (assoc dummy-response :body {:foo "bar"}))
-
 (def dummy-responder
   {:name ::dummy
    :leave (fn [ctx] (assoc ctx :response dummy-response))})
+
+(def cooked-response
+  (assoc dummy-response :body {:foo "bar"}))
+
+(def return-cooked-response
+  "Test mimic resembling default-coerce-response but returning a cooked response.
+  This is necessary to ensure that, even when using VCR, the interceptor chain
+  is still correctly evaluated (including the :leave stage)."
+  {:name ::coerce-response
+   :leave (fn [ctx]
+            (print "returning a cooked response for vcr tests")
+            (assoc ctx :response cooked-response))})
+
+(def interceptors
+  "Like default-interceptors but adds response coercion to ensure the interceptor
+  chain actually runs completely (including the :leave stage)."
+  (conj m/default-interceptors return-cooked-response))
 
 (def routes
   [{:route-name :load-pet
@@ -54,7 +64,7 @@
 
          (testing "recording"
            (let [m (recording-boostrap opts)]
-             (is (= dummy-response (m/response-for m :load-pet {:id 123})))
+             (is (= cooked-response (m/response-for m :load-pet {:id 123})))
              (let [vcr-file (io/file "target" "load-pet" (str (hash {:id 123})) "0.edn")]
                (is (.exists vcr-file))
                (is (= dummy-response (edn/read-string (slurp vcr-file)))))))
