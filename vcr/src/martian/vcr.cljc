@@ -100,10 +100,10 @@
      :enter (fn [ctx]
               (let [request-count (inc-counter! counters ctx)]
                 (if-let [response (load-response opts (assoc ctx ::request-count request-count))]
-                  (assoc (tc/terminate ctx) :response response)
+                  (-> ctx (assoc :response response) tc/terminate)
                   (condp = on-missing-response
                     :throw-error (let [message (str "No response stored for request " (request-op ctx) " " (request-key ctx))]
                                    (throw #?(:clj (Exception. message)
                                              :cljs (js/Error. message))))
-                    :generate-404 (assoc (tc/terminate ctx) :response {:status 404})
+                    :generate-404 (-> ctx (assoc :response {:status 404}) tc/terminate)
                     ctx))))}))
