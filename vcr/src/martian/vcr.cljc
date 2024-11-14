@@ -2,8 +2,8 @@
   (:require #?@(:clj [[clojure.java.io :as io]
                       [clojure.edn :as edn]
                       [fipp.clojure :as fipp]
-                      [martian.interceptors :refer [remove-stack]]]
-                :cljs [[martian.interceptors :refer [remove-stack]]])))
+                      [tripod.context :as tc]]
+                :cljs [[tripod.context :as tc]])))
 
 (defmulti persist-response! (fn [opts _ctx] (get-in opts [:store :kind])))
 (defmulti load-response (fn [opts _ctx] (get-in opts [:store :kind])))
@@ -100,10 +100,10 @@
      :enter (fn [ctx]
               (let [request-count (inc-counter! counters ctx)]
                 (if-let [response (load-response opts (assoc ctx ::request-count request-count))]
-                  (assoc (remove-stack ctx) :response response)
+                  (-> ctx (assoc :response response) tc/terminate)
                   (condp = on-missing-response
                     :throw-error (let [message (str "No response stored for request " (request-op ctx) " " (request-key ctx))]
                                    (throw #?(:clj (Exception. message)
                                              :cljs (js/Error. message))))
-                    :generate-404 (assoc (remove-stack ctx) :response {:status 404})
+                    :generate-404 (-> ctx (assoc :response {:status 404}) tc/terminate)
                     ctx))))}))
