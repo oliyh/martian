@@ -53,12 +53,12 @@
   (let [coercion-matchers (build-coercion-matchers use-defaults?)]
     (when-let [s (from-maybe schema)]
       (cond
-        (or (coercion-matchers schema)
-            (instance? AnythingSchema s))
+        (instance? AnythingSchema s)
         ((sc/coercer! schema coercion-matchers) data)
 
         (map? s)
-        (stc/coerce (unalias-data parameter-aliases data) s (stc/forwarding-matcher coercion-matchers stc/map-filter-matcher))
+        (let [map-matcher (stc/forwarding-matcher coercion-matchers stc/map-filter-matcher)]
+          (stc/coerce (unalias-data parameter-aliases data) s map-matcher))
 
         (coll? s) ;; primitives, arrays, arrays of maps
         ((sc/coercer! schema coercion-matchers)
