@@ -1,6 +1,7 @@
 (ns martian.core-test
   (:require [martian.core :as martian]
             [schema.core :as s]
+            [schema-tools.core :as st]
             [clojure.spec.test.alpha :as stest]
             #?(:clj [clojure.test :refer [deftest testing is]]
                :cljs [cljs.test :refer-macros [deftest testing is]]))
@@ -317,6 +318,24 @@
       (martian/url-for m :missing-route {:camel-id 1})
       (catch Throwable e
         (is (= :missing-route (-> e ex-data :route-name)))))))
+
+(deftest use-defaults-test
+  (let [m (martian/bootstrap
+            "http://example.com"
+            [{:query-schema {:version (st/default s/Int 70)}
+              :path-schema  {:id s/Str}
+              :route-name   :test-route
+              :method       :get
+              :path-parts   ["/some/" :id]
+              :body-schema  {}}]
+            {:use-defaults? true})]
+    (is (thrown? Exception (martian/request-for m :test-route {}))
+        "Throws \"Could not coerce value to schema: {:id missing-required-key}\"")
+    (is (= {:method       :get
+            :url          "http://example.com/some/path"
+            :query-params {:version 70}}
+           (martian/request-for m :test-route {:id "path"}))
+        "Coerces data using default values, no \"Value cannot be coerced to match schema: {:id disallowed-key}\"")))
 
 (deftest kebab-mapping-test
   (let [m (martian/bootstrap "https://camels.org"
