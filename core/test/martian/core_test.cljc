@@ -326,16 +326,16 @@
               :path-schema  {:id s/Str}
               :route-name   :test-route
               :method       :get
-              :path-parts   ["/some/" :id]
-              :body-schema  {}}]
+              :path-parts   ["/some/" :id]}]
             {:use-defaults? true})]
-    (is (thrown? Exception (martian/request-for m :test-route {}))
-        "Throws \"Could not coerce value to schema: {:id missing-required-key}\"")
-    (is (= {:method       :get
-            :url          "http://example.com/some/path"
-            :query-params {:version 70}}
-           (martian/request-for m :test-route {:id "path"}))
-        "Coerces data using default values, no \"Value cannot be coerced to match schema: {:id disallowed-key}\"")))
+    (is (thrown-with-msg? Throwable cannot-coerce-pattern
+                          (martian/request-for m :test-route {})))
+    (testing "coerces data using default values"
+      (is (= {:method       :get
+              :url          "http://example.com/some/id"
+              :query-params {:version 70}}
+             (martian/request-for m :test-route {:id "id"}))
+          "No \"Value cannot be coerced to match schema: {:id disallowed-key}\" error"))))
 
 (deftest kebab-mapping-test
   (let [m (martian/bootstrap "https://camels.org"
