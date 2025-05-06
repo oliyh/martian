@@ -36,7 +36,12 @@
             (update ctx :request create-only :url (url-for (:route-name handler) params)))})
 
 (defn coerce-data [{:keys [parameter-aliases] :as handler} schema-key params opts]
-  (schema/coerce-data (get handler schema-key) params (get parameter-aliases schema-key) (:use-defaults? opts)))
+  (let [schema (get handler schema-key)
+        ;; A map schema needs to be open prior to params coercion (#215)
+        schema (if (and (map? schema) (nil? (s/find-extra-keys-schema schema)))
+                 (assoc schema s/Keyword s/Any)
+                 schema)]
+    (schema/coerce-data schema params (get parameter-aliases schema-key) (:use-defaults? opts))))
 
 (def keywordize-params
   {:name ::keywordize-params
