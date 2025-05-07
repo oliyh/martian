@@ -1,6 +1,7 @@
 (ns martian.core-test
   (:require [martian.core :as martian]
             [schema.core :as s]
+            [schema-tools.core :as st]
             [clojure.spec.test.alpha :as stest]
             #?(:clj [clojure.test :refer [deftest testing is]]
                :cljs [cljs.test :refer-macros [deftest testing is]]))
@@ -317,6 +318,61 @@
       (martian/url-for m :missing-route {:camel-id 1})
       (catch Throwable e
         (is (= :missing-route (-> e ex-data :route-name)))))))
+
+(deftest use-defaults-test
+  (testing "in isolation"
+    (let [m (martian/bootstrap
+              "http://example.com"
+              [{:query-schema {:version (st/default s/Int 70)}
+                :route-name   :test-route
+                :method       :get
+                :path-parts   ["/some"]}]
+              {:use-defaults? true})]
+
+      (testing "coerces data using default values"
+
+        (testing "adds missing values when there are defaults"
+          (is (= {:method       :get
+                  :url          "http://example.com/some"
+                  :query-params {:version 70}}
+                 (martian/request-for m :test-route {}))))
+
+        (testing "does nothing if values are present"
+          (is (= {:method       :get
+                  :url          "http://example.com/some"
+                  :query-params {:version 100}}
+                 (martian/request-for m :test-route {:version 100})))))))
+
+  (testing "interplay with other params"
+    (let [m (martian/bootstrap
+              "http://example.com"
+              [{:query-schema {:version (st/default s/Int 70)}
+                :path-schema  {:id s/Str}
+                :route-name   :test-route
+                :method       :get
+                :path-parts   ["/some/" :id]}]
+              {:use-defaults? true})]
+
+      (is (thrown-with-msg? Throwable cannot-coerce-pattern
+                            (martian/request-for m :test-route {}))
+          "Could not coerce value to schema: {:id missing-required-key}")
+
+      (testing "coerces data using default values"
+        ;; NOTE: There must be no error of the following kind (after #215 fix):
+        ;;       Value cannot be coerced to match schema: {:id disallowed-key}
+
+        (testing "adds missing values when there are defaults"
+          (is (= {:method       :get
+                  :url          "http://example.com/some/id"
+                  :query-params {:version 70}}
+                 (martian/request-for m :test-route {:id "id"}))))
+
+        (testing "does nothing if values are present"
+          (is (= {:method       :get
+                  :url          "http://example.com/some/id"
+                  :query-params {:version 100}}
+                 (martian/request-for m :test-route {:id      "id"
+                                                     :version 100}))))))))
 
 (deftest kebab-mapping-test
   (let [m (martian/bootstrap "https://camels.org"

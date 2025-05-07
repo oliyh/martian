@@ -2,7 +2,6 @@
   (:require [martian.schema :as schema]
             [matcher-combinators.test]
             [schema.core :as s]
-            [schema.coerce :as sc]
             [schema-tools.core :as st]
             #?(:clj [clojure.test :refer [deftest testing is]]
                :cljs [cljs.test :refer-macros [deftest testing is]]))
@@ -176,6 +175,7 @@
                                           :tags [{:k nil}]}
                                          nil
                                          true)))))))))
+
 ;; "int-or-string" (s/cond-pre s/Str s/Int)
 (deftest int-or-string-test
   (is (= (s/cond-pre s/Str s/Int)
