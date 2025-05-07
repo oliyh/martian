@@ -42,6 +42,18 @@
           (coercion-matchers schema)))
     coercion-matchers))
 
+(defn ->map-matcher
+  "Builds a version of `stc/map-filter-matcher` that is optional and takes
+   into account custom `coercion-matchers` that may/not happen afterwards."
+  [coercion-matchers]
+  (fn [schema]
+    (let [f (stc/map-filter-matcher schema)]
+      (fn [x]
+        (let [x' (if (some? f) (f x) x)]
+          (if-some [g (coercion-matchers schema)]
+            (g x')
+            x'))))))
+
 (defn- from-maybe [s]
   (if (instance? Maybe s)
     (:schema s)
@@ -57,7 +69,7 @@
         ((sc/coercer! schema coercion-matchers) data)
 
         (map? s)
-        (let [map-matcher (stc/forwarding-matcher coercion-matchers stc/map-filter-matcher)]
+        (let [map-matcher (->map-matcher coercion-matchers)]
           (stc/coerce (unalias-data parameter-aliases data) s map-matcher))
 
         (coll? s) ;; primitives, arrays, arrays of maps
