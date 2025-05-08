@@ -9,31 +9,39 @@
             [martian.parameter-aliases :refer [unalias-data]])
   #?(:clj (:import [schema.core AnythingSchema Maybe EnumSchema EqSchema OptionalKey])))
 
-(defn- keyword->string [s]
-  (if (keyword? s) (name s) s))
+(def format->separator
+  {"csv"   ","
+   "ssv"   " "
+   "tsv"   "\t"
+   "pipes" "|"})
 
-(defn- seq->string [schema]
-  (let [separator (get {"csv" ","
-                        "ssv" " "
-                        "tsv" "\t"
-                        "pipes" "|"}
-                       (-> schema meta :collection-format))]
-    (when separator
-      (fn [l]
-        (string/join separator l)))))
+(defn seq->string [coll-fmt]
+  (when-some [separator (get format->separator coll-fmt)]
+    (fn [coll]
+      (string/join separator coll))))
 
-(defn- string-enum-matcher [schema]
+(defn format-coll-coercion-matcher [schema]
+  (when-some [coll-fmt (:collection-format (meta schema))]
+    (seq->string coll-fmt)))
+
+(defn keyword->string [x]
+  (if (keyword? x) (name x) x))
+
+(def +extra-string-coercions+
+  {s/Str keyword->string})
+
+(defn string-enum-matcher [schema]
   (when (or (and (instance? EnumSchema schema)
                  (every? string? (.-vs ^EnumSchema schema)))
             (and (instance? EqSchema schema)
                  (string? (.-v ^EqSchema schema))))
     keyword->string))
 
-(defn default-coercion-matcher [schema]
-  (or (sc/string-coercion-matcher schema)
-      (and (:collection-format (meta schema)) (seq->string schema))
-      ({s/Str keyword->string} schema)
-      (string-enum-matcher schema)))
+(def default-coercion-matcher
+  (stc/or-matcher sc/string-coercion-matcher
+                  format-coll-coercion-matcher
+                  +extra-string-coercions+
+                  string-enum-matcher))
 
 (defn build-coercion-matcher
   [{:keys [coercion-matcher use-defaults?]
