@@ -1,4 +1,5 @@
 # Martian
+
 Calling HTTP endpoints can be complicated. You have to construct the right URL with the right route parameters, remember
 what the query parameters are, what method to use, how to encode the body and many other things that leak into your codebase.
 
@@ -56,6 +57,7 @@ Testing and other interop libraries:
 
 
 ## Features
+
 - Bootstrap an instance from just a OpenAPI/Swagger url, a local definition file or provide your own API mapping
 - Modular with support for many HTTP client libraries (see table above)
 - Build urls and request maps from code or generate and perform the request, returning the response
@@ -84,7 +86,7 @@ like that provided by [pedestal-api](https://github.com/oliyh/pedestal-api):
 (require '[martian.core :as martian]
          '[martian.clj-http :as martian-http])
 
-;; bootstrap the martian instance by simply providing the url serving the openapi/swagger description
+;; bootstrap the Martian instance by simply providing the url serving the openapi/swagger description
 (let [m (martian-http/bootstrap-openapi "https://pedestal-api.herokuapp.com/swagger.json")]
 
   ;; explore the endpoints
@@ -162,6 +164,7 @@ Here's an example:
 ```
 
 ## Testing with martian-test
+
 Testing code that calls external systems can be tricky - you either build often elaborate stubs which start
 to become as complex as the system you are calling, or else you ignore it all together with `(constantly true)`.
 
@@ -195,6 +198,7 @@ previously untestable code testable again.
 More documentation is available at [martian-test](https://github.com/oliyh/martian/tree/master/test).
 
 ## Recording and playback with martian-vcr
+
 martian-vcr allows you to record responses from real HTTP requests and play them back later, allowing you to build realistic test
 data quickly and easily.
 
@@ -252,6 +256,7 @@ You may wish to provide additional behaviour to requests. This can be done by pr
 which behave in the same way as pedestal interceptors.
 
 ### Global behaviour
+
 You can add interceptors to the stack that get executed on every request when bootstrapping martian.
 For example, if you wish to add an authentication header and a timer to all requests:
 
@@ -284,6 +289,29 @@ For example, if you wish to add an authentication header and a timer to all requ
         (martian/response-for m :all-pets {:id 123}))
         ;; Request to :all-pets took 38ms
         ;; => {:status 200 :body {:pets []}}
+```
+
+There is also a way to augment/override the default coercion matcher that is used by a Martian instance for params coercion:
+
+```clojure
+;; adding an extra coercion instead/after the default one
+(martian-http/bootstrap-openapi
+  "https://pedestal-api.herokuapp.com/swagger.json"
+  {:coercion-matcher (fn [schema]
+                       (or (martian/default-coercion-matcher schema)
+                           (my-extra-coercion-matcher schema)))})
+
+;; switching to some coercion matcher from 'schema-tools'
+(require '[schema-tools.coerce :as stc])
+(martian/bootstrap
+  "https://api.org"
+  [{:route-name  :create-pet
+    :path-parts  ["/pets/"]
+    :method      :post
+    :body-schema {:pet {:PetId     s/Int
+                        :FirstName s/Str
+                        :LastName  s/Str}}}]
+  {:coercion-matcher stc/json-coercion-matcher})
 ```
 
 ### Per route behaviour
