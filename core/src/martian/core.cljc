@@ -1,18 +1,19 @@
 (ns martian.core
-  (:require [tripod.context :as tc]
-            [clojure.core.protocols]
+  (:require [clojure.core.protocols]
+            [clojure.spec.alpha :as spec]
             [clojure.string :as string]
             [clojure.walk :refer [keywordize-keys]]
+            [lambdaisland.uri :refer [map->query-string]]
             [martian.interceptors :as interceptors]
-            [martian.parameter-aliases :as parameter-aliases :refer [parameter-aliases alias-schema]]
-            [martian.swagger :refer [swagger->handlers]]
             [martian.openapi :refer [openapi->handlers openapi-schema?]]
-            [clojure.spec.alpha :as spec]
+            [martian.parameter-aliases :refer [parameter-aliases alias-schema]]
+            [martian.schema :as schema]
             [martian.spec :as mspec]
-            [lambdaisland.uri :refer [map->query-string]]))
+            [martian.swagger :refer [swagger->handlers]]
+            [tripod.context :as tc]))
 
 #?(:bb
-   ;; reflection issue in babasha -- TODO, submit patch upstream?
+   ;; reflection issue in babashka -- TODO, submit patch upstream?
    (do (defn- exception->ex-info [^Throwable exception execution-id interceptor stage]
          (ex-info (str "Interceptor Exception: " #?(:clj  (.getMessage exception)
                                                     :cljs (.-message exception)))
@@ -34,6 +35,8 @@
    interceptors/set-form-params
    interceptors/set-header-params
    interceptors/enqueue-route-specific-interceptors])
+
+(def default-coercion-matcher schema/default-coercion-matcher)
 
 (def ^:private parameter-schemas [:path-schema :query-schema :body-schema :form-schema :headers-schema])
 
