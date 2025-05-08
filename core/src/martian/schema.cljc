@@ -44,15 +44,15 @@
 
 (defn ->map-matcher
   "Builds a version of `stc/map-filter-matcher` that is optional and takes
-   into account custom `coercion-matchers` that may/not happen afterwards."
+   into account a custom `coercion-matchers` that may/not happen afterwards."
   [coercion-matchers]
   (fn [schema]
-    (let [f (stc/map-filter-matcher schema)]
+    (let [f (stc/map-filter-matcher schema)
+          g (coercion-matchers schema)]
       (fn [x]
-        (let [x' (if (some? f) (f x) x)]
-          (if-some [g (coercion-matchers schema)]
-            (g x')
-            x'))))))
+        (cond-> x
+                (some? f) (f)
+                (some? g) (g))))))
 
 (defn- from-maybe [s]
   (if (instance? Maybe s)
