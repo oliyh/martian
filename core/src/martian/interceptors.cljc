@@ -36,16 +36,22 @@
             (update ctx :request create-only :url (url-for (:route-name handler) params)))})
 
 (defn coerce-data [{:keys [parameter-aliases] :as handler} schema-key params opts]
-  (schema/coerce-data (get handler schema-key) params (get parameter-aliases schema-key) (:use-defaults? opts)))
+  (let [coerce-opts (-> opts
+                        (select-keys [:coercion-matchers :use-defaults?])
+                        (assoc :parameter-aliases (get parameter-aliases schema-key)))]
+    (schema/coerce-data (get handler schema-key) params coerce-opts)))
 
 (def keywordize-params
   {:name ::keywordize-params
    :enter (fn [ctx] (update ctx :params keywordize-keys))})
 
+(defn- set-params [ctx req-key coerced-data]
+  (update ctx :request insert-or-merge req-key coerced-data))
+
 (def set-query-params
   {:name ::query-params
    :enter (fn [{:keys [params handler opts] :as ctx}]
-            (update ctx :request insert-or-merge :query-params (coerce-data handler :query-schema params opts)))})
+            (set-params ctx :query-params (coerce-data handler :query-schema params opts)))})
 
 (def set-body-params
   {:name ::body-params
@@ -56,18 +62,18 @@
                                     (get params body-key)
                                     (get params (->kebab-case-keyword body-key))
                                     params)]
-                (update ctx :request insert-or-merge :body (get (coerce-data handler :body-schema {body-key body-params} opts) body-key)))
+                (set-params ctx :body (get (coerce-data handler :body-schema {body-key body-params} opts) body-key)))
               ctx))})
 
 (def set-form-params
   {:name ::form-params
    :enter (fn [{:keys [params handler opts] :as ctx}]
-            (update ctx :request insert-or-merge :form-params (coerce-data handler :form-schema params opts)))})
+            (set-params ctx :form-params (coerce-data handler :form-schema params opts)))})
 
 (def set-header-params
   {:name ::header-params
    :enter (fn [{:keys [params handler opts] :as ctx}]
-            (update ctx :request insert-or-merge :headers (stringify-keys (coerce-data handler :headers-schema params opts))))})
+            (set-params ctx :headers (stringify-keys (coerce-data handler :headers-schema params opts))))})
 
 (def enqueue-route-specific-interceptors
   {:name ::enqueue-route-specific-interceptors

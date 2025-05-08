@@ -133,8 +133,7 @@
                    (schema/coerce-data schema
                                        {:name "Brachiosaurus"
                                         :address {:city "stavanger"}}
-                                       nil
-                                       true))))
+                                       {:use-defaults? true}))))
 
           (testing "adds missing values when there are defaults"
             (is (= {:name "Brachiosaurus"
@@ -142,8 +141,7 @@
                    (schema/coerce-data schema
                                        {:name "Brachiosaurus"
                                         :address {:city nil}}
-                                       nil
-                                       true))))
+                                       {:use-defaults? true}))))
 
           (testing "adds missing keys"
             (is (= {:name "Brachiosaurus"
@@ -151,8 +149,7 @@
                    (schema/coerce-data schema
                                        {:name "Brachiosaurus"
                                         :address {}}
-                                       nil
-                                       true))))
+                                       {:use-defaults? true}))))
 
           (testing "removing extra keys"
             (is (= {:name "Brachiosaurus"
@@ -161,8 +158,7 @@
                                        {:name "Brachiosaurus"
                                         :extra "key"
                                         :address {}}
-                                       nil
-                                       true))))
+                                       {:use-defaults? true}))))
 
           ;; doesn't work - a limitation of spec-tools?
           #_(testing "works inside arrays"
@@ -173,8 +169,7 @@
                                          {:name "Brachiosaurus"
                                           :address {:city "stavanger"}
                                           :tags [{:k nil}]}
-                                         nil
-                                         true)))))))))
+                                         {:use-defaults? true})))))))))
 
 ;; "int-or-string" (s/cond-pre s/Str s/Int)
 (deftest int-or-string-test
@@ -403,14 +398,15 @@
              (schema/coerce-data {s/Keyword s/Any} data)))))
 
   (testing "deeply nested aliasing"
-    (let [data {:aCamel {:anotherCamel {:camelsEverywhere 1}}}]
+    (let [data {:aCamel {:anotherCamel {:camelsEverywhere 1}}}
+          parameter-aliases {[]                        {:a-camel :aCamel}
+                             [:a-camel]                {:another-camel :anotherCamel}
+                             [:a-camel :another-camel] {:camels-everywhere :camelsEverywhere}}]
       (is (= data
              (schema/coerce-data
-              {s/Keyword s/Any}
-              {:a-camel {:another-camel {:camels-everywhere 1}}}
-              {[] {:a-camel :aCamel}
-               [:a-camel] {:another-camel :anotherCamel}
-               [:a-camel :another-camel] {:camels-everywhere :camelsEverywhere}})))))
+               {s/Keyword s/Any}
+               {:a-camel {:another-camel {:camels-everywhere 1}}}
+               {:parameter-aliases parameter-aliases})))))
 
   (testing "keywords to strings"
     (is (= "foo" (schema/coerce-data s/Str :foo)))))
