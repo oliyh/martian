@@ -3,9 +3,15 @@
             [matcher-combinators.test]
             [schema.core :as s]
             [schema-tools.core :as st]
+            [schema-tools.coerce :as stc]
             #?(:clj [clojure.test :refer [deftest testing is]]
                :cljs [cljs.test :refer-macros [deftest testing is]]))
   #?(:clj (:import [clojure.lang ExceptionInfo])))
+
+#?(:cljs
+   (def Throwable js/Error))
+
+(def cannot-coerce-pattern #"Could not coerce value to schema")
 
 (deftest free-form-object-test
   (let [schema (schema/make-schema {:definitions
@@ -409,7 +415,30 @@
                {:parameter-aliases parameter-aliases})))))
 
   (testing "keywords to strings"
-    (is (= "foo" (schema/coerce-data s/Str :foo)))))
+    (is (= "foo" (schema/coerce-data s/Str :foo))))
+
+  (testing "custom coercion matcher"
+    (is (= {:bool false} (schema/coerce-data {:bool s/Bool}
+                                             {:bool "Test"}))
+        "Converts strings to booleans by default")
+    (is (thrown-with-msg? Throwable cannot-coerce-pattern
+                          (schema/coerce-data {:bool s/Bool}
+                                              {:bool "Test"}
+                                              {:coercion-matcher (constantly nil)}))
+        "Dropping the coercion matcher stops strings->boolean conversion")
+    (is (thrown-with-msg? Throwable cannot-coerce-pattern
+                          (schema/coerce-data {:bool s/Bool}
+                                              {:bool "Test"}
+                                              {:coercion-matcher stc/json-coercion-matcher}))
+        "Switching to 'schema-tools' coercion matcher stops strings->boolean conversion")
+    (let [un-false-value (fn [x] (if (false? x) true x))
+          custom-matcher (fn [schema]
+                           (when-some [dcm (schema/default-coercion-matcher schema)]
+                             (comp un-false-value dcm)))]
+      (is (= {:bool true} (schema/coerce-data {:bool s/Bool}
+                                              {:bool "Test"}
+                                              {:coercion-matcher custom-matcher}))
+          "Successfully applies a custom coercion matcher after applying the default one"))))
 
 (deftest recursive-schema-test
   (let [schema (schema/make-schema {:definitions {:A {:type       "object"
