@@ -37,7 +37,7 @@
 
 (defn coerce-data [{:keys [parameter-aliases] :as handler} schema-key params opts]
   (let [coerce-opts (-> opts
-                        (select-keys [:coercion-matchers :use-defaults?])
+                        (select-keys [:coercion-matcher :use-defaults?])
                         (assoc :parameter-aliases (get parameter-aliases schema-key)))]
     (schema/coerce-data (get handler schema-key) params coerce-opts)))
 
