@@ -9,50 +9,60 @@
             [martian.parameter-aliases :refer [unalias-data]])
   #?(:clj (:import [schema.core AnythingSchema Maybe EnumSchema EqSchema OptionalKey])))
 
-(defn- keyword->string [s]
-  (if (keyword? s) (name s) s))
+(def format->separator
+  {"csv"   ","
+   "ssv"   " "
+   "tsv"   "\t"
+   "pipes" "|"})
 
-(defn- seq->string [schema]
-  (let [separator (get {"csv" ","
-                        "ssv" " "
-                        "tsv" "\t"
-                        "pipes" "|"}
-                       (-> schema meta :collection-format))]
-    (when separator
-      (fn [l]
-        (string/join separator l)))))
+(defn seq->string [coll-fmt]
+  (when-some [separator (get format->separator coll-fmt)]
+    (fn [coll]
+      (string/join separator coll))))
 
-(defn- string-enum-matcher [schema]
+(defn format-coll-coercion-matcher [schema]
+  (when-some [coll-fmt (:collection-format (meta schema))]
+    (seq->string coll-fmt)))
+
+(defn keyword->string [x]
+  (if (keyword? x) (name x) x))
+
+(def +extra-string-coercions+
+  {s/Str keyword->string})
+
+(defn string-enum-matcher [schema]
   (when (or (and (instance? EnumSchema schema)
                  (every? string? (.-vs ^EnumSchema schema)))
             (and (instance? EqSchema schema)
                  (string? (.-v ^EqSchema schema))))
     keyword->string))
 
-(defn coercion-matchers [schema]
-  (or (sc/string-coercion-matcher schema)
-      (and (:collection-format (meta schema)) (seq->string schema))
-      ({s/Str keyword->string} schema)
-      (string-enum-matcher schema)))
+(def default-coercion-matcher
+  (stc/or-matcher sc/string-coercion-matcher
+                  format-coll-coercion-matcher
+                  +extra-string-coercions+
+                  string-enum-matcher))
 
-(defn build-coercion-matchers [use-defaults?]
+(defn build-coercion-matcher
+  [{:keys [coercion-matcher use-defaults?]
+    :or   {coercion-matcher default-coercion-matcher}}]
+  (when (nil? coercion-matcher)
+    (throw (ex-info "Coercion matcher must be a unary fn of schema" {})))
   (if use-defaults?
-    (fn [schema]
-      (or (stc/default-matcher schema)
-          (coercion-matchers schema)))
-    coercion-matchers))
+    (stc/or-matcher stc/default-matcher coercion-matcher)
+    coercion-matcher))
 
 (defn ->map-matcher
   "Builds a version of `stc/map-filter-matcher` that is optional and takes
-   into account custom `coercion-matchers` that may/not happen afterwards."
-  [coercion-matchers]
+   into account a custom `coercion-matcher` that may/not happen afterwards."
+  [coercion-matcher]
   (fn [schema]
-    (let [f (stc/map-filter-matcher schema)]
+    (let [f (stc/map-filter-matcher schema)
+          g (coercion-matcher schema)]
       (fn [x]
-        (let [x' (if (some? f) (f x) x)]
-          (if-some [g (coercion-matchers schema)]
-            (g x')
-            x'))))))
+        (cond-> x
+                (some? f) (f)
+                (some? g) (g))))))
 
 (defn- from-maybe [s]
   (if (instance? Maybe s)
@@ -61,26 +71,28 @@
 
 (defn coerce-data
   "Extracts the data referred to by the schema's keys and coerces it"
-  [schema data & [parameter-aliases use-defaults?]]
-  (let [coercion-matchers (build-coercion-matchers use-defaults?)]
-    (when-let [s (from-maybe schema)]
-      (cond
-        (instance? AnythingSchema s)
-        ((sc/coercer! schema coercion-matchers) data)
+  ([schema data]
+   (coerce-data schema data nil))
+  ([schema data {:keys [parameter-aliases] :as opts}]
+   (let [matcher (build-coercion-matcher opts)]
+     (when-let [s (from-maybe schema)]
+       (cond
+         (instance? AnythingSchema s)
+         ((sc/coercer! schema matcher) data)
 
-        (map? s)
-        (let [map-matcher (->map-matcher coercion-matchers)]
-          (stc/coerce (unalias-data parameter-aliases data) s map-matcher))
+         (map? s)
+         (let [map-matcher (->map-matcher matcher)]
+           (stc/coerce (unalias-data parameter-aliases data) s map-matcher))
 
-        (coll? s) ;; primitives, arrays, arrays of maps
-        ((sc/coercer! schema coercion-matchers)
-         (map #(if (map? %)
-                 (unalias-data parameter-aliases %)
-                 %)
-              data))
+         (coll? s) ;; primitives, arrays, arrays of maps
+         ((sc/coercer! schema matcher)
+          (map #(if (map? %)
+                  (unalias-data parameter-aliases %)
+                  %)
+               data))
 
-        :else
-        ((sc/coercer! schema coercion-matchers) data)))))
+         :else
+         ((sc/coercer! schema matcher) data))))))
 
 (declare make-schema)
 

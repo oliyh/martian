@@ -3,9 +3,15 @@
             [matcher-combinators.test]
             [schema.core :as s]
             [schema-tools.core :as st]
+            [schema-tools.coerce :as stc]
             #?(:clj [clojure.test :refer [deftest testing is]]
                :cljs [cljs.test :refer-macros [deftest testing is]]))
   #?(:clj (:import [clojure.lang ExceptionInfo])))
+
+#?(:cljs
+   (def Throwable js/Error))
+
+(def cannot-coerce-pattern #"Could not coerce value to schema")
 
 (deftest free-form-object-test
   (let [schema (schema/make-schema {:definitions
@@ -133,8 +139,7 @@
                    (schema/coerce-data schema
                                        {:name "Brachiosaurus"
                                         :address {:city "stavanger"}}
-                                       nil
-                                       true))))
+                                       {:use-defaults? true}))))
 
           (testing "adds missing values when there are defaults"
             (is (= {:name "Brachiosaurus"
@@ -142,8 +147,7 @@
                    (schema/coerce-data schema
                                        {:name "Brachiosaurus"
                                         :address {:city nil}}
-                                       nil
-                                       true))))
+                                       {:use-defaults? true}))))
 
           (testing "adds missing keys"
             (is (= {:name "Brachiosaurus"
@@ -151,8 +155,7 @@
                    (schema/coerce-data schema
                                        {:name "Brachiosaurus"
                                         :address {}}
-                                       nil
-                                       true))))
+                                       {:use-defaults? true}))))
 
           (testing "removing extra keys"
             (is (= {:name "Brachiosaurus"
@@ -161,8 +164,7 @@
                                        {:name "Brachiosaurus"
                                         :extra "key"
                                         :address {}}
-                                       nil
-                                       true))))
+                                       {:use-defaults? true}))))
 
           ;; doesn't work - a limitation of spec-tools?
           #_(testing "works inside arrays"
@@ -173,8 +175,7 @@
                                          {:name "Brachiosaurus"
                                           :address {:city "stavanger"}
                                           :tags [{:k nil}]}
-                                         nil
-                                         true)))))))))
+                                         {:use-defaults? true})))))))))
 
 ;; "int-or-string" (s/cond-pre s/Str s/Int)
 (deftest int-or-string-test
@@ -403,17 +404,41 @@
              (schema/coerce-data {s/Keyword s/Any} data)))))
 
   (testing "deeply nested aliasing"
-    (let [data {:aCamel {:anotherCamel {:camelsEverywhere 1}}}]
+    (let [data {:aCamel {:anotherCamel {:camelsEverywhere 1}}}
+          parameter-aliases {[]                        {:a-camel :aCamel}
+                             [:a-camel]                {:another-camel :anotherCamel}
+                             [:a-camel :another-camel] {:camels-everywhere :camelsEverywhere}}]
       (is (= data
              (schema/coerce-data
-              {s/Keyword s/Any}
-              {:a-camel {:another-camel {:camels-everywhere 1}}}
-              {[] {:a-camel :aCamel}
-               [:a-camel] {:another-camel :anotherCamel}
-               [:a-camel :another-camel] {:camels-everywhere :camelsEverywhere}})))))
+               {s/Keyword s/Any}
+               {:a-camel {:another-camel {:camels-everywhere 1}}}
+               {:parameter-aliases parameter-aliases})))))
 
   (testing "keywords to strings"
-    (is (= "foo" (schema/coerce-data s/Str :foo)))))
+    (is (= "foo" (schema/coerce-data s/Str :foo))))
+
+  (testing "custom coercion matcher"
+    (is (= {:bool false} (schema/coerce-data {:bool s/Bool}
+                                             {:bool "Test"}))
+        "Converts strings to booleans by default")
+    (is (thrown-with-msg? Throwable cannot-coerce-pattern
+                          (schema/coerce-data {:bool s/Bool}
+                                              {:bool "Test"}
+                                              {:coercion-matcher (constantly nil)}))
+        "Dropping the coercion matcher stops strings->boolean conversion")
+    (is (thrown-with-msg? Throwable cannot-coerce-pattern
+                          (schema/coerce-data {:bool s/Bool}
+                                              {:bool "Test"}
+                                              {:coercion-matcher stc/json-coercion-matcher}))
+        "Switching to 'schema-tools' coercion matcher stops strings->boolean conversion")
+    (let [un-false-value (fn [x] (if (false? x) true x))
+          custom-matcher (fn [schema]
+                           (when-some [dcm (schema/default-coercion-matcher schema)]
+                             (comp un-false-value dcm)))]
+      (is (= {:bool true} (schema/coerce-data {:bool s/Bool}
+                                              {:bool "Test"}
+                                              {:coercion-matcher custom-matcher}))
+          "Successfully applies a custom coercion matcher after applying the default one"))))
 
 (deftest recursive-schema-test
   (let [schema (schema/make-schema {:definitions {:A {:type       "object"
