@@ -1,4 +1,4 @@
-(defproject com.github.oliyh/martian-suite "0.1.31"
+(defproject com.github.oliyh/martian-suite "0.1.32-SNAPSHOT"
   :description "Client routing for Swagger APIs"
   :url "https://github.com/oliyh/martian"
   :license {:name "The MIT License"
