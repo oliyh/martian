@@ -12,7 +12,7 @@ You can bootstrap it in one line and start calling the server:
 (require '[martian.core :as martian]
          '[martian.clj-http :as martian-http])
 
-(let [m (martian-http/bootstrap-openapi "https://pedestal-api.herokuapp.com/swagger.json")]
+(let [m (martian-http/bootstrap-openapi "https://pedestal-api.oliy.co.uk/swagger.json")]
   (martian/response-for m :create-pet {:name "Doggy McDogFace" :type "Dog" :age 3})
   ;; => {:status 201 :body {:id 123}}
 
@@ -79,7 +79,7 @@ For more details and rationale you can [watch the talk given to London Clojurian
 
 ## Clojure / ClojureScript
 
-Given an [OpenAPI/Swagger API definition](https://pedestal-api.herokuapp.com/swagger.json)
+Given an [OpenAPI/Swagger API definition](https://pedestal-api.oliy.co.uk/swagger.json)
 like that provided by [pedestal-api](https://github.com/oliyh/pedestal-api):
 
 ```clojure
@@ -87,7 +87,7 @@ like that provided by [pedestal-api](https://github.com/oliyh/pedestal-api):
          '[martian.clj-http :as martian-http])
 
 ;; bootstrap the Martian instance by simply providing the url serving the openapi/swagger description
-(let [m (martian-http/bootstrap-openapi "https://pedestal-api.herokuapp.com/swagger.json")]
+(let [m (martian-http/bootstrap-openapi "https://pedestal-api.oliy.co.uk/swagger.json")]
 
   ;; explore the endpoints
   (martian/explore m)
@@ -101,12 +101,12 @@ like that provided by [pedestal-api](https://github.com/oliyh/pedestal-api):
 
   ;; build the url for a request
   (martian/url-for m :get-pet {:id 123})
-  ;; => https://pedestal-api.herokuapp.com/pets/123
+  ;; => https://pedestal-api.oliy.co.uk/pets/123
 
   ;; build the request map for a request
   (martian/request-for m :get-pet {:id 123})
   ;; => {:method :get
-  ;;     :url "https://pedestal-api.herokuapp.com/pets/123"
+  ;;     :url "https://pedestal-api.oliy.co.uk/pets/123"
   ;;     :headers {"Accept" "application/transit+msgpack"
   ;;     :as :byte-array}
 
@@ -178,7 +178,7 @@ The following example shows how exceptions will be thrown by bad code and how re
          '[martian.httpkit :as martian-http]
          '[martian.test :as martian-test])
 
-(let [m (-> (martian-http/bootstrap-openapi "https://pedestal-api.herokuapp.com/swagger.json")
+(let [m (-> (martian-http/bootstrap-openapi "https://pedestal-api.oliy.co.uk/swagger.json")
             (martian-test/respond-with-generated {:get-pet :random}))]
 
   (martian/response-for m :get-pet {})
@@ -281,7 +281,7 @@ For example, if you wish to add an authentication header and a timer to all requ
             ctx)})
 
 (let [m (martian-http/bootstrap-openapi
-               "https://pedestal-api.herokuapp.com/swagger.json"
+               "https://pedestal-api.oliy.co.uk/swagger.json"
                {:interceptors (concat
                                 [add-authentication-header request-timer]
                                 martian-http/default-interceptors)})]
@@ -296,7 +296,7 @@ There is also a way to augment/override the default coercion matcher that is use
 ```clojure
 ;; adding an extra coercion instead/after the default one
 (martian-http/bootstrap-openapi
-  "https://pedestal-api.herokuapp.com/swagger.json"
+  "https://pedestal-api.oliy.co.uk/swagger.json"
   {:coercion-matcher (fn [schema]
                        (or (martian/default-coercion-matcher schema)
                            (my-extra-coercion-matcher schema)))})
@@ -442,11 +442,11 @@ import java.util.Map;
 import java.util.HashMap;
 
 Map<String, Object> swaggerSpec = { ... };
-Martian martian = new Martian("https://pedestal-api.herokuapp.com", swaggerSpec);
+Martian martian = new Martian("https://pedestal-api.oliy.co.uk", swaggerSpec);
 
 martian.urlFor("get-pet", new HashMap<String, Object> {{ put("id", 123); }});
 
-// => https://pedestal-api.herokuapp.com/pets/123
+// => https://pedestal-api.oliy.co.uk/pets/123
 ```
 
 ## Caveats
