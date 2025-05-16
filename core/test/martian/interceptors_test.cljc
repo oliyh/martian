@@ -10,17 +10,17 @@
 #?(:cljs
    (def Throwable js/Error))
 
-(deftest encode-body-test
-  (let [i i/default-encode-body]
+(deftest encode-request-test
+  (let [i i/default-encode-request]
 
     #?(:bb nil
        :default
        (testing "simple encoders"
-	 (let [body {:the "wheels"
+         (let [body {:the "wheels"
                      :on "the"
                      :bus ["go" "round" "and" "round"]}]
            (testing "form"
-             (is (= {:body #?(:clj "the=wheels&on=the&bus=go&bus=round&bus=and&bus=round"
+             (is (= {:body #?(:clj  "the=wheels&on=the&bus=go&bus=round&bus=and&bus=round"
                               :cljs "the=wheels&on=the&bus=go%2Cround%2Cand%2Cround")
                      :headers {"Content-Type" "application/x-www-form-urlencoded"}}
                     (:request ((:enter i) {:request {:body body}
@@ -48,8 +48,8 @@
                    (-> ((:enter i) {:request {:body body}
                                     :handler {:consumes ["application/transit+json"]}})
                        :request
-                       (update :body #?(:clj (comp #(encoders/transit-decode % :json)
-                                                   tu/input-stream->byte-array)
+                       (update :body #?(:clj  (comp #(encoders/transit-decode % :json)
+                                                    tu/input-stream->byte-array)
                                         :cljs #(encoders/transit-decode % :json)))))))
 
           #?(:bb nil
@@ -61,7 +61,21 @@
                                        :handler {:consumes ["application/transit+msgpack"]}})
                           :request
                           (update :body (comp #(encoders/transit-decode % :msgpack)
-                                              tu/input-stream->byte-array))))))))))))
+                                              tu/input-stream->byte-array)))))))))
+
+      #?(:clj
+         (testing "multipart"
+           (let [body {:alpha 12345
+                       :omega "abc"}
+                 i (i/encode-request
+                     (assoc (encoders/default-encoders)
+                       "multipart/form-data" {:encode encoders/multipart-encode
+                                              :as :multipart}))]
+             (is (= {:multipart [{:name "alpha" :content 12345}
+                                 {:name "omega" :content "abc"}]
+                     :headers {"Content-Type" "multipart/form-data"}}
+                    (:request ((:enter i) {:request {:body body}
+                                           :handler {:consumes ["multipart/form-data"]}}))))))))))
 
 (defn- stub-response [content-type body]
   {:name ::stub-response
@@ -125,7 +139,7 @@
           ctx (tc/enqueue* {:request {:body body}
                               :handler {:consumes ["text/magical+json"]
                                         :produces ["text/magical+json"]}}
-                             [(i/encode-body encoders)
+                             [(i/encode-request encoders)
                               (i/coerce-response encoders)
                               (stub-response "text/magical+json" encoded-body)])
           result (tc/execute ctx)]
@@ -151,7 +165,7 @@
                                                   "Accept" "text/magical+json"}}
                               :handler {:consumes ["text/magical+json"]
                                         :produces ["text/magical+json"]}}
-                             [i/default-encode-body
+                             [i/default-encode-request
                               i/default-coerce-response
                               (stub-response "text/magical+json" encoded-body)])
           result (tc/execute ctx)]
@@ -168,7 +182,7 @@
 
 (deftest supported-content-types-test
   (testing "picks up the supported content-types from the encoding/decoding interceptors"
-    (let [encode-body i/default-encode-body
+    (let [encode-request i/default-encode-request
           coerce-response (i/coerce-response (assoc (encoders/default-encoders)
                                                     "text/magical+json" {:encode encoders/json-encode
                                                                          :decode #(encoders/json-decode % keyword)
@@ -180,7 +194,7 @@
               :decodes #?(:bb #{"application/json" "text/magical+json" "application/transit+msgpack" "application/transit+json" "application/edn"}
                           :clj #{"application/json" "text/magical+json" "application/transit+msgpack" "application/transit+json" "application/edn" "application/x-www-form-urlencoded"}
                           :cljs #{"application/json" "text/magical+json" "application/transit+json" "application/edn" "application/x-www-form-urlencoded"})}
-             (i/supported-content-types [encode-body coerce-response]))))))
+             (i/supported-content-types [encode-request coerce-response]))))))
 
 (deftest validate-response-test
   (let [handler {:response-schemas [{:status (s/eq 200),

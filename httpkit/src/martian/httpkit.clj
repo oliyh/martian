@@ -1,11 +1,12 @@
 (ns martian.httpkit
-  (:require [org.httpkit.client :as http]
+  (:require [cheshire.core :as json]
             [martian.core :as martian]
+            [martian.encoders :as encoders]
             [martian.file :as file]
             [martian.interceptors :as interceptors]
             [martian.openapi :as openapi]
             [martian.yaml :as yaml]
-            [cheshire.core :as json]
+            [org.httpkit.client :as http]
             [tripod.context :as tc]))
 
 (def go-async interceptors/remove-stack)
@@ -20,10 +21,16 @@
                                      (fn [response]
                                        (:response (tc/execute (assoc ctx :response response))))))))})
 
+(def encoders
+  (assoc (encoders/default-encoders)
+    "multipart/form-data" {:encode encoders/multipart-encode
+                           :as :multipart}))
+
 (def default-interceptors
-  (concat martian/default-interceptors [interceptors/default-encode-body
-                                        interceptors/default-coerce-response
-                                        perform-request]))
+  (conj martian/default-interceptors
+        (interceptors/encode-request encoders)
+        interceptors/default-coerce-response
+        perform-request))
 
 (def default-opts {:interceptors default-interceptors})
 

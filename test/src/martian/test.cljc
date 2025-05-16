@@ -106,7 +106,7 @@
                          responder
                          %))
                  (remove (comp (set (keys http-interceptors)) namespace :name))
-                 (remove (comp #{::interceptors/encode-body ::interceptors/coerce-response} :name))))))
+                 (remove (comp #{::interceptors/encode-response ::interceptors/coerce-response} :name))))))
 
 (defn respond-with
   "Adds an interceptor that simulates the server responding with the supplied response.

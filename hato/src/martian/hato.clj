@@ -1,11 +1,12 @@
 (ns martian.hato
-  (:require [hato.client :as http]
+  (:require [clojure.walk :refer [keywordize-keys stringify-keys]]
+            [hato.client :as http]
             [martian.core :as martian]
+            [martian.encoders :as encoders]
             [martian.file :as file]
             [martian.interceptors :as interceptors]
             [martian.openapi :as openapi]
             [martian.yaml :as yaml]
-            [clojure.walk :refer [keywordize-keys stringify-keys]]
             [tripod.context :as tc]))
 
 (def perform-request
@@ -41,15 +42,23 @@
    :leave (fn [ctx]
             (update-in ctx [:response :headers] keywordize-keys))})
 
+(def encoders
+  (assoc (encoders/default-encoders)
+    "multipart/form-data" {:encode encoders/multipart-encode
+                           :as :multipart}))
+
 (def hato-interceptors
-  (concat martian/default-interceptors [interceptors/default-encode-body interceptors/default-coerce-response
-                                        keywordize-headers default-to-http-1]))
+  (conj martian/default-interceptors
+        (interceptors/encode-request encoders)
+        interceptors/default-coerce-response
+        keywordize-headers
+        default-to-http-1))
 
 (def default-interceptors
-  (concat hato-interceptors [perform-request]))
+  (conj hato-interceptors perform-request))
 
 (def default-interceptors-async
-  (concat hato-interceptors [perform-request-async]))
+  (conj hato-interceptors perform-request-async))
 
 (def default-opts {:interceptors default-interceptors})
 

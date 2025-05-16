@@ -1,11 +1,11 @@
 (ns martian.clj-http-lite
-  (:require [clj-http.lite.client :as http]
-            [cheshire.core :as json]
-            [martian.file :as file]
-            [martian.yaml :as yaml]
+  (:require [cheshire.core :as json]
+            [clj-http.lite.client :as http]
             [martian.core :as martian]
+            [martian.file :as file]
             [martian.interceptors :as interceptors]
-            [martian.openapi :as openapi]))
+            [martian.openapi :as openapi]
+            [martian.yaml :as yaml]))
 
 (defn- prepare-response-headers [headers]
   (reduce (fn [m [k v]] (assoc m (keyword k) v)) {} headers))
@@ -18,7 +18,11 @@
                                      (update-in [:headers] prepare-response-headers))))})
 
 (def default-interceptors
-  (concat martian/default-interceptors [interceptors/default-encode-body interceptors/default-coerce-response perform-request]))
+  (conj martian/default-interceptors
+        ;; clj-http-lite does not support 'multipart/form-data' uploads
+        interceptors/default-encode-body
+        interceptors/default-coerce-response
+        perform-request))
 
 (def default-opts {:interceptors default-interceptors})
 
