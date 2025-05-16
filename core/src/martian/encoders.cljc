@@ -35,6 +35,10 @@
      (if-let [v (if-not (string/blank? body) (js/JSON.parse body))]
        (js->clj v :keywordize-keys key-fn))))
 
+#?(:clj
+   (defn multipart-encode [body]
+     (mapv (fn [[k v]] {:name (name k) :content v}) body)))
+
 #?(:cljs
    (defn- form-encode [body]
      (str (js/URLSearchParams. (clj->js body)))))

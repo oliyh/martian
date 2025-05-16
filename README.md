@@ -351,7 +351,7 @@ Interceptors provided at a per-route level are inserted into the interceptor cha
   - `route-interceptor-1` e.g. `::override-load-pet-method`
   - `route-interceptor-2`
   - etc
-- `encode-body`
+- `default-encode-request`
 - `default-coerce-response`
 - `perform-request`
 
@@ -360,7 +360,7 @@ You may move or provide your own version of `enqueue-route-specific-interceptors
 
 ## Custom content-types
 
-Martian allows you to add support for content-types in addition to those supported out of the box - `transit`, `edn` and `json`.
+Martian allows you to add support for content-types in addition to those supported out of the box — `transit`, `edn`, `json`, and `multipart` (supported in all JVM/Babashka HTTP clients except for `clj-http-lite`).
 
 ```clojure
 (require '[martian.core :as m])
@@ -379,7 +379,7 @@ Martian allows you to add support for content-types in addition to those support
   (http/bootstrap-openapi
    "https://example-api.com"
    {:interceptors (concat m/default-interceptors
-                          [(i/encode-body encoders)
+                          [(i/encode-request encoders)
                            (i/coerce-response encoders)
                            http/perform-request])}))
 
