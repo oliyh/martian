@@ -63,18 +63,19 @@
                           (update :body (comp #(encoders/transit-decode % :msgpack)
                                               tu/input-stream->byte-array)))))))))
 
-      (testing "multipart"
-        (let [body {:alpha 12345
-                    :omega "abc"}
-              i (i/encode-request
-                  (assoc (encoders/default-encoders)
-                    "multipart/form-data" {:encode encoders/multipart-encode
-                                           :as :multipart}))]
-          (is (= {:multipart [{:name "alpha" :content 12345}
-                              {:name "omega" :content "abc"}]
-                  :headers {"Content-Type" "multipart/form-data"}}
-                 (:request ((:enter i) {:request {:body body}
-                                        :handler {:consumes ["multipart/form-data"]}})))))))))
+      #?(:clj
+         (testing "multipart"
+           (let [body {:alpha 12345
+                       :omega "abc"}
+                 i (i/encode-request
+                     (assoc (encoders/default-encoders)
+                       "multipart/form-data" {:encode encoders/multipart-encode
+                                              :as :multipart}))]
+             (is (= {:multipart [{:name "alpha" :content 12345}
+                                 {:name "omega" :content "abc"}]
+                     :headers {"Content-Type" "multipart/form-data"}}
+                    (:request ((:enter i) {:request {:body body}
+                                           :handler {:consumes ["multipart/form-data"]}}))))))))))
 
 (defn- stub-response [content-type body]
   {:name ::stub-response
