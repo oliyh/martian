@@ -87,7 +87,7 @@
   {:name ::encode-request
    :encodes (keys encoders)
    :enter (fn [{:keys [request handler] :as ctx}]
-            (let [has-body? (get-in ctx [:request :body])
+            (let [has-body? (:body request)
                   content-type (and has-body?
                                     (not (get-in request [:headers "Content-Type"]))
                                     (encoding/choose-content-type encoders (:consumes handler)))
