@@ -1,12 +1,13 @@
 (ns martian.babashka.http-client
   (:require [babashka.http-client :as http]
             [babashka.json :as json]
+            [clojure.walk :refer [keywordize-keys stringify-keys]]
             [martian.core :as martian]
+            [martian.encoders :as encoders]
             [martian.file :as file]
             [martian.interceptors :as interceptors]
             [martian.openapi :as openapi]
             [martian.yaml :as yaml]
-            [clojure.walk :refer [keywordize-keys stringify-keys]]
             [tripod.context :as tc])
   (:import [java.util.function Function]))
 
@@ -66,15 +67,23 @@
    :leave (fn [ctx]
             (update-in ctx [:response :headers] keywordize-keys))})
 
+(def encoders
+  (assoc (encoders/default-encoders)
+    "multipart/form-data" {:encode encoders/multipart-encode
+                           :as :multipart}))
+
 (def babashka-http-client-interceptors
-  (concat martian/default-interceptors [interceptors/default-encode-body interceptors/default-coerce-response
-                                        keywordize-headers default-to-http-1]))
+  (conj martian/default-interceptors
+        (interceptors/encode-request encoders)
+        interceptors/default-coerce-response
+        keywordize-headers
+        default-to-http-1))
 
 (def default-interceptors
-  (concat babashka-http-client-interceptors [perform-request]))
+  (conj babashka-http-client-interceptors perform-request))
 
 (def default-interceptors-async
-  (concat babashka-http-client-interceptors [perform-request-async]))
+  (conj babashka-http-client-interceptors perform-request-async))
 
 (def default-opts {:interceptors default-interceptors})
 

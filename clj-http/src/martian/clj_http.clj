@@ -1,6 +1,7 @@
 (ns martian.clj-http
   (:require [clj-http.client :as http]
             [martian.core :as martian]
+            [martian.encoders :as encoders]
             [martian.file :as file]
             [martian.interceptors :as interceptors]
             [martian.openapi :as openapi]
@@ -11,8 +12,16 @@
    :leave (fn [{:keys [request] :as ctx}]
             (assoc ctx :response (http/request request)))})
 
+(def encoders
+  (assoc (encoders/default-encoders)
+    "multipart/form-data" {:encode encoders/multipart-encode
+                           :as :multipart}))
+
 (def default-interceptors
-  (concat martian/default-interceptors [interceptors/default-encode-body interceptors/default-coerce-response perform-request]))
+  (conj martian/default-interceptors
+        (interceptors/encode-request encoders)
+        interceptors/default-coerce-response
+        perform-request))
 
 (def default-opts {:interceptors default-interceptors})
 

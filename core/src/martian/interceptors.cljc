@@ -1,5 +1,6 @@
 (ns martian.interceptors
   (:require [martian.schema :as schema]
+            [clojure.set :as set]
             [clojure.walk :refer [keywordize-keys stringify-keys]]
             [tripod.context :as tc]
             [schema.core :as s]
@@ -82,19 +83,27 @@
               (update ctx ::tc/queue #(into (into tc/queue i) %))
               ctx))})
 
-(defn encode-body [encoders]
-  {:name ::encode-body
+(defn encode-request [encoders]
+  {:name ::encode-request
    :encodes (keys encoders)
    :enter (fn [{:keys [request handler] :as ctx}]
-            (let [content-type (and (:body request)
+            (let [has-body? (:body request)
+                  content-type (and has-body?
                                     (not (get-in request [:headers "Content-Type"]))
                                     (encoding/choose-content-type encoders (:consumes handler)))
+                  multipart? (= "multipart/form-data" content-type)
                   {:keys [encode]} (encoding/find-encoder encoders content-type)]
               (cond-> ctx
-                (get-in ctx [:request :body]) (update-in [:request :body] encode)
-                content-type (assoc-in [:request :headers "Content-Type"] content-type))))})
+                      has-body? (update-in [:request :body] encode)
+                      ;; NB: Luckily, all target HTTP clients — clj-http (but not lite), http-kit,
+                      ;;     hato, and even babashka/http-client — all support the same syntax.
+                      multipart? (update :request set/rename-keys {:body :multipart})
+                      content-type (assoc-in [:request :headers "Content-Type"] content-type))))})
 
-(def default-encode-body (encode-body (encoders/default-encoders)))
+(def default-encode-request (encode-request (encoders/default-encoders)))
+
+;; todo left for the backward compatibility - drop later, upon a major version release
+(def default-encode-body default-encode-request)
 
 (defn coerce-response [encoders]
   {:name ::coerce-response
