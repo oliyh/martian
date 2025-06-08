@@ -6,7 +6,7 @@
   :plugins [[lein-modules "0.3.11"]]
   :dependencies [[com.github.oliyh/martian :version]
                  [hato "0.8.2"]]
-  :profiles {:provided {:dependencies [[org.clojure/clojure "1.10.3"]]}
+  :profiles {:provided {:dependencies [[org.clojure/clojure "1.12.1"]]}
              :dev {:source-paths ["../test-common"]
                    :exclusions [[org.clojure/tools.reader]]
                    :dependencies [[org.clojure/tools.reader "1.3.5"]

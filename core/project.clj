@@ -19,7 +19,7 @@
                  [org.flatland/ordered "1.15.10"]
                  [ring/ring-codec "1.2.0"]]
   :java-source-paths ["src"]
-  :profiles {:provided {:dependencies [[org.clojure/clojure "1.10.3"]
+  :profiles {:provided {:dependencies [[org.clojure/clojure "1.12.1"]
                                        [org.clojure/clojurescript "1.10.866"]]}
              :dev {:source-paths ["../test-common"]
                    :exclusions [[org.clojure/tools.reader]]

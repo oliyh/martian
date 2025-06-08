@@ -8,7 +8,7 @@
                  [prismatic/schema-generators "0.1.3"]
                  [org.clojure/test.check "1.1.0"]
                  [org.clojure/core.async "1.3.618"]]
-  :profiles {:provided {:dependencies [[org.clojure/clojure "1.10.3"]
+  :profiles {:provided {:dependencies [[org.clojure/clojure "1.12.1"]
                                        [org.clojure/clojurescript "1.10.520" :upgrade false] ;; upgrading this makes the tests fail for some reason...
                                        ]}
              :dev {:exclusions [[org.clojure/tools.reader]]

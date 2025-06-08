@@ -8,7 +8,7 @@
                  [babashka/process "0.4.16"]
                  [org.babashka/json "0.1.1"]
                  [org.babashka/http-client "0.1.6"]]
-  :profiles {:provided {:dependencies [[org.clojure/clojure "1.11.1"]]}
+  :profiles {:provided {:dependencies [[org.clojure/clojure "1.12.1"]]}
              :dev {:source-paths ["../test-common"]
                    :exclusions [[org.clojure/tools.reader]]
                    :dependencies [[org.clojure/tools.reader "1.3.5"]

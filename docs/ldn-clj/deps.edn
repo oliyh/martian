@@ -1,4 +1,4 @@
-{:deps {org.clojure/clojure {:mvn/version "1.11.1"}
+{:deps {org.clojure/clojure {:mvn/version "1.12.1"}
         org.clojure/clojurescript {:mvn/version "1.11.60"}
         org.slf4j/slf4j-api {:mvn/version "2.0.7"}
         ch.qos.logback/logback-classic {:mvn/version "1.4.8"}

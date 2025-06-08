@@ -7,7 +7,7 @@
   :dependencies [[com.github.oliyh/martian :version]
                  [cheshire "5.10.1"]
                  [org.clj-commons/clj-http-lite "1.0.13"]]
-  :profiles {:provided {:dependencies [[org.clojure/clojure "1.10.3"]]}
+  :profiles {:provided {:dependencies [[org.clojure/clojure "1.12.1"]]}
              :dev {:source-paths ["../test-common"]
                    :exclusions [[org.clojure/tools.reader]]
                    :dependencies [[org.clojure/tools.reader "1.3.5"]
