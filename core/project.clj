@@ -8,7 +8,7 @@
                  [metosin/schema-tools "0.13.1"]
                  [metosin/spec-tools "0.10.7"
                   :exclusions [com.fasterxml.jackson.core/jackson-databind]]
-                 [org.clojure/spec.alpha "0.2.194"] ;; TODO: Migrate to "0.5.238" separately.
+                 [org.clojure/spec.alpha "0.5.238"]
                  [camel-snake-kebab "0.4.3"]
                  [cheshire "6.0.0"]
                  [clj-commons/clj-yaml "1.0.29"]
@@ -16,7 +16,7 @@
 
                  [com.cognitect/transit-clj "1.0.333"]
                  [com.cognitect/transit-cljs "0.8.280"]
-                 [org.flatland/ordered "1.15.10"] ;; TODO: Migrate to "1.15.12"?
+                 [org.flatland/ordered "1.15.10"] ;; TODO: Upgrade to "1.15.12"?
                  [ring/ring-codec "1.3.0"]]
   :java-source-paths ["src"]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.12.1"]
