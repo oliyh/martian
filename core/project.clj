@@ -10,7 +10,7 @@
                   :exclusions [com.fasterxml.jackson.core/jackson-databind]]
                  [org.clojure/spec.alpha "0.2.194"] ;; TODO: Migrate to "0.5.238" separately.
                  [camel-snake-kebab "0.4.3"]
-                 [cheshire "5.13.0"] ;; TODO: Migrate to "6.0.0" separately.
+                 [cheshire "6.0.0"]
                  [clj-commons/clj-yaml "0.7.107"] ;; TODO: Migrate to "1.0.29" separately.
                  [lambdaisland/uri "1.19.155"]
 
