@@ -5,7 +5,7 @@
             :url "http://opensource.org/licenses/MIT"}
   :plugins [[lein-modules "0.3.11"]]
   :dependencies [[com.github.oliyh/martian :version]
-                 [cljs-http "0.1.46"]
+                 [cljs-http "0.1.48"]
                  [org.clojure/core.async "1.3.618"]]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.12.1"]
                                        [org.clojure/clojurescript "1.10.866"]]}

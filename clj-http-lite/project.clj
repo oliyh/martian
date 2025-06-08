@@ -5,7 +5,7 @@
             :url "http://opensource.org/licenses/MIT"}
   :plugins [[lein-modules "0.3.11"]]
   :dependencies [[com.github.oliyh/martian :version]
-                 [cheshire "5.10.1"]
+                 [cheshire "5.13.0"] ;; TODO: Migrate to "6.0.0" separately.
                  [org.clj-commons/clj-http-lite "1.0.13"]]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.12.1"]]}
              :dev {:source-paths ["../test-common"]
