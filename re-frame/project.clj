@@ -6,7 +6,7 @@
   :plugins [[lein-modules "0.3.11"]]
   :dependencies [[com.github.oliyh/martian :version]
                  [com.github.oliyh/martian-cljs-http :version]
-                 [org.clojure/core.async "1.3.618"]]
+                 [org.clojure/core.async "1.8.741"]]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.12.1"]
                                        [org.clojure/clojurescript "1.10.866"]
                                        [re-frame "1.2.0"]]}

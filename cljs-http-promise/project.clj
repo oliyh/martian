@@ -6,7 +6,7 @@
   :plugins [[lein-modules "0.3.11"]]
   :dependencies [[com.github.oliyh/martian :version]
                  [com.github.oliyh/cljs-http-promise "0.1.47"]
-                 [org.clojure/core.async "1.3.618"]]
+                 [org.clojure/core.async "1.8.741"]]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.12.1"]
                                        [org.clojure/clojurescript "1.10.866"]]}
              :dev {:source-paths ["../test-common" "dev"]
