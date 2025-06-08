@@ -11,7 +11,7 @@
                  [org.clojure/spec.alpha "0.2.194"] ;; TODO: Migrate to "0.5.238" separately.
                  [camel-snake-kebab "0.4.3"]
                  [cheshire "6.0.0"]
-                 [clj-commons/clj-yaml "0.7.107"] ;; TODO: Migrate to "1.0.29" separately.
+                 [clj-commons/clj-yaml "1.0.29"]
                  [lambdaisland/uri "1.19.155"]
 
                  [com.cognitect/transit-clj "1.0.333"]
