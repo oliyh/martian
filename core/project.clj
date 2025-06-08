@@ -4,20 +4,20 @@
   :license {:name "The MIT License"
             :url "http://opensource.org/licenses/MIT"}
   :dependencies [[frankiesardo/tripod "0.2.0"]
-                 [prismatic/schema "1.1.12"]
-                 [metosin/schema-tools "0.12.3"]
-                 [metosin/spec-tools "0.10.5"
+                 [prismatic/schema "1.4.1"]
+                 [metosin/schema-tools "0.13.1"]
+                 [metosin/spec-tools "0.10.7"
                   :exclusions [com.fasterxml.jackson.core/jackson-databind]]
-                 [org.clojure/spec.alpha "0.2.194"]
-                 [camel-snake-kebab "0.4.2"]
-                 [cheshire "5.10.1"]
-                 [clj-commons/clj-yaml "0.7.107"]
-                 [lambdaisland/uri "1.12.89"]
+                 [org.clojure/spec.alpha "0.2.194"] ;; TODO: Migrate to "0.5.238" separately.
+                 [camel-snake-kebab "0.4.3"]
+                 [cheshire "5.13.0"] ;; TODO: Migrate to "6.0.0" separately.
+                 [clj-commons/clj-yaml "0.7.107"] ;; TODO: Migrate to "1.0.29" separately.
+                 [lambdaisland/uri "1.19.155"]
 
-                 [com.cognitect/transit-clj "1.0.324"]
-                 [com.cognitect/transit-cljs "0.8.269"]
-                 [org.flatland/ordered "1.15.10"]
-                 [ring/ring-codec "1.2.0"]]
+                 [com.cognitect/transit-clj "1.0.333"]
+                 [com.cognitect/transit-cljs "0.8.280"]
+                 [org.flatland/ordered "1.15.10"] ;; TODO: Migrate to "1.15.12"?
+                 [ring/ring-codec "1.3.0"]]
   :java-source-paths ["src"]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.12.1"]
                                        [org.clojure/clojurescript "1.10.866"]]}

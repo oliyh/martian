@@ -5,7 +5,7 @@
             :url "http://opensource.org/licenses/MIT"}
   :plugins [[lein-modules "0.3.11"]]
   :dependencies [[com.github.oliyh/martian :version]
-                 [fipp "0.6.24"]]
+                 [fipp "0.6.27"]]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.12.1"]
                                        [org.clojure/clojurescript "1.10.866"]]}
              :dev {:resource-paths ["../test-common"]

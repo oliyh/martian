@@ -5,8 +5,8 @@
             :url "http://opensource.org/licenses/MIT"}
   :plugins [[lein-modules "0.3.11"]]
   :dependencies [[com.github.oliyh/martian :version]
-                 [prismatic/schema-generators "0.1.3"]
-                 [org.clojure/test.check "1.1.0"]
+                 [prismatic/schema-generators "0.1.5"]
+                 [org.clojure/test.check "1.1.1"]
                  [org.clojure/core.async "1.3.618"]]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.12.1"]
                                        [org.clojure/clojurescript "1.10.520" :upgrade false] ;; upgrading this makes the tests fail for some reason...
