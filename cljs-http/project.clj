@@ -3,7 +3,7 @@
   :url "https://github.com/oliyh/martian"
   :license {:name "The MIT License"
             :url "http://opensource.org/licenses/MIT"}
-  :plugins [[bigml/lein-modules "0.4.1"]]
+  :plugins [[lein-modules "0.3.11"]]
   :dependencies [[com.github.oliyh/martian :version]
                  [cljs-http "0.1.48"]
                  [org.clojure/core.async "1.8.741"]]

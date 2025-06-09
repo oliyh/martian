@@ -3,19 +3,8 @@
   :url "https://github.com/oliyh/martian"
   :license {:name "The MIT License"
             :url "http://opensource.org/licenses/MIT"}
-  :plugins [[bigml/lein-modules "0.4.1"]]
-  :modules {:subprocess "lein"
-            :versions {com.github.oliyh/martian :version
-                       com.github.oliyh/martian-test :version
-                       com.github.oliyh/martian-vcr :version
-                       com.github.oliyh/martian-httpkit :version
-                       com.github.oliyh/martian-clj-http :version
-                       com.github.oliyh/martian-clj-http-lite :version
-                       com.github.oliyh/martian-hato :version
-                       com.github.oliyh/martian-cljs-http :version
-                       com.github.oliyh/martian-cljs-http-promise :version
-                       com.github.oliyh/martian-re-frame :version
-                       com.github.oliyh/martian-babashka-http-client :version}}
+  :plugins [[lein-modules "0.3.11"]]
+  :profiles {:test {:modules {:subprocess "lein"}}}
   :release-tasks [["vcs" "assert-committed"]
                   ["change" "version" "leiningen.release/bump-version" "release"]
                   ["modules" "change" "version" "leiningen.release/bump-version" "release"]
