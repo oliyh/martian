@@ -16,8 +16,8 @@
 
                                   [binaryage/devtools "1.0.7"]
                                   [com.bhauman/figwheel-main "0.2.20"]
-                                  [org.clojure/tools.nrepl "0.2.13"] ;; TODO: Migrate to `[nrepl/nrepl "1.3.1"]`.
-                                  [cider/piggieback "0.5.2"]
+                                  [nrepl/nrepl "1.3.1"]
+                                  [cider/piggieback "0.6.0"]
 
                                   [com.github.oliyh/martian-httpkit "0.1.32-SNAPSHOT"]
                                   [prismatic/schema "1.4.1"]]

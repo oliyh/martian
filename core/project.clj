@@ -26,8 +26,8 @@
                    :clean-targets ^{:protect false} ["target"]
                    :dependencies [[binaryage/devtools "1.0.7"]
                                   [com.bhauman/figwheel-main "0.2.20"]
-                                  [org.clojure/tools.nrepl "0.2.13"] ;; TODO: Migrate to `[nrepl/nrepl "1.3.1"]`.
-                                  [cider/piggieback "0.5.2"]
+                                  [nrepl/nrepl "1.3.1"]
+                                  [cider/piggieback "0.6.0"]
 
                                   [nubank/matcher-combinators "3.8.5"]]
                    :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}}}

@@ -18,8 +18,8 @@
                                   [com.bhauman/figwheel-main "0.2.18" ;; TODO: Upgrade to "0.2.20" after "pedestal-api".
                                    :exclusions [org.eclipse.jetty.websocket/websocket-server
                                                 org.eclipse.jetty.websocket/websocket-servlet]]
-                                  [org.clojure/tools.nrepl "0.2.13"] ;; TODO: Migrate to `[nrepl/nrepl "1.3.1"]`.
-                                  [cider/piggieback "0.5.2"]
+                                  [nrepl/nrepl "1.3.1"]
+                                  [cider/piggieback "0.6.0"]
 
                                   [org.eclipse.jetty.websocket/websocket-server "9.4.35.v20201120" :upgrade false]
                                   [org.eclipse.jetty.websocket/websocket-servlet "9.4.35.v20201120" :upgrade false]
