@@ -4,7 +4,7 @@
   :license {:name "The MIT License"
             :url "http://opensource.org/licenses/MIT"}
   :plugins [[bigml/lein-modules "0.4.1"]]
-  :dependencies [[com.github.oliyh/martian :version]
+  :dependencies [[com.github.oliyh/martian "0.1.32-SNAPSHOT"]
                  [prismatic/schema-generators "0.1.4"] ;; TODO: Upgrade to "0.1.5" makes the tests fail.
                  [org.clojure/test.check "1.1.1"]
                  [org.clojure/core.async "1.8.741"]]
@@ -17,7 +17,7 @@
                                   [org.clojure/tools.nrepl "0.2.13"] ;; TODO: Migrate to `[nrepl/nrepl "1.3.1"]`.
                                   [cider/piggieback "0.5.2"]
 
-                                  [com.github.oliyh/martian-httpkit :version]
+                                  [com.github.oliyh/martian-httpkit "0.1.32-SNAPSHOT"]
                                   [prismatic/schema "1.4.1"]]
                    :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}}}
   :aliases {"fig"       ["trampoline" "run" "-m" "figwheel.main"]
