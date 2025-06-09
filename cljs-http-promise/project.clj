@@ -15,7 +15,7 @@
                    :dependencies [[org.clojure/tools.reader "1.5.2"]
 
                                   [binaryage/devtools "1.0.7"]
-                                  [com.bhauman/figwheel-main "0.2.20"
+                                  [com.bhauman/figwheel-main "0.2.18" ;; TODO: Upgrade to "0.2.20" after "pedestal-api".
                                    :exclusions [org.eclipse.jetty.websocket/websocket-server
                                                 org.eclipse.jetty.websocket/websocket-servlet]]
                                   [org.clojure/tools.nrepl "0.2.13"] ;; TODO: Migrate to `[nrepl/nrepl "1.3.1"]`.

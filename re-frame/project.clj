@@ -15,7 +15,7 @@
                    :clean-targets ^{:protect false} ["target"]
                    :dependencies [[org.clojure/tools.reader "1.5.2"]
 
-                                  [com.bhauman/figwheel-main "0.2.20"
+                                  [com.bhauman/figwheel-main "0.2.18" ;; TODO: Upgrade to "0.2.20" after "pedestal-api".
                                    :exclusions [org.eclipse.jetty.websocket/websocket-server
                                                 org.eclipse.jetty.websocket/websocket-servlet]]
 
