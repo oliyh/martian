@@ -16,7 +16,7 @@
 
                  [com.cognitect/transit-clj "1.0.333"]
                  [com.cognitect/transit-cljs "0.8.280"]
-                 [org.flatland/ordered "1.15.10"] ;; TODO: Upgrade to "1.15.11" makes the tests fail.
+                 [org.flatland/ordered "1.15.12"]
                  [ring/ring-codec "1.3.0"]]
   :java-source-paths ["src"]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.12.1"]
