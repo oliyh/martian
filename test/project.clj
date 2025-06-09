@@ -3,7 +3,7 @@
   :url "https://github.com/oliyh/martian"
   :license {:name "The MIT License"
             :url "http://opensource.org/licenses/MIT"}
-  :plugins [[lein-modules "0.3.11"]]
+  :plugins [[bigml/lein-modules "0.4.1"]]
   :dependencies [[com.github.oliyh/martian :version]
                  [prismatic/schema-generators "0.1.4"] ;; TODO: Upgrade to "0.1.5" makes the tests fail.
                  [org.clojure/test.check "1.1.1"]
