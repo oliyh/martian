@@ -13,7 +13,9 @@
              :dev {:source-paths ["../test-common"]
                    :resource-paths ["target" "test-resources" "../test-common"]
                    :clean-targets ^{:protect false} ["target"]
-                   :dependencies [[com.bhauman/figwheel-main "0.2.20"
+                   :dependencies [[org.clojure/tools.reader "1.5.2"]
+
+                                  [com.bhauman/figwheel-main "0.2.20"
                                    :exclusions [org.eclipse.jetty.websocket/websocket-server
                                                 org.eclipse.jetty.websocket/websocket-servlet]]
 

@@ -10,7 +10,9 @@
                                        [org.clojure/clojurescript "1.12.42"]]}
              :dev {:resource-paths ["target" "../test-common"]
                    :clean-targets ^{:protect false} ["target"]
-                   :dependencies [[binaryage/devtools "1.0.7"]
+                   :dependencies [[org.clojure/tools.reader "1.5.2"]
+
+                                  [binaryage/devtools "1.0.7"]
                                   [com.bhauman/figwheel-main "0.2.20"]
                                   [org.clojure/tools.nrepl "0.2.13"] ;; TODO: Migrate to `[nrepl/nrepl "1.3.1"]`.
                                   [cider/piggieback "0.5.2"]]
