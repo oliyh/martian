@@ -3,8 +3,10 @@
   :url "https://github.com/oliyh/martian"
   :license {:name "The MIT License"
             :url "http://opensource.org/licenses/MIT"}
-  :plugins [[lein-modules "0.3.11"]]
-  :dependencies [[com.github.oliyh/martian :version]
+  :plugins [[lein-parent "0.3.9"]]
+  :parent-project {:path "../project.clj"
+                   :inherit [:managed-dependencies]}
+  :dependencies [[com.github.oliyh/martian]
                  [babashka/process "0.6.23"]
                  [org.babashka/json "0.1.6"]
                  [org.babashka/http-client "0.4.23"]]

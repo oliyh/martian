@@ -3,8 +3,10 @@
   :url "https://github.com/oliyh/martian"
   :license {:name "The MIT License"
             :url "http://opensource.org/licenses/MIT"}
-  :plugins [[lein-modules "0.3.11"]]
-  :dependencies [[com.github.oliyh/martian :version]
+  :plugins [[lein-parent "0.3.9"]]
+  :parent-project {:path "../project.clj"
+                   :inherit [:managed-dependencies]}
+  :dependencies [[com.github.oliyh/martian]
                  [com.github.oliyh/cljs-http-promise "0.1.47"]
                  [org.clojure/core.async "1.8.741"]]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.12.1"]

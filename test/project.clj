@@ -3,8 +3,10 @@
   :url "https://github.com/oliyh/martian"
   :license {:name "The MIT License"
             :url "http://opensource.org/licenses/MIT"}
-  :plugins [[lein-modules "0.3.11"]]
-  :dependencies [[com.github.oliyh/martian :version]
+  :plugins [[lein-parent "0.3.9"]]
+  :parent-project {:path "../project.clj"
+                   :inherit [:managed-dependencies]}
+  :dependencies [[com.github.oliyh/martian]
                  [prismatic/schema-generators "0.1.5"]
                  [org.clojure/test.check "1.1.1"]
                  [org.clojure/core.async "1.8.741"]]
@@ -20,7 +22,7 @@
                                   [nrepl/nrepl "1.3.1"]
                                   [cider/piggieback "0.6.0"]
 
-                                  [com.github.oliyh/martian-httpkit :version]
+                                  [com.github.oliyh/martian-httpkit]
                                   [prismatic/schema "1.4.1"]]
                    :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}}}
   :aliases {"fig"       ["trampoline" "run" "-m" "figwheel.main"]

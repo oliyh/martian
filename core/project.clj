@@ -3,6 +3,9 @@
   :url "https://github.com/oliyh/martian"
   :license {:name "The MIT License"
             :url "http://opensource.org/licenses/MIT"}
+  :plugins [[lein-parent "0.3.9"]]
+  :parent-project {:path "../project.clj"
+                   :inherit [:managed-dependencies]}
   :dependencies [[frankiesardo/tripod "0.2.0"]
                  [prismatic/schema "1.4.1"]
                  [metosin/schema-tools "0.13.1"]

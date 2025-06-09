@@ -5,6 +5,17 @@
             :url "http://opensource.org/licenses/MIT"}
   :plugins [[lein-modules "0.3.11"]]
   :profiles {:test {:modules {:subprocess "lein"}}}
+  :managed-dependencies [[com.github.oliyh/martian "0.1.32-SNAPSHOT"]
+                         [com.github.oliyh/martian-httpkit "0.1.32-SNAPSHOT"]
+                         [com.github.oliyh/martian-clj-http "0.1.32-SNAPSHOT"]
+                         [com.github.oliyh/martian-clj-http-lite "0.1.32-SNAPSHOT"]
+                         [com.github.oliyh/martian-hato "0.1.32-SNAPSHOT"]
+                         [com.github.oliyh/martian-cljs-http "0.1.32-SNAPSHOT"]
+                         [com.github.oliyh/martian-cljs-http-promise "0.1.32-SNAPSHOT"]
+                         [com.github.oliyh/martian-re-frame "0.1.32-SNAPSHOT"]
+                         [com.github.oliyh/martian-babashka-http-client "0.1.32-SNAPSHOT"]
+                         [com.github.oliyh/martian-test "0.1.32-SNAPSHOT"]
+                         [com.github.oliyh/martian-vcr "0.1.32-SNAPSHOT"]]
   :release-tasks [["vcs" "assert-committed"]
                   ["change" "version" "leiningen.release/bump-version" "release"]
                   ["modules" "change" "version" "leiningen.release/bump-version" "release"]
