@@ -24,7 +24,9 @@
              :dev {:source-paths ["../test-common"]
                    :resource-paths ["target" "test-resources" "../test-common"]
                    :clean-targets ^{:protect false} ["target"]
-                   :dependencies [[binaryage/devtools "1.0.7"]
+                   :dependencies [[org.slf4j/slf4j-simple "2.0.17"]
+
+                                  [binaryage/devtools "1.0.7"]
                                   [com.bhauman/figwheel-main "0.2.20"]
                                   [nrepl/nrepl "1.3.1"]
                                   [cider/piggieback "0.6.0"]

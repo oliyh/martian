@@ -12,7 +12,8 @@
                                        [org.clojure/clojurescript "1.12.42" ]]}
              :dev {:resource-paths ["target" "../test-common"]
                    :clean-targets ^{:protect false} ["target"]
-                   :dependencies [[org.clojure/tools.reader "1.5.2"]
+                   :dependencies [[org.slf4j/slf4j-simple "2.0.17"]
+                                  [org.clojure/tools.reader "1.5.2"]
 
                                   [binaryage/devtools "1.0.7"]
                                   [com.bhauman/figwheel-main "0.2.20"]

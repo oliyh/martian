@@ -10,7 +10,9 @@
                  [org.babashka/http-client "0.4.23"]]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.12.1"]]}
              :dev {:source-paths ["../test-common"]
-                   :dependencies [[org.clojure/tools.reader "1.5.2"]
+                   :dependencies [[org.slf4j/slf4j-simple "2.0.17"]
+                                  [org.clojure/tools.reader "1.5.2"]
+
                                   [pedestal-api "0.3.5"]
                                   [io.pedestal/pedestal.service "0.5.9"]
                                   [io.pedestal/pedestal.jetty "0.5.9"]]}})
