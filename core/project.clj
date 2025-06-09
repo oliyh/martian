@@ -20,15 +20,15 @@
                  [ring/ring-codec "1.3.0"]]
   :java-source-paths ["src"]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.12.1"]
-                                       [org.clojure/clojurescript "1.10.866"]]}
+                                       [org.clojure/clojurescript "1.12.42"]]}
              :dev {:source-paths ["../test-common"]
-                   :exclusions [[org.clojure/tools.reader]]
-                   :resource-paths ["test-resources" "../test-common"]
-                   :dependencies [[binaryage/devtools "1.0.3"]
-                                  [com.bhauman/figwheel-main "0.2.13"]
-                                  [org.clojure/tools.reader "1.3.5"]
+                   :resource-paths ["target" "test-resources" "../test-common"]
+                   :clean-targets ^{:protect false} ["target"]
+                   :dependencies [[binaryage/devtools "1.0.7"]
+                                  [com.bhauman/figwheel-main "0.2.20"]
+                                  [org.clojure/tools.nrepl "0.2.13"] ;; TODO: Migrate to `[nrepl/nrepl "1.3.1"]`.
                                   [cider/piggieback "0.5.2"]
-                                  [org.clojure/tools.nrepl "0.2.13"]
+
                                   [nubank/matcher-combinators "3.8.5"]]
                    :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}}}
   :aliases {"fig"       ["trampoline" "run" "-m" "figwheel.main"]

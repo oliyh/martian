@@ -9,17 +9,16 @@
                  [org.clojure/test.check "1.1.1"]
                  [org.clojure/core.async "1.8.741"]]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.12.1"]
-                                       [org.clojure/clojurescript "1.10.520" :upgrade false] ;; upgrading this makes the tests fail for some reason...
-                                       ]}
-             :dev {:exclusions [[org.clojure/tools.reader]]
-                   :resource-paths ["../test-common"]
-                   :dependencies [[prismatic/schema "1.1.12"]
-                                  [binaryage/devtools "1.0.3"]
-                                  [com.bhauman/figwheel-main "0.2.13"]
-                                  [org.clojure/tools.nrepl "0.2.13"]
-                                  [org.clojure/tools.reader "1.3.5"]
+                                       [org.clojure/clojurescript "1.12.42" ]]}
+             :dev {:resource-paths ["target" "../test-common"]
+                   :clean-targets ^{:protect false} ["target"]
+                   :dependencies [[binaryage/devtools "1.0.7"]
+                                  [com.bhauman/figwheel-main "0.2.20"]
+                                  [org.clojure/tools.nrepl "0.2.13"] ;; TODO: Migrate to `[nrepl/nrepl "1.3.1"]`.
                                   [cider/piggieback "0.5.2"]
-                                  [com.github.oliyh/martian-httpkit :version]]
+
+                                  [com.github.oliyh/martian-httpkit :version]
+                                  [prismatic/schema "1.4.1"]]
                    :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}}}
   :aliases {"fig"       ["trampoline" "run" "-m" "figwheel.main"]
             "fig:build" ["trampoline" "run" "-m" "figwheel.main" "-b" "dev" "-r"]

@@ -8,17 +8,17 @@
                  [com.github.oliyh/martian-cljs-http :version]
                  [org.clojure/core.async "1.8.741"]]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.12.1"]
-                                       [org.clojure/clojurescript "1.10.866"]
-                                       [re-frame "1.2.0"]]}
+                                       [org.clojure/clojurescript "1.12.42"]
+                                       [re-frame "1.2.0"]]} ;; TODO: Upgrade to "1.4.3" separately.
              :dev {:source-paths ["../test-common"]
-                   :resource-paths ["test-resources" "../test-common"]
-                   :exclusions [[org.clojure/tools.reader]]
-                   :dependencies [[com.bhauman/figwheel-main "0.2.13"
+                   :resource-paths ["target" "test-resources" "../test-common"]
+                   :clean-targets ^{:protect false} ["target"]
+                   :dependencies [[com.bhauman/figwheel-main "0.2.20"
                                    :exclusions [org.eclipse.jetty.websocket/websocket-server
                                                 org.eclipse.jetty.websocket/websocket-servlet]]
+
                                   [org.eclipse.jetty.websocket/websocket-server "9.4.35.v20201120" :upgrade false]
                                   [org.eclipse.jetty.websocket/websocket-servlet "9.4.35.v20201120" :upgrade false]
-                                  [org.clojure/tools.reader "1.3.5"]
                                   [pedestal-api "0.3.5"]
                                   [io.pedestal/pedestal.service "0.5.9"]
                                   [io.pedestal/pedestal.jetty "0.5.9"]

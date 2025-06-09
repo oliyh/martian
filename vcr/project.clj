@@ -7,14 +7,13 @@
   :dependencies [[com.github.oliyh/martian :version]
                  [fipp "0.6.27"]]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.12.1"]
-                                       [org.clojure/clojurescript "1.10.866"]]}
-             :dev {:resource-paths ["../test-common"]
-                   :exclusions [[org.clojure/tools.reader]]
-                   :dependencies [[org.clojure/tools.reader "1.3.5"]
-                                  [binaryage/devtools "1.0.3"]
-                                  [com.bhauman/figwheel-main "0.2.13"]
-                                  [cider/piggieback "0.5.2"]
-                                  [org.clojure/tools.nrepl "0.2.13"]]
+                                       [org.clojure/clojurescript "1.12.42"]]}
+             :dev {:resource-paths ["target" "../test-common"]
+                   :clean-targets ^{:protect false} ["target"]
+                   :dependencies [[binaryage/devtools "1.0.7"]
+                                  [com.bhauman/figwheel-main "0.2.20"]
+                                  [org.clojure/tools.nrepl "0.2.13"] ;; TODO: Migrate to `[nrepl/nrepl "1.3.1"]`.
+                                  [cider/piggieback "0.5.2"]]
                    :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}}}
   :aliases {"fig"       ["trampoline" "run" "-m" "figwheel.main"]
             "fig:build" ["trampoline" "run" "-m" "figwheel.main" "-b" "dev" "-r"]
