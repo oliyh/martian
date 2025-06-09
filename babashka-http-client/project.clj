@@ -4,7 +4,7 @@
   :license {:name "The MIT License"
             :url "http://opensource.org/licenses/MIT"}
   :plugins [[bigml/lein-modules "0.4.1"]]
-  :dependencies [[com.github.oliyh/martian "0.1.32-SNAPSHOT"]
+  :dependencies [[com.github.oliyh/martian :version]
                  [babashka/process "0.6.23"]
                  [org.babashka/json "0.1.6"]
                  [org.babashka/http-client "0.4.23"]]

@@ -4,7 +4,7 @@
   :license {:name "The MIT License"
             :url "http://opensource.org/licenses/MIT"}
   :plugins [[bigml/lein-modules "0.4.1"]]
-  :dependencies [[com.github.oliyh/martian "0.1.32-SNAPSHOT"]
+  :dependencies [[com.github.oliyh/martian :version]
                  [prismatic/schema-generators "0.1.5"]
                  [org.clojure/test.check "1.1.1"]
                  [org.clojure/core.async "1.8.741"]]
@@ -20,7 +20,7 @@
                                   [nrepl/nrepl "1.3.1"]
                                   [cider/piggieback "0.6.0"]
 
-                                  [com.github.oliyh/martian-httpkit "0.1.32-SNAPSHOT"]
+                                  [com.github.oliyh/martian-httpkit :version]
                                   [prismatic/schema "1.4.1"]]
                    :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}}}
   :aliases {"fig"       ["trampoline" "run" "-m" "figwheel.main"]
