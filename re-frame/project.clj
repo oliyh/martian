@@ -9,7 +9,7 @@
                  [org.clojure/core.async "1.8.741"]]
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.12.1"]
                                        [org.clojure/clojurescript "1.12.42"]
-                                       [re-frame "1.2.0"]]} ;; TODO: Upgrade to "1.4.3" separately.
+                                       [re-frame "1.4.3"]]}
              :dev {:source-paths ["../test-common"]
                    :resource-paths ["target" "test-resources" "../test-common"]
                    :clean-targets ^{:protect false} ["target"]
