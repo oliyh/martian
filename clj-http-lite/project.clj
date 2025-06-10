@@ -7,9 +7,9 @@
   :parent-project {:path "../project.clj"
                    :inherit [:managed-dependencies]}
   :dependencies [[com.github.oliyh/martian]
-                 [cheshire "6.0.0"]
+                 [cheshire]
                  [org.clj-commons/clj-http-lite "1.0.13"]]
-  :profiles {:provided {:dependencies [[org.clojure/clojure "1.12.1"]]}
+  :profiles {:provided {:dependencies [[org.clojure/clojure]]}
              :dev {:source-paths ["../test-common"]
                    :dependencies [[org.slf4j/slf4j-simple "2.0.17"]
                                   [org.clojure/tools.reader "1.5.2"]

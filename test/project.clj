@@ -9,9 +9,9 @@
   :dependencies [[com.github.oliyh/martian]
                  [prismatic/schema-generators "0.1.5"]
                  [org.clojure/test.check "1.1.1"]
-                 [org.clojure/core.async "1.8.741"]]
-  :profiles {:provided {:dependencies [[org.clojure/clojure "1.12.1"]
-                                       [org.clojure/clojurescript "1.12.42" ]]}
+                 [org.clojure/core.async]]
+  :profiles {:provided {:dependencies [[org.clojure/clojure]
+                                       [org.clojure/clojurescript]]}
              :dev {:resource-paths ["target" "../test-common"]
                    :clean-targets ^{:protect false} ["target"]
                    :dependencies [[org.slf4j/slf4j-simple "2.0.17"]

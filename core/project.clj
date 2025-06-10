@@ -13,7 +13,7 @@
                   :exclusions [com.fasterxml.jackson.core/jackson-databind]]
                  [org.clojure/spec.alpha "0.5.238"]
                  [camel-snake-kebab "0.4.3"]
-                 [cheshire "6.0.0"]
+                 [cheshire]
                  [clj-commons/clj-yaml "1.0.29"]
                  [lambdaisland/uri "1.19.155"]
 
@@ -22,8 +22,8 @@
                  [org.flatland/ordered "1.15.12"]
                  [ring/ring-codec "1.3.0"]]
   :java-source-paths ["src"]
-  :profiles {:provided {:dependencies [[org.clojure/clojure "1.12.1"]
-                                       [org.clojure/clojurescript "1.12.42"]]}
+  :profiles {:provided {:dependencies [[org.clojure/clojure]
+                                       [org.clojure/clojurescript]]}
              :dev {:source-paths ["../test-common"]
                    :resource-paths ["target" "test-resources" "../test-common"]
                    :clean-targets ^{:protect false} ["target"]

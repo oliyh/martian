@@ -4,7 +4,9 @@
   :license {:name "The MIT License"
             :url "http://opensource.org/licenses/MIT"}
   :plugins [[lein-modules "0.3.11"]]
-  :profiles {:test {:modules {:subprocess "lein"}}}
+  :profiles {:provided {:dependencies [[org.clojure/clojure]
+                                       [org.clojure/clojurescript]]}
+             :test {:modules {:subprocess "lein"}}}
   :managed-dependencies [[com.github.oliyh/martian "0.1.32-SNAPSHOT"]
                          [com.github.oliyh/martian-httpkit "0.1.32-SNAPSHOT"]
                          [com.github.oliyh/martian-clj-http "0.1.32-SNAPSHOT"]
@@ -15,7 +17,12 @@
                          [com.github.oliyh/martian-re-frame "0.1.32-SNAPSHOT"]
                          [com.github.oliyh/martian-babashka-http-client "0.1.32-SNAPSHOT"]
                          [com.github.oliyh/martian-test "0.1.32-SNAPSHOT"]
-                         [com.github.oliyh/martian-vcr "0.1.32-SNAPSHOT"]]
+                         [com.github.oliyh/martian-vcr "0.1.32-SNAPSHOT"]
+
+                         [org.clojure/clojure "1.12.1"]
+                         [org.clojure/clojurescript "1.12.42"]
+                         [org.clojure/core.async "1.8.741"]
+                         [cheshire "6.0.0"]]
   :release-tasks [["vcs" "assert-committed"]
                   ["change" "version" "leiningen.release/bump-version" "release"]
                   ["modules" "change" "version" "leiningen.release/bump-version" "release"]

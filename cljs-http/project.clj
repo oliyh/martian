@@ -8,9 +8,9 @@
                    :inherit [:managed-dependencies]}
   :dependencies [[com.github.oliyh/martian]
                  [cljs-http "0.1.48"]
-                 [org.clojure/core.async "1.8.741"]]
-  :profiles {:provided {:dependencies [[org.clojure/clojure "1.12.1"]
-                                       [org.clojure/clojurescript "1.12.42"]]}
+                 [org.clojure/core.async]]
+  :profiles {:provided {:dependencies [[org.clojure/clojure]
+                                       [org.clojure/clojurescript]]}
              :dev {:source-paths ["../test-common" "dev"]
                    :resource-paths ["target" "../test-common"]
                    :clean-targets ^{:protect false} ["target"]

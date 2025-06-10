@@ -10,7 +10,7 @@
                  [babashka/process "0.6.23"]
                  [org.babashka/json "0.1.6"]
                  [org.babashka/http-client "0.4.23"]]
-  :profiles {:provided {:dependencies [[org.clojure/clojure "1.12.1"]]}
+  :profiles {:provided {:dependencies [[org.clojure/clojure]]}
              :dev {:source-paths ["../test-common"]
                    :dependencies [[org.slf4j/slf4j-simple "2.0.17"]
                                   [org.clojure/tools.reader "1.5.2"]
