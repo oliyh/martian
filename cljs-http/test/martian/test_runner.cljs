@@ -1,6 +1,6 @@
 (ns martian.test-runner
-  (:require [martian.cljs-http-test]
-            [figwheel.main.testing :refer [run-tests-async]]))
+  (:require [figwheel.main.testing :refer-macros [run-tests-async]]
+            [martian.cljs-http-test]))
 
 (defn -main [& args]
   (run-tests-async 5000))

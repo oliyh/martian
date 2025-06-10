@@ -3,23 +3,27 @@
   :url "https://github.com/oliyh/martian"
   :license {:name "The MIT License"
             :url "http://opensource.org/licenses/MIT"}
-  :plugins [[lein-modules "0.3.11"]]
-  :dependencies [[com.github.oliyh/martian :version]
-                 [prismatic/schema-generators "0.1.3"]
-                 [org.clojure/test.check "1.1.0"]
-                 [org.clojure/core.async "1.3.618"]]
-  :profiles {:provided {:dependencies [[org.clojure/clojure "1.10.3"]
-                                       [org.clojure/clojurescript "1.10.520" :upgrade false] ;; upgrading this makes the tests fail for some reason...
-                                       ]}
-             :dev {:exclusions [[org.clojure/tools.reader]]
-                   :resource-paths ["../test-common"]
-                   :dependencies [[prismatic/schema "1.1.12"]
-                                  [binaryage/devtools "1.0.3"]
-                                  [com.bhauman/figwheel-main "0.2.13"]
-                                  [org.clojure/tools.nrepl "0.2.13"]
-                                  [org.clojure/tools.reader "1.3.5"]
-                                  [cider/piggieback "0.5.2"]
-                                  [com.github.oliyh/martian-httpkit :version]]
+  :plugins [[lein-parent "0.3.9"]]
+  :parent-project {:path "../project.clj"
+                   :inherit [:managed-dependencies]}
+  :dependencies [[com.github.oliyh/martian]
+                 [prismatic/schema-generators "0.1.5"]
+                 [org.clojure/test.check "1.1.1"]
+                 [org.clojure/core.async]]
+  :profiles {:provided {:dependencies [[org.clojure/clojure]
+                                       [org.clojure/clojurescript]]}
+             :dev {:resource-paths ["target" "../test-common"]
+                   :clean-targets ^{:protect false} ["target"]
+                   :dependencies [[org.slf4j/slf4j-simple "2.0.17"]
+                                  [org.clojure/tools.reader "1.5.2"]
+
+                                  [binaryage/devtools "1.0.7"]
+                                  [com.bhauman/figwheel-main "0.2.20"]
+                                  [nrepl/nrepl "1.3.1"]
+                                  [cider/piggieback "0.6.0"]
+
+                                  [com.github.oliyh/martian-httpkit]
+                                  [prismatic/schema "1.4.1"]]
                    :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}}}
   :aliases {"fig"       ["trampoline" "run" "-m" "figwheel.main"]
             "fig:build" ["trampoline" "run" "-m" "figwheel.main" "-b" "dev" "-r"]

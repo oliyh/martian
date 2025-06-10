@@ -1,6 +1,6 @@
 (ns martian.encoders
   (:require [clojure.string :as string]
-            [flatland.ordered.map :as linked]
+            [flatland.ordered.map :refer [ordered-map]]
             [cognitect.transit :as transit]
             [clojure.walk :refer [keywordize-keys]]
             #?(:clj [clojure.edn :as edn]
@@ -70,15 +70,12 @@
     #?(:cljs
        {"application/transit+json" {:encode #(transit-encode % :json)
                                     :decode #(transit-decode % :json)}})
-    (linked/ordered-map
-
+    (ordered-map
      "application/edn"             {:encode pr-str
                                     :decode edn/read-string}
      "application/json"            {:encode json-encode
                                     :decode #(json-decode % key-fn)})
-
     #?(:bb nil
-
        :clj
        {"application/x-www-form-urlencoded" {:encode codec/form-encode
                                              :decode (comp keywordize-keys codec/form-decode)}}

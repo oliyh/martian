@@ -80,7 +80,7 @@
       :leave (fn [ctx]
                (-> ctx
                    interceptors/remove-stack
-                   (assoc :response (a/to-chan [(:response ctx)]))))}))
+                   (assoc :response (a/to-chan! [(:response ctx)]))))}))
 
 #?(:cljs
    (def cljs-http-promise-responder
