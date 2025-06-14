@@ -44,12 +44,17 @@
 
 (def generate-success-response (always-generate-response :success))
 
-(defn constant-responses [responses]
+(defn constant-responses [response-map]
   {:name ::constant-responses
    :leave (fn [{:keys [handler] :as ctx}]
-            (let [responder (get responses (:route-name handler))
+            (let [responder (get response-map (:route-name handler))
                   response (if (fn? responder) (responder (:request ctx)) responder)]
               (assoc ctx :response response)))})
+
+(defn contextual-responses [response-fn]
+  {:name ::contextual-responses
+   :leave (fn [ctx]
+            (assoc ctx :response (response-fn ctx)))})
 
 (defn response-generator [{:keys [handlers]} route-name]
   (let [{:keys [response-schemas]} (martian/find-handler handlers route-name)]
@@ -108,15 +113,49 @@
                  (remove (comp (set (keys http-interceptors)) namespace :name))
                  (remove (comp #{::interceptors/encode-response ::interceptors/coerce-response} :name))))))
 
+(defn respond-with-constant
+  "Adds an interceptor that simulates the server responding with responses retrieved from a given `response-map`.
+
+   The `response-map` maps a `:route-name` to a response (plain value) or a unary function that, given the request,
+   returns a response.
+
+   Removes all interceptors that would perform real HTTP operations."
+  [martian response-map]
+  (-> martian
+      (replace-http-interceptors)
+      (update :interceptors concat [(constant-responses response-map)])))
+
+(defn respond-with-contextual
+  "Adds an interceptor that simulates the server responding with responses retrieved via a given `response-fn`.
+
+   The `response-fn` is a unary function that, given the `ctx`, returns a response.
+
+   It provides even more flexibility than `respond-with-constant` by allowing one to leverage the `ctx` internals
+   for response production, e.g. directly use `:params` to avoid JSON decoding/encoding round trips. Be careful
+   though, since this may result in the production of responses becoming \"less realistic\".
+
+   Removes all interceptors that would perform real HTTP operations."
+  [martian response-fn]
+  (-> martian
+      (replace-http-interceptors)
+      (update :interceptors concat [(contextual-responses response-fn)])))
+
 (defn respond-with
-  "Adds an interceptor that simulates the server responding with the supplied response.
-   The response may be a function that, given the request, returns a response, or just a response value.
+  "Adds an interceptor that simulates the server responding with the supplied `responses`.
+
+   See docstrings of `respond-with-constant` and `respond-with-contextual` for details.
+
    Removes all interceptors that would perform real HTTP operations."
   [martian responses]
-  (-> (replace-http-interceptors martian)
-      (update :interceptors concat [(constant-responses responses)])))
+  (cond
+    (map? responses)
+    (respond-with-constant martian responses)
 
-(def respond-with-constant respond-with)
+    (fn? responses)
+    (respond-with-contextual martian responses)
+
+    :else
+    (throw (ex-info "Unsupported type of responses" {:type (type responses)}))))
 
 (defn respond-with-generated
   "Adds an interceptor that simulates the server responding to operations by generating responses of the supplied response-type
