@@ -113,7 +113,7 @@
         (throw (ex-info "Unsupported HTTP client" {:full-name full-name
                                                    :supported (keys http-interceptors)})))))
 
-(defn- replace-http-interceptors [martian]
+(defn replace-http-interceptors [martian]
   (update martian :interceptors
           (fn [interceptors]
             (->> interceptors
