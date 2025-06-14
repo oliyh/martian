@@ -105,14 +105,6 @@
 
 (deftest simulate-implementation-responses-test
   #?(:clj
-     (testing "hato"
-       (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
-                   (martian-test/respond-as :hato)
-                   (martian-test/respond-with-generated {:load-pet :success}))]
-
-         (is (= 200 (:status (martian/response-for m :load-pet {:id 123})))))))
-
-  #?(:clj
      (testing "clj-http"
        (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
                    (martian-test/respond-as :clj-http)
@@ -127,6 +119,22 @@
                    (martian-test/respond-with-generated {:load-pet :success}))]
 
          (is (= 200 (:status @(martian/response-for m :load-pet {:id 123})))))))
+
+  #?(:clj
+     (testing "hato"
+       (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
+                   (martian-test/respond-as :hato)
+                   (martian-test/respond-with-generated {:load-pet :success}))]
+
+         (is (= 200 (:status (martian/response-for m :load-pet {:id 123})))))))
+
+  #?(:clj
+     (testing "babashka.http-client"
+       (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
+                   (martian-test/respond-as :babashka.http-client)
+                   (martian-test/respond-with-generated {:load-pet :success}))]
+
+         (is (= 200 (:status (martian/response-for m :load-pet {:id 123})))))))
 
   #?(:cljs
      (testing "cljs-http"

@@ -60,7 +60,6 @@
   (let [{:keys [response-schemas]} (martian/find-handler handlers route-name)]
     (make-generator :random response-schemas)))
 
-
 #?(:clj
    (def httpkit-responder
      {:name ::httpkit-responder
@@ -70,13 +69,18 @@
                    (assoc :response (future (:response (tc/execute ctx))))))}))
 
 #?(:clj
+   (def clj-http-responder
+     {:name ::clj-http-responder
+      :leave identity}))
+
+#?(:clj
    (def hato-responder
      {:name ::hato-responder
       :leave identity}))
 
 #?(:clj
-   (def clj-http-responder
-     {:name ::clj-http-responder
+   (def bb-http-client-responder
+     {:name ::bb-http-client-responder
       :leave identity}))
 
 #?(:cljs
@@ -96,11 +100,18 @@
                    (assoc :response (.resolve js/Promise (:response ctx)))))}))
 
 (def ^:private http-interceptors
-  #?(:clj {"martian.httpkit" httpkit-responder
-           "martian.hato" hato-responder
-           "martian.clj-http" clj-http-responder}
+  #?(:clj  {"martian.httpkit" httpkit-responder
+            "martian.clj-http" clj-http-responder
+            "martian.hato" hato-responder
+            "martian.babashka.http-client" bb-http-client-responder}
      :cljs {"martian.cljs-http" cljs-http-responder
             "martian.cljs-http-promise" cljs-http-promise-responder}))
+
+(defn http-client->interceptor [http-client]
+  (let [full-name (str "martian." (name http-client))]
+    (or (get http-interceptors full-name)
+        (throw (ex-info "Unsupported HTTP client" {:full-name full-name
+                                                   :supported (keys http-interceptors)})))))
 
 (defn- replace-http-interceptors [martian]
   (update martian :interceptors
@@ -166,13 +177,17 @@
       (update :interceptors concat [(generate-responses response-types)])))
 
 (defn respond-as
-  "You only need to call this if you have a martian which was created without martian's standard http-specific interceptors,
-   i.e. those found in martian.httpkit and so on.
+  "Adds an interceptor that simulates wrapping a response into the `http-client` implementation-specific returned type.
 
-  Implementations of http requests - as provided by martian httpkit, hato, clj-http and cljs-http - give
-  implementation-specific response types; promises, data, data and core.async channels respectively.
-  As your production code will expect these response types this interceptor lets you simulate those response wrappers.
-  Removes all interceptors that would perform real HTTP operations"
-  [martian implementation-name]
-  (-> (replace-http-interceptors martian)
-      (update :interceptors #(concat [(get http-interceptors (str "martian." (name implementation-name)))] %))))
+   Implementation of HTTP requests — as provided by target HTTP clients (httpkit, clj-http, cljs-http, ...) — may give
+   responses wrapped in an implementation-specific type, e.g. promise or `core.async` channel. As your production code
+   will expect these response types this interceptor lets you simulate those response wrappers.
+
+   You only need to call this if you have a `martian` instance created without the standard HTTP-specific interceptors,
+   i.e. those found in `martian.httpkit`, `martian.clj-http` and so on.
+
+   Removes all interceptors that would perform real HTTP operations."
+  [martian http-client]
+  (-> martian
+      (replace-http-interceptors)
+      (update :interceptors #(concat [(http-client->interceptor http-client)] %))))
