@@ -15,7 +15,7 @@
                         :success (status-range 200 399)
                         :error (status-range 400 599)}
                        response-type)]
-   (filter filter-fn response-schemas)))
+    (filter filter-fn response-schemas)))
 
 (defn- make-generator [response-type response-schemas]
   (some->> response-schemas
@@ -169,11 +169,15 @@
     (throw (ex-info "Unsupported type of responses" {:type (type responses)}))))
 
 (defn respond-with-generated
-  "Adds an interceptor that simulates the server responding to operations by generating responses of the supplied response-type
-   from the handler response schemas.
-   Removes all interceptors that would perform real HTTP operations"
+  "Adds an interceptor that simulates the server responding with responses generated from the handler response schemas.
+
+   The `response-types` maps a `:route-name` to a response type which can be `:random` (default, any HTTP status code),
+   `:success` (HTTP status codes 200-399), or `:error` (HTTP status codes 400-599).
+
+   Removes all interceptors that would perform real HTTP operations."
   [martian response-types]
-  (-> (replace-http-interceptors martian)
+  (-> martian
+      (replace-http-interceptors)
       (update :interceptors concat [(generate-responses response-types)])))
 
 (defn respond-as
