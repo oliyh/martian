@@ -76,15 +76,15 @@
 (deftest test-check-test
   (let [m (martian/bootstrap-swagger "https://api.com" swagger-definition)
         p (prop/for-all [response (martian-test/response-generator m :load-pet)]
-                        (let [output (fn-to-test (martian-test/respond-with-constant m {:load-pet response}))]
-                          (if (not= 200 (:status response))
-                            (nil? output)
-                            (not (nil? output)))))]
+            (let [output (fn-to-test (martian-test/respond-with-constant m {:load-pet response}))]
+              (if (not= 200 (:status response))
+                (nil? output)
+                (not (nil? output)))))]
 
     (tct/assert-check (tc/quick-check 100 p))))
 
 (deftest respond-with-constant-test
-  (testing "value"
+  (testing "responding with value"
     (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
                 (martian-test/respond-with {:load-pet {:status 200
                                                        :body "constant"}}))]
@@ -93,7 +93,7 @@
               :body "constant"}
              (martian/response-for m :load-pet {:id 123})))))
 
-  (testing "function"
+  (testing "responding via function"
     (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
                 (martian-test/respond-with {:load-pet (fn [request]
                                                         {:status 200
@@ -102,6 +102,24 @@
       (is (= {:status 200
               :body {:method :get}}
              (martian/response-for m :load-pet {:id 123}))))))
+
+(deftest respond-with-contextual-test
+  (testing "responding via context"
+    (let [m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition)
+                (martian-test/respond-with (fn [ctx]
+                                             {:status 200
+                                              :body ctx})))
+          response (martian/response-for m :load-pet {:id 123})]
+
+      (is (= 200 (:status response)))
+      (is (= {:path "/pets/:id"
+              :route-name :load-pet}
+             (-> response :body :handler (select-keys [:path :route-name]))))
+      (is (= {:id 123}
+             (-> response :body :params)))
+      (is (= {:method :get
+              :url "https://api.com/pets/123"}
+             (-> response :body :request))))))
 
 (deftest simulate-implementation-responses-test
   #?(:clj
