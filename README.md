@@ -165,14 +165,16 @@ Here's an example:
 
 ## Testing with martian-test
 
-Testing code that calls external systems can be tricky - you either build often elaborate stubs which start
-to become as complex as the system you are calling, or else you ignore it all together with `(constantly true)`.
+Testing code that calls external systems can be tricky — you either build often elaborate stubs which start to become
+as complex as the system you are calling, or else you ignore it all together with `(constantly true)`.
+
+### Generative testing
 
 Martian will assert that you provide the right parameters to the call, and `martian-test` will return a response
 generated from the response schema of the remote application. This gives you more confidence that your integration is
 correct without maintenance of a stub.
 
-The following example shows how exceptions will be thrown by bad code and how responses can be generated:
+The following example shows how exceptions will be thrown by bad code and how responses can be generated using the `martian-test/respond-with-generated` function:
 ```clojure
 (require '[martian.core :as martian]
          '[martian.httpkit :as martian-http]
@@ -189,11 +191,44 @@ The following example shows how exceptions will be thrown by bad code and how re
 
   (martian/response-for m :get-pet {:id 123}))
   ;; => {:status 200, :body {:id -3, :name "EcLR"}}
-
 ```
-`martian-test` has interceptors that always give successful responses, always errors, or a random choice.
+
+`martian-test` has generative interceptors that always give successful responses, always errors, or a random choice.
 By making your application code accept a Martian instance you can inject a test instance within your tests, making
 previously untestable code testable again.
+
+### Non-generative testing
+
+All other non-generative testing approaches and techniques, such a mocks, stubs, and spies, are also supported.
+
+The following example shows how mock responses can be created using the `martian-test/respond-with` function:
+```clojure
+(require '[martian.core :as martian]
+         '[martian.httpkit :as martian-http]
+         '[martian.test :as martian-test])
+
+(let [m (-> (martian-http/bootstrap-openapi "https://pedestal-api.oliy.co.uk/swagger.json")
+            (martian-test/respond-with {:get-pet {:name "Fedor Mikhailovich" :type "Cat" :age 3}}))]
+
+  (martian/response-for m :get-pet {:id 123}))
+  ;; => {:status 200, :body {:name "Fedor Mikhailovich" :type "Cat" :age 3}}
+
+(let [m (-> (martian-http/bootstrap-openapi "https://pedestal-api.oliy.co.uk/swagger.json")
+            (martian-test/respond-with {:get-pet (fn [_request]
+                                                   (let [rand-age (inc (rand-int 50))
+                                                         ret-cat? (even? rand-age)]
+                                                     {:name (if ret-cat? "Fedor Mikhailovich" "Doggy McDogFace")
+                                                      :type (if ret-cat? "Cat" "Dog")
+                                                      :age rand-age}))}))]
+
+  (martian/response-for m :get-pet {:id 123})
+  ;; => {:status 200, :body {:name "Fedor Mikhailovich" :type "Cat" :age 12}}
+
+  (martian/response-for m :get-pet {:id 123})
+  ;; => {:status 200, :body {:name "Doggy McDogFace" :type "Dog" :age 7}}
+
+  ...)
+```
 
 More documentation is available at [martian-test](https://github.com/oliyh/martian/tree/master/test).
 
