@@ -174,7 +174,7 @@ Martian will assert that you provide the right parameters to the call, and `mart
 generated from the response schema of the remote application. This gives you more confidence that your integration is
 correct without maintenance of a stub.
 
-The following example shows how exceptions will be thrown by bad code and how responses can be generated:
+The following example shows how exceptions will be thrown by bad code and how responses can be generated using the `martian-test/respond-with-generated` function:
 ```clojure
 (require '[martian.core :as martian]
          '[martian.httpkit :as martian-http]
@@ -201,28 +201,28 @@ previously untestable code testable again.
 
 All other non-generative testing approaches and techniques, such a mocks, stubs, and spies, are also supported.
 
-The following example shows how mock responses can be created with `martian-test` facilities:
+The following example shows how mock responses can be created using the `martian-test/respond-with` function:
 ```clojure
 (require '[martian.core :as martian]
          '[martian.httpkit :as martian-http]
          '[martian.test :as martian-test])
 
 (let [m (-> (martian-http/bootstrap-openapi "https://pedestal-api.oliy.co.uk/swagger.json")
-            (martian-test/respond-with-constant {:get-pet {:name "Fedor Mikhailovich" :type "Cat" :age 3}}))]
+            (martian-test/respond-with {:get-pet {:name "Fedor Mikhailovich" :type "Cat" :age 3}}))]
 
   (martian/response-for m :get-pet {:id 123}))
-  ;; => {:status 200, :body {:name "Fedya" :type "Cat" :age 3}}
+  ;; => {:status 200, :body {:name "Fedor Mikhailovich" :type "Cat" :age 3}}
 
 (let [m (-> (martian-http/bootstrap-openapi "https://pedestal-api.oliy.co.uk/swagger.json")
-            (martian-test/respond-with-constant {:get-pet (fn [_request]
-                                                            (let [rand-age (inc (rand-int 50))
-                                                                  ret-cat? (even? rand-age)]
-                                                              {:name (if ret-cat? "Fedor Mikhailovich" "Doggy McDogFace")
-                                                               :type (if ret-cat? "Cat" "Dog")
-                                                               :age  rand-age}))}))]
+            (martian-test/respond-with {:get-pet (fn [_request]
+                                                   (let [rand-age (inc (rand-int 50))
+                                                         ret-cat? (even? rand-age)]
+                                                     {:name (if ret-cat? "Fedor Mikhailovich" "Doggy McDogFace")
+                                                      :type (if ret-cat? "Cat" "Dog")
+                                                      :age rand-age}))}))]
 
   (martian/response-for m :get-pet {:id 123})
-  ;; => {:status 200, :body {:name "Fedya" :type "Cat" :age 13}}
+  ;; => {:status 200, :body {:name "Fedor Mikhailovich" :type "Cat" :age 12}}
 
   (martian/response-for m :get-pet {:id 123})
   ;; => {:status 200, :body {:name "Doggy McDogFace" :type "Dog" :age 7}}
