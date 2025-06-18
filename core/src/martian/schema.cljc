@@ -135,26 +135,29 @@
   [ref-lookup]
   (fn [obj] (resolve-ref-object obj ref-lookup)))
 
+(def Binary
+  #?(:clj  s/Any ; postpone to multipart coercion
+     :cljs js/File))
+
 (def URI
-  #?(:clj java.net.URI
+  #?(:clj  java.net.URI
      :cljs goog.Uri))
 
 (defn leaf-schema [{:keys [type enum format]}]
   (cond
     enum                 (apply s/enum enum)
     (= "string" type)    (case format
-                           "uuid" (s/cond-pre s/Str s/Uuid)
-                           "uri" (s/cond-pre s/Str URI)
+                           "binary" (s/cond-pre s/Str Binary)
                            "date-time" (s/cond-pre s/Str s/Inst)
                            "int-or-string" (s/cond-pre s/Str s/Int)
+                           "uri" (s/cond-pre s/Str URI)
+                           "uuid" (s/cond-pre s/Str s/Uuid)
                            s/Str)
     (= "integer" type)   s/Int
     (= "number" type)    s/Num
     (= "boolean" type)   s/Bool
     (= "date-time" type) s/Inst
-
-    :else
-    s/Any))
+    :else                s/Any))
 
 (defn wrap-default [{:keys [default]} schema]
   (if (some? default)
