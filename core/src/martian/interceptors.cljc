@@ -1,12 +1,13 @@
 (ns martian.interceptors
-  (:require [martian.schema :as schema]
+  (:require [camel-snake-kebab.core :refer [->kebab-case-keyword]]
             [clojure.set :as set]
+            [clojure.string :as str]
             [clojure.walk :refer [keywordize-keys stringify-keys]]
-            [tripod.context :as tc]
-            [schema.core :as s]
-            [camel-snake-kebab.core :refer [->kebab-case-keyword]]
+            [martian.encoders :as encoders]
             [martian.encoding :as encoding]
-            [martian.encoders :as encoders]))
+            [martian.schema :as schema]
+            [schema.core :as s]
+            [tripod.context :as tc]))
 
 (defn remove-stack [ctx]
   (-> ctx tc/terminate (dissoc ::tc/stack)))
@@ -88,15 +89,16 @@
    :encodes (keys encoders)
    :enter (fn [{:keys [request handler] :as ctx}]
             (let [has-body? (:body request)
-                  content-type (and has-body?
-                                    (not (get-in request [:headers "Content-Type"]))
-                                    (encoding/choose-content-type encoders (:consumes handler)))
-                  multipart? (= "multipart/form-data" content-type)
+                  content-type (when (and has-body?
+                                          (not (get-in request [:headers "Content-Type"])))
+                                 (encoding/choose-content-type encoders (:consumes handler)))
+                  ;; NB: There are many possible subtypes of multipart requests.
+                  multipart? (when content-type (str/starts-with? content-type "multipart/"))
                   {:keys [encode]} (encoding/find-encoder encoders content-type)]
               (cond-> ctx
                       has-body? (update-in [:request :body] encode)
                       ;; NB: Luckily, all target HTTP clients — clj-http (but not lite), http-kit,
-                      ;;     hato, and even babashka/http-client — all support the same syntax.
+                      ;;     even hato and org.babashka/http-client — all support the same syntax.
                       multipart? (update :request set/rename-keys {:body :multipart})
                       content-type (assoc-in [:request :headers "Content-Type"] content-type))))})
 
