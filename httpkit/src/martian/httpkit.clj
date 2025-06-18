@@ -7,7 +7,8 @@
             [martian.openapi :as openapi]
             [martian.yaml :as yaml]
             [org.httpkit.client :as http]
-            [tripod.context :as tc]))
+            [tripod.context :as tc])
+  (:import (java.nio ByteBuffer)))
 
 (def go-async interceptors/remove-stack)
 
@@ -21,9 +22,12 @@
                                      (fn [response]
                                        (:response (tc/execute (assoc ctx :response response))))))))})
 
+(defn byte-buffer-or-number? [obj]
+  (or (instance? ByteBuffer obj) (number? obj)))
+
 (def encoders
   (assoc (encoders/default-encoders)
-    "multipart/form-data" {:encode encoders/multipart-encode
+    "multipart/form-data" {:encode #(encoders/multipart-encode % byte-buffer-or-number?)
                            :as :multipart}))
 
 (def default-interceptors
