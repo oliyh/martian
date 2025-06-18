@@ -1,12 +1,13 @@
 (ns martian.encoders
   (:require [clojure.string :as string]
-            [flatland.ordered.map :refer [ordered-map]]
-            [cognitect.transit :as transit]
             [clojure.walk :refer [keywordize-keys]]
+            [cognitect.transit :as transit]
+            [flatland.ordered.map :refer [ordered-map]]
+            #?(:clj [cheshire.core :as json])
             #?(:clj [clojure.edn :as edn]
                :cljs [cljs.reader :as edn])
-            #?(:clj [cheshire.core :as json])
             #?(:clj [clojure.java.io :as io])
+            #?(:clj [martian.multipart :as multipart])
             #?@(:bb []
                 :clj [[ring.util.codec :as codec]]))
   #?(:clj (:import [java.io ByteArrayInputStream ByteArrayOutputStream])))
@@ -36,8 +37,15 @@
        (js->clj v :keywordize-keys key-fn))))
 
 #?(:clj
-   (defn multipart-encode [body]
-     (mapv (fn [[k v]] {:name (name k) :content v}) body)))
+   (defn multipart-encode
+     ([body]
+      (mapv (fn [[k v]]
+              {:name (name k) :content (multipart/coerce-content v)})
+            body))
+     ([body pass-pred]
+      (mapv (fn [[k v]]
+              {:name (name k) :content (multipart/coerce-content v pass-pred)})
+            body))))
 
 #?(:cljs
    (defn- form-encode [body]
