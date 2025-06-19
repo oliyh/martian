@@ -13,9 +13,9 @@
    :age s/Int})
 
 (defhandler create-pet
-  {:summary     "Create a pet"
-   :parameters  {:body-params Pet}
-   :responses   {201 {:body {:id s/Int}}}}
+  {:summary    "Create a pet"
+   :parameters {:body-params Pet}
+   :responses  {201 {:body {:id s/Int}}}}
   [request]
   (let [id 123]
     (swap! the-pets assoc id (:body-params request))
@@ -34,6 +34,18 @@
     {:status 404
      :body "No pet found with this id"}))
 
+(s/defschema Upload
+  {:string s/Str
+   :binary s/Any})
+
+(defhandler upload-data
+  {:summary    "Upload data via multipart"
+   :parameters {:body-params Upload}
+   :responses  {200 {:body s/Str}}}
+  [request]
+  {:status 200
+   :body "Upload was successful"})
+
 (s/with-fn-validation
   (api/defroutes routes
     {}
@@ -46,6 +58,8 @@
        ["/pets"
         ["/" {:post create-pet}]
         ["/:id" {:get get-pet}]]
+
+       ["/upload" {:post upload-data}]
 
        ["/swagger.json" {:get api/swagger-json}]]]]))
 
