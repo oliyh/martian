@@ -13,12 +13,16 @@
       (instance? InputStream obj)
       (bytes? obj)))
 
-(def default-make-input-stream-impl
-  (:make-input-stream io/default-streams-impl))
+#?(:bb nil
+   :clj
+   (def default-make-input-stream-impl
+     (:make-input-stream io/default-streams-impl)))
 
-(defn implements-make-input-stream? [obj]
-  (not= default-make-input-stream-impl
-        (find-protocol-method io/IOFactory :make-input-stream obj)))
+#?(:bb nil
+   :clj
+   (defn implements-make-input-stream? [obj]
+     (not= default-make-input-stream-impl
+           (find-protocol-method io/IOFactory :make-input-stream obj))))
 
 (defn coerce-content
   ([obj]
@@ -31,8 +35,16 @@
            (and pass-pred (pass-pred obj)))
        obj
 
-       (implements-make-input-stream? obj)
-       (io/input-stream obj)
+       #?@(:bb
+           [:else
+            (try
+              (io/input-stream obj)
+              (catch Exception _ex
+                (str obj)))]
 
-       :else
-       (str obj)))))
+           :clj
+           [(implements-make-input-stream? obj)
+            (io/input-stream obj)
+
+            :else
+            (str obj)])))))
