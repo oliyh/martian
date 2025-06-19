@@ -1,25 +1,33 @@
 (ns martian.babashka.http-client-test
-  (:require [babashka.process :as process]
-            [babashka.fs :as fs]
+  (:require [babashka.fs :as fs]
+            [babashka.process :as process]
+            [clojure.java.io :as io]
+            [clojure.test :refer [deftest testing is use-fixtures]]
             [martian.babashka.http-client :as martian-http]
             [martian.core :as martian]
             [martian.encoders :as encoders]
-            [martian.test-utils :refer [input-stream->byte-array]]
-            [clojure.test :refer [deftest testing is use-fixtures]]))
-
-(defmacro if-bb [then & [else]]
-  (if (System/getProperty "babashka.version")
-    then else))
+            [martian.test-utils :refer [if-bb
+                                        create-temp-file
+                                        input-stream?
+                                        input-stream->byte-array]]
+            [matcher-combinators.test])
+  (:import (java.net Socket)))
 
 (if-bb
-    (do
-      (def swagger-url (format "http://localhost:%s/swagger.json" 8888))
-      (def openapi-url (format "http://localhost:%s/openapi.json" 8888))
-      (def openapi-yaml-url (format "http://localhost:%s/openapi.yaml" 8888))
-      (def openapi-test-url (format "http://localhost:%s/openapi-test.json" 8888))
-      (def openapi-test-yaml-url (format "http://localhost:%s/openapi-test.yaml" 8888)))
   (do
-    (require '[martian.server-stub :refer [with-server swagger-url openapi-url openapi-test-url openapi-yaml-url openapi-test-yaml-url]])
+    (def swagger-url (format "http://localhost:%s/swagger.json" 8888))
+    (def openapi-url (format "http://localhost:%s/openapi.json" 8888))
+    (def openapi-yaml-url (format "http://localhost:%s/openapi.yaml" 8888))
+    (def openapi-test-url (format "http://localhost:%s/openapi-test.json" 8888))
+    (def openapi-test-yaml-url (format "http://localhost:%s/openapi-test.yaml" 8888)))
+  (do
+    (require '[martian.server-stub :refer [swagger-url
+                                           openapi-url
+                                           openapi-test-url
+                                           openapi-test-yaml-url
+                                           openapi-yaml-url
+                                           with-server]])
+    (require '[martian.test-utils :refer [extend-io-factory-for-path]])
     (use-fixtures :once with-server)))
 
 (defn- decode-body
@@ -167,7 +175,7 @@
            (martian/explore m)))))
 
 (if-bb
-    nil
+  nil
   (deftest babashka-test
     (if (not (fs/which "bb"))
       (println "babashka not installed, skipping test")
@@ -181,3 +189,78 @@
       (require '[clojure.test] '[martian.babashka.http-client-test])
       (let [{:keys [error fail]} (clojure.test/run-tests 'martian.babashka.http-client-test)]
         (when (or (pos? error) (pos? fail)) (System/exit 1)))"))))
+
+(deftest multipart-request-test
+  (let [m (martian-http/bootstrap-openapi openapi-url)
+
+        tmp-file (create-temp-file)
+        tmp-file-is (io/input-stream tmp-file)
+        byte-arr (byte-array [67 108 111 106 117 114 101 33])]
+
+    (testing "common"
+      (is (= {:version :http-1.1
+              :method :post
+              :url "http://localhost:8888/openapi/v3/upload"
+              :multipart [{:name "string" :content "String"}]
+              :headers {"Content-Type" "multipart/form-data"}
+              :as :auto}
+             (martian/request-for m :upload-data {:string "String"})))
+      (is (= {:version :http-1.1
+              :method :post
+              :url "http://localhost:8888/openapi/v3/upload"
+              :multipart [{:name "binary" :content tmp-file}]
+              :headers {"Content-Type" "multipart/form-data"}
+              :as :auto}
+             (martian/request-for m :upload-data {:binary tmp-file})))
+      (is (= {:version :http-1.1
+              :method :post
+              :url "http://localhost:8888/openapi/v3/upload"
+              :multipart [{:name "binary" :content tmp-file-is}]
+              :headers {"Content-Type" "multipart/form-data"}
+              :as :auto}
+             (martian/request-for m :upload-data {:binary tmp-file-is})))
+      (is (= {:version :http-1.1
+              :method :post
+              :url "http://localhost:8888/openapi/v3/upload"
+              :multipart [{:name "binary" :content byte-arr}]
+              :headers {"Content-Type" "multipart/form-data"}
+              :as :auto}
+             (martian/request-for m :upload-data {:binary byte-arr}))))
+
+    (testing "extras"
+      (let [url (io/as-url tmp-file)]
+        (is (match?
+              {:method :post
+               :url "http://localhost:8888/openapi/v3/upload"
+               :multipart [{:name "binary" :content input-stream?}]
+               :headers {"Content-Type" "multipart/form-data"}
+               :as :auto}
+              (martian/request-for m :upload-data {:binary url}))))
+      (let [uri (.toURI (io/as-url tmp-file))]
+        (is (match?
+              {:method :post
+               :url "http://localhost:8888/openapi/v3/upload"
+               :multipart [{:name "binary" :content input-stream?}]
+               :headers {"Content-Type" "multipart/form-data"}
+               :as :auto}
+              (martian/request-for m :upload-data {:binary uri}))))
+      (let [sock (Socket. "localhost" 8888)]
+        (is (match?
+              {:method :post
+               :url "http://localhost:8888/openapi/v3/upload"
+               :multipart [{:name "binary" :content input-stream?}]
+               :headers {"Content-Type" "multipart/form-data"}
+               :as :auto}
+              (martian/request-for m :upload-data {:binary sock}))))
+      (if-bb
+        nil
+        (let [path (.toPath tmp-file)]
+          ;; NB: This test case requires IOFactory extension for Path.
+          (extend-io-factory-for-path)
+          (is (match?
+                {:method :post
+                 :url "http://localhost:8888/openapi/v3/upload"
+                 :multipart [{:name "binary" :content input-stream?}]
+                 :headers {"Content-Type" "multipart/form-data"}
+                 :as :auto}
+                (martian/request-for m :upload-data {:binary path}))))))))
