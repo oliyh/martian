@@ -71,7 +71,7 @@
                      (assoc (encoders/default-encoders)
                        "multipart/form-data" {:encode encoders/multipart-encode
                                               :as :multipart}))]
-             (is (= {:multipart [{:name "alpha" :content 12345}
+             (is (= {:multipart [{:name "alpha" :content "12345"}
                                  {:name "omega" :content "abc"}]
                      :headers {"Content-Type" "multipart/form-data"}}
                     (:request ((:enter i) {:request {:body body}
