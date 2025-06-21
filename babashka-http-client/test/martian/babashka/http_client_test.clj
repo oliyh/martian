@@ -210,7 +210,8 @@
               {:version :http1.1
                :status 200
                :headers {:content-type "application/json;charset=utf-8"}
-               :body {:message "Upload was successful"}
+               :body {:payload ["string"]
+                      :message "Upload was successful"}
                :request {:headers {"content-type" multipart+boundary?}}}
               (martian/response-for m :upload-data {:string "String"}))))
       (testing "File"
@@ -226,7 +227,8 @@
                 {:version :http1.1
                  :status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:message "Upload was successful"}
+                 :body {:payload ["binary"]
+                        :message "Upload was successful"}
                  :request {:headers {"content-type" multipart+boundary?}}}
                 (martian/response-for m :upload-data {:binary tmp-file})))))
       (testing "InputStream"
@@ -242,7 +244,8 @@
                 {:version :http1.1
                  :status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:message "Upload was successful"}
+                 :body {:payload ["binary"]
+                        :message "Upload was successful"}
                  :request {:headers {"content-type" multipart+boundary?}}}
                 (martian/response-for m :upload-data {:binary tmp-file-is})))))
       (testing "byte array"
@@ -258,7 +261,8 @@
                 {:version :http1.1
                  :status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:message "Upload was successful"}
+                 :body {:payload ["binary"]
+                        :message "Upload was successful"}
                  :request {:headers {"content-type" multipart+boundary?}}}
                 (martian/response-for m :upload-data {:binary byte-arr}))))))
 
@@ -277,7 +281,8 @@
                 {:version :http1.1
                  :status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:message "Upload was successful"}
+                 :body {:payload ["binary"]
+                        :message "Upload was successful"}
                  :request {:headers {"content-type" multipart+boundary?}}}
                 (martian/response-for m :upload-data {:binary url})))))
       (testing "URI"
@@ -294,7 +299,8 @@
                 {:version :http1.1
                  :status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:message "Upload was successful"}
+                 :body {:payload ["binary"]
+                        :message "Upload was successful"}
                  :request {:headers {"content-type" multipart+boundary?}}}
                 (martian/response-for m :upload-data {:binary uri})))))
       (testing "Socket"
@@ -314,7 +320,8 @@
                 {:version :http1.1
                  :status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:message "Upload was successful"}
+                 :body {:payload ["binary"]
+                        :message "Upload was successful"}
                  :request {:headers {"content-type" multipart+boundary?}}}
                 (martian/response-for m :upload-data {:binary socket})))))
       (if-bb
@@ -335,6 +342,7 @@
                   {:version :http1.1
                    :status 200
                    :headers {:content-type "application/json;charset=utf-8"}
-                   :body {:message "Upload was successful"}
+                   :body {:payload ["binary"]
+                          :message "Upload was successful"}
                    :request {:headers {"content-type" multipart+boundary?}}}
                   (martian/response-for m :upload-data {:binary path})))))))))

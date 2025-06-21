@@ -37,16 +37,19 @@
 
 (s/defschema Upload
   {(s/optional-key :string) s/Str
-   (s/optional-key :binary) s/Any})
+   (s/optional-key :binary) s/Any
+   (s/optional-key :custom) s/Any})
 
 (defhandler upload-data
   {:summary    "Upload data via multipart"
-   ;; TODO: Switch to `:multipart-params` to retrieve params?
-   :parameters {:body-params #_:multipart-params Upload}
-   :responses  {200 {:body {:message s/Str}}}}
+   :parameters {:form-params Upload}
+   :responses  {200 {:body {:payload [s/Str]
+                            :message s/Str}}}}
   [request]
-  {:status 200
-   :body {:message "Upload was successful"}})
+  (let [payload (mapv name (keys (:form-params request)))]
+    {:status 200
+     :body {:payload payload
+            :message "Upload was successful"}}))
 
 (s/with-fn-validation
   (api/defroutes routes

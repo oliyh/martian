@@ -104,7 +104,8 @@
         (is (match?
               {:status 200
                :headers {:content-type "application/json;charset=utf-8"}
-               :body {:message "Upload was successful"}}
+               :body {:payload ["string"]
+                      :message "Upload was successful"}}
               (martian/response-for m :upload-data {:string "String"}))))
       (testing "File"
         (let [tmp-file (create-temp-file)]
@@ -117,7 +118,8 @@
           (is (match?
                 {:status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:message "Upload was successful"}}
+                 :body {:payload ["binary"]
+                        :message "Upload was successful"}}
                 (martian/response-for m :upload-data {:binary tmp-file})))))
       (testing "InputStream"
         (let [tmp-file-is (io/input-stream (create-temp-file))]
@@ -130,7 +132,8 @@
           (is (match?
                 {:status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:message "Upload was successful"}}
+                 :body {:payload ["binary"]
+                        :message "Upload was successful"}}
                 (martian/response-for m :upload-data {:binary tmp-file-is})))))
       (testing "byte array"
         (let [byte-arr (byte-array [67 108 111 106 117 114 101 33])]
@@ -143,7 +146,8 @@
           (is (match?
                 {:status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:message "Upload was successful"}}
+                 :body {:payload ["binary"]
+                        :message "Upload was successful"}}
                 (martian/response-for m :upload-data {:binary byte-arr}))))))
 
     (testing "extra types:"
@@ -159,7 +163,8 @@
           (is (match?
                 {:status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:message "Upload was successful"}}
+                 :body {:payload ["binary"]
+                        :message "Upload was successful"}}
                 (martian/response-for m :upload-data {:binary url})))))
       (testing "URI"
         (let [uri (.toURI (io/as-url (create-temp-file)))]
@@ -173,7 +178,8 @@
           (is (match?
                 {:status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:message "Upload was successful"}}
+                 :body {:payload ["binary"]
+                        :message "Upload was successful"}}
                 (martian/response-for m :upload-data {:binary uri})))))
       (testing "Socket"
         (with-open [socket (Socket. "localhost" 8888)
@@ -190,7 +196,8 @@
           (is (match?
                 {:status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:message "Upload was successful"}}
+                 :body {:payload ["binary"]
+                        :message "Upload was successful"}}
                 (martian/response-for m :upload-data {:binary socket})))))
       (testing "Path"
         (let [path (.toPath (create-temp-file))]
@@ -206,7 +213,8 @@
           (is (match?
                 {:status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:message "Upload was successful"}}
+                 :body {:payload ["binary"]
+                        :message "Upload was successful"}}
                 (martian/response-for m :upload-data {:binary path}))))))
 
     (testing "custom types:"
@@ -215,54 +223,58 @@
               file-body (FileBody. tmp-file)]
           (is (= {:method :post
                   :url "http://localhost:8888/upload"
-                  :multipart [{:name "binary" :content file-body}]
+                  :multipart [{:name "custom" :content file-body}]
                   :headers {"Accept" "application/json"}
                   :as :text}
-                 (martian/request-for m :upload-data {:binary file-body})))
+                 (martian/request-for m :upload-data {:custom file-body})))
           (is (match?
                 {:status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:message "Upload was successful"}}
-                (martian/response-for m :upload-data {:binary file-body})))))
+                 :body {:payload ["custom"]
+                        :message "Upload was successful"}}
+                (martian/response-for m :upload-data {:custom file-body})))))
       (testing "ContentBody > InputStreamBody"
         (let [tmp-file-is (io/input-stream (create-temp-file))
               is-body (InputStreamBody. tmp-file-is "filename")]
           (is (= {:method :post
                   :url "http://localhost:8888/upload"
-                  :multipart [{:name "binary" :content is-body}]
+                  :multipart [{:name "custom" :content is-body}]
                   :headers {"Accept" "application/json"}
                   :as :text}
-                 (martian/request-for m :upload-data {:binary is-body})))
+                 (martian/request-for m :upload-data {:custom is-body})))
           (is (match?
                 {:status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:message "Upload was successful"}}
-                (martian/response-for m :upload-data {:binary is-body})))))
+                 :body {:payload ["custom"]
+                        :message "Upload was successful"}}
+                (martian/response-for m :upload-data {:custom is-body})))))
       (testing "ContentBody > ByteArrayBody"
         (let [byte-arr (byte-array [67 108 111 106 117 114 101 33])
               byte-arr-body (ByteArrayBody. byte-arr "filename")]
           (is (= {:method :post
                   :url "http://localhost:8888/upload"
-                  :multipart [{:name "binary" :content byte-arr-body}]
+                  :multipart [{:name "custom" :content byte-arr-body}]
                   :headers {"Accept" "application/json"}
                   :as :text}
-                 (martian/request-for m :upload-data {:binary byte-arr-body})))
+                 (martian/request-for m :upload-data {:custom byte-arr-body})))
           (is (match?
                 {:status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:message "Upload was successful"}}
-                (martian/response-for m :upload-data {:binary byte-arr-body})))))
+                 :body {:payload ["custom"]
+                        :message "Upload was successful"}}
+                (martian/response-for m :upload-data {:custom byte-arr-body})))))
       (testing "ContentBody > StringBody"
         (let [content-type (ContentType/create "text/plain" Consts/UTF_8)
               str-body (StringBody. "Hello, server! This is text." content-type)]
           (is (= {:method :post
                   :url "http://localhost:8888/upload"
-                  :multipart [{:name "binary" :content str-body}]
+                  :multipart [{:name "custom" :content str-body}]
                   :headers {"Accept" "application/json"}
                   :as :text}
-                 (martian/request-for m :upload-data {:binary str-body})))
+                 (martian/request-for m :upload-data {:custom str-body})))
           (is (match?
                 {:status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:message "Upload was successful"}}
-                (martian/response-for m :upload-data {:binary str-body}))))))))
+                 :body {:payload ["custom"]
+                        :message "Upload was successful"}}
+                (martian/response-for m :upload-data {:custom str-body}))))))))

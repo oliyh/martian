@@ -53,6 +53,10 @@
                     "binary": {
                         "type": "string",
                         "format": "binary"
+                    },
+                    "custom": {
+                        "type": "string",
+                        "format": "binary"
                     }
                 },
                 "xml": {
@@ -62,6 +66,12 @@
             "ApiResponse": {
                 "type": "object",
                 "properties": {
+                    "payload": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
                     "message": {
                         "type": "string"
                     }
