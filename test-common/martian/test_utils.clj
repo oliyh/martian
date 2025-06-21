@@ -1,5 +1,6 @@
 (ns martian.test-utils
-  (:require [clojure.java.io :as io])
+  (:require [clojure.java.io :as io]
+            [matcher-combinators.matchers :as m])
   (:import [java.io ByteArrayOutputStream File InputStream]
            [java.nio.file Files Path]
            [java.nio.file.attribute FileAttribute]))
@@ -16,8 +17,10 @@
 (def input-stream? #(instance? InputStream %))
 
 (defn create-temp-file ^File []
-  (Path/.toFile
-    (Files/createTempFile "martian" nil (make-array FileAttribute 0))))
+  (let [tmp-file (Path/.toFile
+                   (Files/createTempFile "martian" nil (make-array FileAttribute 0)))]
+    (spit tmp-file (str "Random content: " (random-uuid)))
+    tmp-file))
 
 (if-bb
   nil
@@ -30,3 +33,6 @@
                              (io/make-input-stream (Path/.toFile path) opts))
         :make-output-stream (fn [^Path path opts]
                               (io/make-output-stream (Path/.toFile path) opts))))))
+
+(def multipart+boundary?
+  (m/via #(subs % 0 30) "multipart/form-data; boundary="))
