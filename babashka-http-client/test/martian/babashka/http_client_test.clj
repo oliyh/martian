@@ -6,7 +6,6 @@
             [martian.babashka.http-client :as martian-http]
             [martian.core :as martian]
             [martian.encoders :as encoders]
-            [martian.test-state :as state]
             [martian.test-utils :refer [if-bb
                                         create-temp-file
                                         input-stream?
@@ -70,10 +69,10 @@
                                                               :type "Dog"
                                                               :age 3}})]
       (is (= {:status 201
-              :body {:id (state/get-last-pet-id)}}
+              :body {:id 123}}
              (select-keys response [:status :body]))))
 
-    (let [response (martian/response-for m :get-pet {:id (state/get-last-pet-id)})]
+    (let [response (martian/response-for m :get-pet {:id 123})]
       (is (= {:name "Doggy McDogFace"
               :type "Dog"
               :age 3}
@@ -107,10 +106,10 @@
                                                                :type "Dog"
                                                                :age 3}})]
       (is (= {:status 201
-              :body {:id (state/get-last-pet-id)}}
+              :body {:id 123}}
              (select-keys response [:status :body]))))
 
-    (let [response @(martian/response-for m :get-pet {:id (state/get-last-pet-id)})]
+    (let [response @(martian/response-for m :get-pet {:id 123})]
       (is (= {:name "Doggy McDogFace"
               :type "Dog"
               :age 3}
