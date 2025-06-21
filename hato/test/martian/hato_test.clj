@@ -10,12 +10,15 @@
                                          openapi-test-yaml-url
                                          openapi-yaml-url
                                          with-server]]
+            [martian.test-state :as state]
             [martian.test-utils :refer [create-temp-file
                                         extend-io-factory-for-path
                                         input-stream?
-                                        input-stream->byte-array]]
+                                        input-stream->byte-array
+                                        multipart+boundary?]]
             [matcher-combinators.test])
-  (:import (java.net Socket)))
+  (:import (java.io PrintWriter)
+           (java.net Socket)))
 
 (use-fixtures :once with-server)
 
@@ -40,10 +43,10 @@
                                                               :type "Dog"
                                                               :age 3}})]
       (is (= {:status 201
-              :body {:id 123}}
+              :body {:id (state/get-last-pet-id)}}
              (select-keys response [:status :body]))))
 
-    (let [response (martian/response-for m :get-pet {:id 123})]
+    (let [response (martian/response-for m :get-pet {:id (state/get-last-pet-id)})]
       (is (= {:name "Doggy McDogFace"
               :type "Dog"
               :age 3}
@@ -70,10 +73,10 @@
                                                                :type "Dog"
                                                                :age 3}})]
       (is (= {:status 201
-              :body {:id 123}}
+              :body {:id (state/get-last-pet-id)}}
              (select-keys response [:status :body]))))
 
-    (let [response @(martian/response-for m :get-pet {:id 123})]
+    (let [response @(martian/response-for m :get-pet {:id (state/get-last-pet-id)})]
       (is (= {:name "Doggy McDogFace"
               :type "Dog"
               :age 3}
@@ -141,78 +144,144 @@
            (martian/explore m)))))
 
 (deftest multipart-request-test
-  (let [m (martian-http/bootstrap-openapi openapi-url)
+  (let [m (martian-http/bootstrap-openapi openapi-url)]
 
-        tmp-file (create-temp-file)
-        tmp-file-is (io/input-stream tmp-file)
-        byte-arr (byte-array [67 108 111 106 117 114 101 33])]
+    (testing "common types:"
+      (testing "String"
+        (is (= {:version :http-1.1
+                :method :post
+                :url "http://localhost:8888/openapi/v3/upload"
+                :multipart [{:name "string" :content "String"}]
+                :headers {"Accept" "application/json"}
+                :as :text}
+               (martian/request-for m :upload-data {:string "String"})))
+        (is (match?
+              {:version :http-1.1
+               :status 200
+               :headers {:content-type "application/json;charset=utf-8"}
+               :body {:code 200 :type "OK" :message "Upload was successful"}
+               :request {:headers {"content-type" multipart+boundary?}}}
+              (martian/response-for m :upload-data {:string "String"}))))
+      (testing "File"
+        (let [tmp-file (create-temp-file)]
+          (is (= {:version :http-1.1
+                  :method :post
+                  :url "http://localhost:8888/openapi/v3/upload"
+                  :multipart [{:name "binary" :content tmp-file}]
+                  :headers {"Accept" "application/json"}
+                  :as :text}
+                 (martian/request-for m :upload-data {:binary tmp-file})))
+          (is (match?
+                {:version :http-1.1
+                 :status 200
+                 :headers {:content-type "application/json;charset=utf-8"}
+                 :body {:code 200 :type "OK" :message "Upload was successful"}
+                 :request {:headers {"content-type" multipart+boundary?}}}
+                (martian/response-for m :upload-data {:binary tmp-file})))))
+      (testing "InputStream"
+        (let [tmp-file-is (io/input-stream (create-temp-file))]
+          (is (= {:version :http-1.1
+                  :method :post
+                  :url "http://localhost:8888/openapi/v3/upload"
+                  :multipart [{:name "binary" :content tmp-file-is}]
+                  :headers {"Accept" "application/json"}
+                  :as :text}
+                 (martian/request-for m :upload-data {:binary tmp-file-is})))
+          (is (match?
+                {:version :http-1.1
+                 :status 200
+                 :headers {:content-type "application/json;charset=utf-8"}
+                 :body {:code 200 :type "OK" :message "Upload was successful"}
+                 :request {:headers {"content-type" multipart+boundary?}}}
+                (martian/response-for m :upload-data {:binary tmp-file-is})))))
+      (testing "byte array"
+        (let [byte-arr (byte-array [67 108 111 106 117 114 101 33])]
+          (is (= {:version :http-1.1
+                  :method :post
+                  :url "http://localhost:8888/openapi/v3/upload"
+                  :multipart [{:name "binary" :content byte-arr}]
+                  :headers {"Accept" "application/json"}
+                  :as :text}
+                 (martian/request-for m :upload-data {:binary byte-arr})))
+          (is (match?
+                {:version :http-1.1
+                 :status 200
+                 :headers {:content-type "application/json;charset=utf-8"}
+                 :body {:code 200 :type "OK" :message "Upload was successful"}
+                 :request {:headers {"content-type" multipart+boundary?}}}
+                (martian/response-for m :upload-data {:binary byte-arr}))))))
 
-    (testing "common"
-      (is (= {:version :http-1.1
-              :method :post
-              :url "http://localhost:8888/openapi/v3/upload"
-              :multipart [{:name "string" :content "String"}]
-              :headers {"Content-Type" "multipart/form-data"}
-              :as :auto}
-             (martian/request-for m :upload-data {:string "String"})))
-      (is (= {:version :http-1.1
-              :method :post
-              :url "http://localhost:8888/openapi/v3/upload"
-              :multipart [{:name "binary" :content tmp-file}]
-              :headers {"Content-Type" "multipart/form-data"}
-              :as :auto}
-             (martian/request-for m :upload-data {:binary tmp-file})))
-      (is (= {:version :http-1.1
-              :method :post
-              :url "http://localhost:8888/openapi/v3/upload"
-              :multipart [{:name "binary" :content tmp-file-is}]
-              :headers {"Content-Type" "multipart/form-data"}
-              :as :auto}
-             (martian/request-for m :upload-data {:binary tmp-file-is})))
-      (is (= {:version :http-1.1
-              :method :post
-              :url "http://localhost:8888/openapi/v3/upload"
-              :multipart [{:name "binary" :content byte-arr}]
-              :headers {"Content-Type" "multipart/form-data"}
-              :as :auto}
-             (martian/request-for m :upload-data {:binary byte-arr}))))
-
-    (testing "extras"
-      (let [url (io/as-url tmp-file)]
-        (is (match?
-              {:version :http-1.1
-               :method :post
-               :url "http://localhost:8888/openapi/v3/upload"
-               :multipart [{:name "binary" :content input-stream?}]
-               :headers {"Content-Type" "multipart/form-data"}
-               :as :auto}
-              (martian/request-for m :upload-data {:binary url}))))
-      (let [uri (.toURI (io/as-url tmp-file))]
-        (is (match?
-              {:version :http-1.1
-               :method :post
-               :url "http://localhost:8888/openapi/v3/upload"
-               :multipart [{:name "binary" :content input-stream?}]
-               :headers {"Content-Type" "multipart/form-data"}
-               :as :auto}
-              (martian/request-for m :upload-data {:binary uri}))))
-      (let [sock (Socket. "localhost" 8888)]
-        (is (match?
-              {:version :http-1.1
-               :method :post
-               :url "http://localhost:8888/openapi/v3/upload"
-               :multipart [{:name "binary" :content input-stream?}]
-               :headers {"Content-Type" "multipart/form-data"}
-               :as :auto}
-              (martian/request-for m :upload-data {:binary sock}))))
-      (let [path (.toPath tmp-file)]
-        ;; NB: This test case requires IOFactory extension for Path.
-        (extend-io-factory-for-path)
-        (is (match?
-              {:version :http-1.1
-               :method :post
-               :url "http://localhost:8888/openapi/v3/upload"
-               :multipart [{:name "binary" :content input-stream?}]
-               :headers {"Content-Type" "multipart/form-data"}
-               :as :auto}
-              (martian/request-for m :upload-data {:binary path})))))))
+    (testing "extra types:"
+      (testing "URL"
+        (let [url (io/as-url (create-temp-file))]
+          (is (match?
+                {:version :http-1.1
+                 :method :post
+                 :url "http://localhost:8888/openapi/v3/upload"
+                 :multipart [{:name "binary" :content input-stream?}]
+                 :headers {"Accept" "application/json"}
+                 :as :text}
+                (martian/request-for m :upload-data {:binary url})))
+          (is (match?
+                {:version :http-1.1
+                 :status 200
+                 :headers {:content-type "application/json;charset=utf-8"}
+                 :body {:code 200 :type "OK" :message "Upload was successful"}
+                 :request {:headers {"content-type" multipart+boundary?}}}
+                (martian/response-for m :upload-data {:binary url})))))
+      (testing "URI"
+        (let [uri (.toURI (io/as-url (create-temp-file)))]
+          (is (match?
+                {:version :http-1.1
+                 :method :post
+                 :url "http://localhost:8888/openapi/v3/upload"
+                 :multipart [{:name "binary" :content input-stream?}]
+                 :headers {"Accept" "application/json"}
+                 :as :text}
+                (martian/request-for m :upload-data {:binary uri})))
+          (is (match?
+                {:version :http-1.1
+                 :status 200
+                 :headers {:content-type "application/json;charset=utf-8"}
+                 :body {:code 200 :type "OK" :message "Upload was successful"}
+                 :request {:headers {"content-type" multipart+boundary?}}}
+                (martian/response-for m :upload-data {:binary uri})))))
+      (testing "Socket"
+        (with-open [socket (Socket. "localhost" 8888)
+                    writer (PrintWriter. (.getOutputStream socket) true)]
+          (binding [*out* writer]
+            (println "Hello, server! This is a raw text message."))
+          (is (match?
+                {:version :http-1.1
+                 :method :post
+                 :url "http://localhost:8888/openapi/v3/upload"
+                 :multipart [{:name "binary" :content input-stream?}]
+                 :headers {"Accept" "application/json"}
+                 :as :text}
+                (martian/request-for m :upload-data {:binary socket})))
+          (is (match?
+                {:version :http-1.1
+                 :status 200
+                 :headers {:content-type "application/json;charset=utf-8"}
+                 :body {:code 200 :type "OK" :message "Upload was successful"}
+                 :request {:headers {"content-type" multipart+boundary?}}}
+                (martian/response-for m :upload-data {:binary socket})))))
+      (testing "Path"
+        (let [path (.toPath (create-temp-file))]
+          ;; NB: This test case requires IOFactory extension for Path.
+          (extend-io-factory-for-path)
+          (is (match?
+                {:version :http-1.1
+                 :method :post
+                 :url "http://localhost:8888/openapi/v3/upload"
+                 :multipart [{:name "binary" :content input-stream?}]
+                 :headers {"Accept" "application/json"}
+                 :as :text}
+                (martian/request-for m :upload-data {:binary path})))
+          (is (match?
+                {:version :http-1.1
+                 :status 200
+                 :headers {:content-type "application/json;charset=utf-8"}
+                 :body {:code 200 :type "OK" :message "Upload was successful"}
+                 :request {:headers {"content-type" multipart+boundary?}}}
+                (martian/response-for m :upload-data {:binary path}))))))))
