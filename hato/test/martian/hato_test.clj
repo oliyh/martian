@@ -160,8 +160,7 @@
                :status 200
                :headers {:content-type "application/json;charset=utf-8"}
                :body {:payload ["string"]
-                      :message "Upload was successful"}
-               :request {:headers {"content-type" multipart+boundary?}}}
+                      :content-type multipart+boundary?}}
               (martian/response-for m :upload-data {:string "String"}))))
       (testing "File"
         (let [tmp-file (create-temp-file)]
@@ -177,8 +176,7 @@
                  :status 200
                  :headers {:content-type "application/json;charset=utf-8"}
                  :body {:payload ["binary"]
-                        :message "Upload was successful"}
-                 :request {:headers {"content-type" multipart+boundary?}}}
+                        :content-type multipart+boundary?}}
                 (martian/response-for m :upload-data {:binary tmp-file})))))
       (testing "InputStream"
         (let [tmp-file-is (io/input-stream (create-temp-file))]
@@ -194,8 +192,7 @@
                  :status 200
                  :headers {:content-type "application/json;charset=utf-8"}
                  :body {:payload ["binary"]
-                        :message "Upload was successful"}
-                 :request {:headers {"content-type" multipart+boundary?}}}
+                        :content-type multipart+boundary?}}
                 (martian/response-for m :upload-data {:binary tmp-file-is})))))
       (testing "byte array"
         (let [byte-arr (byte-array [67 108 111 106 117 114 101 33])]
@@ -211,8 +208,7 @@
                  :status 200
                  :headers {:content-type "application/json;charset=utf-8"}
                  :body {:payload ["binary"]
-                        :message "Upload was successful"}
-                 :request {:headers {"content-type" multipart+boundary?}}}
+                        :content-type multipart+boundary?}}
                 (martian/response-for m :upload-data {:binary byte-arr}))))))
 
     (testing "extra types:"
@@ -231,8 +227,7 @@
                  :status 200
                  :headers {:content-type "application/json;charset=utf-8"}
                  :body {:payload ["binary"]
-                        :message "Upload was successful"}
-                 :request {:headers {"content-type" multipart+boundary?}}}
+                        :content-type multipart+boundary?}}
                 (martian/response-for m :upload-data {:binary url})))))
       (testing "URI"
         (let [uri (.toURI (io/as-url (create-temp-file)))]
@@ -249,8 +244,7 @@
                  :status 200
                  :headers {:content-type "application/json;charset=utf-8"}
                  :body {:payload ["binary"]
-                        :message "Upload was successful"}
-                 :request {:headers {"content-type" multipart+boundary?}}}
+                        :content-type multipart+boundary?}}
                 (martian/response-for m :upload-data {:binary uri})))))
       (testing "Socket"
         (with-open [socket (Socket. "localhost" 8888)
@@ -270,8 +264,7 @@
                  :status 200
                  :headers {:content-type "application/json;charset=utf-8"}
                  :body {:payload ["binary"]
-                        :message "Upload was successful"}
-                 :request {:headers {"content-type" multipart+boundary?}}}
+                        :content-type multipart+boundary?}}
                 (martian/response-for m :upload-data {:binary socket})))))
       (testing "Path"
         (let [path (.toPath (create-temp-file))]
@@ -290,6 +283,5 @@
                  :status 200
                  :headers {:content-type "application/json;charset=utf-8"}
                  :body {:payload ["binary"]
-                        :message "Upload was successful"}
-                 :request {:headers {"content-type" multipart+boundary?}}}
+                        :content-type multipart+boundary?}}
                 (martian/response-for m :upload-data {:binary path}))))))))

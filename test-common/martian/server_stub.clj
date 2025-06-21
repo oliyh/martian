@@ -40,16 +40,20 @@
    (s/optional-key :binary) s/Any
    (s/optional-key :custom) s/Any})
 
+(defn- get-content-type-header [request]
+  (or (get-in request [:headers "content-type"])
+      (get-in request [:headers "Content-Type"])
+      (get-in request [:headers :content-type])))
+
 (defhandler upload-data
   {:summary    "Upload data via multipart"
    :parameters {:form-params Upload}
    :responses  {200 {:body {:payload [s/Str]
-                            :message s/Str}}}}
+                            :content-type s/Str}}}}
   [request]
-  (let [payload (mapv name (keys (:form-params request)))]
-    {:status 200
-     :body {:payload payload
-            :message "Upload was successful"}}))
+  {:status 200
+   :body {:payload (map name (keys (:form-params request)))
+          :content-type (get-content-type-header request)}})
 
 (s/with-fn-validation
   (api/defroutes routes
