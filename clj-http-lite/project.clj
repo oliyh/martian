@@ -16,4 +16,6 @@
 
                                   [pedestal-api "0.3.5"]
                                   [io.pedestal/pedestal.service "0.5.9"]
-                                  [io.pedestal/pedestal.jetty "0.5.9"]]}})
+                                  [io.pedestal/pedestal.jetty "0.5.9"]
+
+                                  [nubank/matcher-combinators "3.8.5"]]}})
