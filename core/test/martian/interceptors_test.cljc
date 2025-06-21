@@ -73,7 +73,7 @@
                                               :as :multipart}))]
              (is (= {:multipart [{:name "alpha" :content "12345"}
                                  {:name "omega" :content "abc"}]
-                     :headers {"Content-Type" "multipart/form-data"}}
+                     :headers nil}
                     (:request ((:enter i) {:request {:body body}
                                            :handler {:consumes ["multipart/form-data"]}}))))))))))
 
