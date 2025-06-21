@@ -22,6 +22,16 @@
     (spit tmp-file (str "Random content: " (random-uuid)))
     tmp-file))
 
+(defn binary-content
+  ([file]
+   (binary-content file (File/.getName file)))
+  ([file filename]
+   (let [content (slurp file)]
+     {:filename filename
+      :content-type "application/octet-stream"
+      :tempfile content
+      :size (count content)})))
+
 (if-bb
   nil
   (defn extend-io-factory-for-path []

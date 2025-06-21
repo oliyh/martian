@@ -93,6 +93,7 @@
 (def openapi-test-url (format "http://localhost:%s/openapi-test.json" (::bootstrap/port service)))
 (def openapi-test-yaml-url (format "http://localhost:%s/openapi-test.yaml" (::bootstrap/port service)))
 (def openapi-multipart-url (format "http://localhost:%s/openapi-multipart.json" (::bootstrap/port service)))
+(def test-multipart-file-url (format "http://localhost:%s/test-multipart.txt" (::bootstrap/port service)))
 
 (defn add-interceptors
   [service-map]
