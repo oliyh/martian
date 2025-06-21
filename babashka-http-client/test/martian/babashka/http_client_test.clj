@@ -16,18 +16,20 @@
            (java.net Socket)))
 
 (if-bb
-  (do
-    (def swagger-url (format "http://localhost:%s/swagger.json" 8888))
-    (def openapi-url (format "http://localhost:%s/openapi.json" 8888))
-    (def openapi-yaml-url (format "http://localhost:%s/openapi.yaml" 8888))
-    (def openapi-test-url (format "http://localhost:%s/openapi-test.json" 8888))
-    (def openapi-test-yaml-url (format "http://localhost:%s/openapi-test.yaml" 8888)))
+  (let [port 8888]
+    (def swagger-url (format "http://localhost:%s/swagger.json" port))
+    (def openapi-url (format "http://localhost:%s/openapi.json" port))
+    (def openapi-yaml-url (format "http://localhost:%s/openapi.yaml" port))
+    (def openapi-test-url (format "http://localhost:%s/openapi-test.json" port))
+    (def openapi-test-yaml-url (format "http://localhost:%s/openapi-test.yaml" port))
+    (def openapi-multipart-url (format "http://localhost:%s/openapi-multipart.json" port)))
   (do
     (require '[martian.server-stub :refer [swagger-url
                                            openapi-url
+                                           openapi-yaml-url
                                            openapi-test-url
                                            openapi-test-yaml-url
-                                           openapi-yaml-url
+                                           openapi-multipart-url
                                            with-server]])
     (require '[martian.test-utils :refer [extend-io-factory-for-path]])
     (use-fixtures :once with-server)))
@@ -193,13 +195,13 @@
         (when (or (pos? error) (pos? fail)) (System/exit 1)))"))))
 
 (deftest multipart-request-test
-  (let [m (martian-http/bootstrap-openapi openapi-url)]
+  (let [m (martian-http/bootstrap-openapi openapi-multipart-url)]
 
     (testing "common types:"
       (testing "String"
         (is (= {:version :http-1.1
                 :method :post
-                :url "http://localhost:8888/openapi/v3/upload"
+                :url "http://localhost:8888/upload"
                 :multipart [{:name "string" :content "String"}]
                 :headers {"Accept" "application/json"}
                 :as :text}
@@ -208,14 +210,14 @@
               {:version :http1.1
                :status 200
                :headers {:content-type "application/json;charset=utf-8"}
-               :body {:code 200 :type "OK" :message "Upload was successful"}
+               :body {:message "Upload was successful"}
                :request {:headers {"content-type" multipart+boundary?}}}
               (martian/response-for m :upload-data {:string "String"}))))
       (testing "File"
         (let [tmp-file (create-temp-file)]
           (is (= {:version :http-1.1
                   :method :post
-                  :url "http://localhost:8888/openapi/v3/upload"
+                  :url "http://localhost:8888/upload"
                   :multipart [{:name "binary" :content tmp-file}]
                   :headers {"Accept" "application/json"}
                   :as :text}
@@ -224,14 +226,14 @@
                 {:version :http1.1
                  :status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:code 200 :type "OK" :message "Upload was successful"}
+                 :body {:message "Upload was successful"}
                  :request {:headers {"content-type" multipart+boundary?}}}
                 (martian/response-for m :upload-data {:binary tmp-file})))))
       (testing "InputStream"
         (let [tmp-file-is (io/input-stream (create-temp-file))]
           (is (= {:version :http-1.1
                   :method :post
-                  :url "http://localhost:8888/openapi/v3/upload"
+                  :url "http://localhost:8888/upload"
                   :multipart [{:name "binary" :content tmp-file-is}]
                   :headers {"Accept" "application/json"}
                   :as :text}
@@ -240,14 +242,14 @@
                 {:version :http1.1
                  :status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:code 200 :type "OK" :message "Upload was successful"}
+                 :body {:message "Upload was successful"}
                  :request {:headers {"content-type" multipart+boundary?}}}
                 (martian/response-for m :upload-data {:binary tmp-file-is})))))
       (testing "byte array"
         (let [byte-arr (byte-array [67 108 111 106 117 114 101 33])]
           (is (= {:version :http-1.1
                   :method :post
-                  :url "http://localhost:8888/openapi/v3/upload"
+                  :url "http://localhost:8888/upload"
                   :multipart [{:name "binary" :content byte-arr}]
                   :headers {"Accept" "application/json"}
                   :as :text}
@@ -256,7 +258,7 @@
                 {:version :http1.1
                  :status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:code 200 :type "OK" :message "Upload was successful"}
+                 :body {:message "Upload was successful"}
                  :request {:headers {"content-type" multipart+boundary?}}}
                 (martian/response-for m :upload-data {:binary byte-arr}))))))
 
@@ -266,7 +268,7 @@
           (is (match?
                 {:version :http-1.1
                  :method :post
-                 :url "http://localhost:8888/openapi/v3/upload"
+                 :url "http://localhost:8888/upload"
                  :multipart [{:name "binary" :content input-stream?}]
                  :headers {"Accept" "application/json"}
                  :as :text}
@@ -275,7 +277,7 @@
                 {:version :http1.1
                  :status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:code 200 :type "OK" :message "Upload was successful"}
+                 :body {:message "Upload was successful"}
                  :request {:headers {"content-type" multipart+boundary?}}}
                 (martian/response-for m :upload-data {:binary url})))))
       (testing "URI"
@@ -283,7 +285,7 @@
           (is (match?
                 {:version :http-1.1
                  :method :post
-                 :url "http://localhost:8888/openapi/v3/upload"
+                 :url "http://localhost:8888/upload"
                  :multipart [{:name "binary" :content input-stream?}]
                  :headers {"Accept" "application/json"}
                  :as :text}
@@ -292,7 +294,7 @@
                 {:version :http1.1
                  :status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:code 200 :type "OK" :message "Upload was successful"}
+                 :body {:message "Upload was successful"}
                  :request {:headers {"content-type" multipart+boundary?}}}
                 (martian/response-for m :upload-data {:binary uri})))))
       (testing "Socket"
@@ -303,7 +305,7 @@
           (is (match?
                 {:version :http-1.1
                  :method :post
-                 :url "http://localhost:8888/openapi/v3/upload"
+                 :url "http://localhost:8888/upload"
                  :multipart [{:name "binary" :content input-stream?}]
                  :headers {"Accept" "application/json"}
                  :as :text}
@@ -312,7 +314,7 @@
                 {:version :http1.1
                  :status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:code 200 :type "OK" :message "Upload was successful"}
+                 :body {:message "Upload was successful"}
                  :request {:headers {"content-type" multipart+boundary?}}}
                 (martian/response-for m :upload-data {:binary socket})))))
       (if-bb
@@ -324,7 +326,7 @@
             (is (match?
                   {:version :http-1.1
                    :method :post
-                   :url "http://localhost:8888/openapi/v3/upload"
+                   :url "http://localhost:8888/upload"
                    :multipart [{:name "binary" :content input-stream?}]
                    :headers {"Accept" "application/json"}
                    :as :text}
@@ -333,6 +335,6 @@
                   {:version :http1.1
                    :status 200
                    :headers {:content-type "application/json;charset=utf-8"}
-                   :body {:code 200 :type "OK" :message "Upload was successful"}
+                   :body {:message "Upload was successful"}
                    :request {:headers {"content-type" multipart+boundary?}}}
                   (martian/response-for m :upload-data {:binary path})))))))))

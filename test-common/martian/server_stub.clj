@@ -43,29 +43,15 @@
   {:summary    "Upload data via multipart"
    ;; TODO: Switch to `:multipart-params` to retrieve params?
    :parameters {:body-params #_:multipart-params Upload}
-   :responses  {200 {:body {:code s/Int
-                            :type s/Str
-                            :message s/Str}}}}
+   :responses  {200 {:body {:message s/Str}}}}
   [request]
   {:status 200
-   :body {:code 200
-          :type "OK"
-          :message "Upload was successful"}})
+   :body {:message "Upload was successful"}})
 
 (s/with-fn-validation
   (api/defroutes routes
     {}
-    [[;; TODO: Figure out why uploading doesn't work under "/".
-      ["/openapi/v3"
-       ^:interceptors [api/error-responses
-                       (api/negotiate-response)
-                       (api/body-params)
-                       api/common-body
-                       (api/coerce-request)
-                       (api/validate-response)]
-       ["/upload" {:post upload-data}]]
-
-      ["/"
+    [[["/"
        ^:interceptors [api/error-responses
                        (api/negotiate-response)
                        (api/body-params)
@@ -76,7 +62,8 @@
         ["/" {:post create-pet}]
         ["/:id" {:get get-pet}]]
 
-       #_["/upload" {:post upload-data}]
+       ;; endpoint for multipart request tests
+       ["/upload" {:post upload-data}]
 
        ["/swagger.json" {:get api/swagger-json}]]]]))
 
@@ -98,6 +85,7 @@
 (def openapi-yaml-url (format "http://localhost:%s/openapi.yaml" (::bootstrap/port service)))
 (def openapi-test-url (format "http://localhost:%s/openapi-test.json" (::bootstrap/port service)))
 (def openapi-test-yaml-url (format "http://localhost:%s/openapi-test.yaml" (::bootstrap/port service)))
+(def openapi-multipart-url (format "http://localhost:%s/openapi-multipart.json" (::bootstrap/port service)))
 
 (defn add-interceptors
   [service-map]
