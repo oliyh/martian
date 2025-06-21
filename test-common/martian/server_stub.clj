@@ -1,21 +1,11 @@
 (ns martian.server-stub
   (:require [io.pedestal.http :as bootstrap]
             [io.pedestal.http.ring-middlewares :as ring-mw]
+            [martian.test-state :as state]
             [pedestal-api
              [core :as api]
              [helpers :refer [before defbefore defhandler handler]]]
-            [schema.core :as s])
-  (:import (java.util.concurrent.atomic AtomicInteger)))
-
-(defonce the-pets (atom {}))
-
-(defonce last-pet-id (AtomicInteger.))
-
-(defn get-last-pet-id []
-  (AtomicInteger/.get last-pet-id))
-
-(defn next-pet-id []
-  (AtomicInteger/.incrementAndGet last-pet-id))
+            [schema.core :as s]))
 
 (s/defschema Pet
   {:name s/Str
@@ -27,8 +17,8 @@
    :parameters {:body-params Pet}
    :responses  {201 {:body {:id s/Int}}}}
   [request]
-  (let [id (next-pet-id)]
-    (swap! the-pets assoc id (:body-params request))
+  (let [id (state/next-pet-id)]
+    (swap! state/all-pets assoc id (:body-params request))
     {:status 201
      :body {:id id}}))
 
@@ -38,7 +28,7 @@
    :responses  {200 {:body Pet}
                 404 {:body s/Str}}}
   [request]
-  (if-let [pet (get @the-pets (get-in request [:path-params :id]))]
+  (if-let [pet (get @state/all-pets (get-in request [:path-params :id]))]
     {:status 200
      :body pet}
     {:status 404
