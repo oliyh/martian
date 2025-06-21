@@ -66,14 +66,11 @@
             "ApiResponse": {
                 "type": "object",
                 "properties": {
-                    "payload": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
                     "contentType": {
                         "type": "string"
+                    },
+                    "contentMap": {
+                        "type": "object"
                     }
                 },
                 "xml": {

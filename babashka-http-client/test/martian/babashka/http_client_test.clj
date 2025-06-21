@@ -2,18 +2,20 @@
   (:require [babashka.fs :as fs]
             [babashka.process :as process]
             [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.test :refer [deftest testing is use-fixtures]]
             [martian.babashka.http-client :as martian-http]
             [martian.core :as martian]
             [martian.encoders :as encoders]
             [martian.test-utils :refer [if-bb
+                                        binary-content
                                         create-temp-file
                                         input-stream?
                                         input-stream->byte-array
                                         multipart+boundary?]]
             [matcher-combinators.test])
   (:import (java.io PrintWriter)
-           (java.net Socket)))
+           (java.net Socket URI)))
 
 (if-bb
   (let [port 8888]
@@ -22,7 +24,8 @@
     (def openapi-yaml-url (format "http://localhost:%s/openapi.yaml" port))
     (def openapi-test-url (format "http://localhost:%s/openapi-test.json" port))
     (def openapi-test-yaml-url (format "http://localhost:%s/openapi-test.yaml" port))
-    (def openapi-multipart-url (format "http://localhost:%s/openapi-multipart.json" port)))
+    (def openapi-multipart-url (format "http://localhost:%s/openapi-multipart.json" port))
+    (def test-multipart-file-url (format "http://localhost:%s/test-multipart.txt" port)))
   (do
     (require '[martian.server-stub :refer [swagger-url
                                            openapi-url
@@ -30,6 +33,7 @@
                                            openapi-test-url
                                            openapi-test-yaml-url
                                            openapi-multipart-url
+                                           test-multipart-file-url
                                            with-server]])
     (require '[martian.test-utils :refer [extend-io-factory-for-path]])
     (use-fixtures :once with-server)))
@@ -202,17 +206,17 @@
         (is (= {:version :http-1.1
                 :method :post
                 :url "http://localhost:8888/upload"
-                :multipart [{:name "string" :content "String"}]
+                :multipart [{:name "string" :content "Howdy!"}]
                 :headers {"Accept" "application/json"}
                 :as :text}
-               (martian/request-for m :upload-data {:string "String"})))
+               (martian/request-for m :upload-data {:string "Howdy!"})))
         (is (match?
               {:version :http1.1
                :status 200
                :headers {:content-type "application/json;charset=utf-8"}
-               :body {:payload ["string"]
-                      :content-type multipart+boundary?}}
-              (martian/response-for m :upload-data {:string "String"}))))
+               :body {:content-type multipart+boundary?
+                      :content-map {:string "Howdy!"}}}
+              (martian/response-for m :upload-data {:string "Howdy!"}))))
       (testing "File"
         (let [tmp-file (create-temp-file)]
           (is (= {:version :http-1.1
@@ -226,11 +230,12 @@
                 {:version :http1.1
                  :status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:payload ["binary"]
-                        :content-type multipart+boundary?}}
+                 :body {:content-type multipart+boundary?
+                        :content-map {:binary (binary-content tmp-file)}}}
                 (martian/response-for m :upload-data {:binary tmp-file})))))
       (testing "InputStream"
-        (let [tmp-file-is (io/input-stream (create-temp-file))]
+        (let [tmp-file (create-temp-file)
+              tmp-file-is (io/input-stream tmp-file)]
           (is (= {:version :http-1.1
                   :method :post
                   :url "http://localhost:8888/upload"
@@ -242,11 +247,11 @@
                 {:version :http1.1
                  :status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:payload ["binary"]
-                        :content-type multipart+boundary?}}
+                 :body {:content-type multipart+boundary?
+                        :content-map {:binary (slurp tmp-file)}}}
                 (martian/response-for m :upload-data {:binary tmp-file-is})))))
       (testing "byte array"
-        (let [byte-arr (byte-array [67 108 111 106 117 114 101 33])]
+        (let [byte-arr (String/.getBytes "Clojure!")]
           (is (= {:version :http-1.1
                   :method :post
                   :url "http://localhost:8888/upload"
@@ -258,13 +263,13 @@
                 {:version :http1.1
                  :status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:payload ["binary"]
-                        :content-type multipart+boundary?}}
+                 :body {:content-type multipart+boundary?
+                        :content-map {:binary "Clojure!"}}}
                 (martian/response-for m :upload-data {:binary byte-arr}))))))
 
     (testing "extra types:"
       (testing "URL"
-        (let [url (io/as-url (create-temp-file))]
+        (let [url (.toURL (URI. test-multipart-file-url))]
           (is (match?
                 {:version :http-1.1
                  :method :post
@@ -277,11 +282,11 @@
                 {:version :http1.1
                  :status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:payload ["binary"]
-                        :content-type multipart+boundary?}}
+                 :body {:content-type multipart+boundary?
+                        :content-map {:binary "Content retrieved via URL/URI"}}}
                 (martian/response-for m :upload-data {:binary url})))))
       (testing "URI"
-        (let [uri (.toURI (io/as-url (create-temp-file)))]
+        (let [uri (URI. test-multipart-file-url)]
           (is (match?
                 {:version :http-1.1
                  :method :post
@@ -294,14 +299,14 @@
                 {:version :http1.1
                  :status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:payload ["binary"]
-                        :content-type multipart+boundary?}}
+                 :body {:content-type multipart+boundary?
+                        :content-map {:binary "Content retrieved via URL/URI"}}}
                 (martian/response-for m :upload-data {:binary uri})))))
       (testing "Socket"
         (with-open [socket (Socket. "localhost" 8888)
                     writer (PrintWriter. (.getOutputStream socket) true)]
           (binding [*out* writer]
-            (println "Hello, server! This is a raw text message."))
+            (println "Hello, server! This is an invalid HTTP message."))
           (is (match?
                 {:version :http-1.1
                  :method :post
@@ -314,13 +319,14 @@
                 {:version :http1.1
                  :status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:payload ["binary"]
-                        :content-type multipart+boundary?}}
+                 :body {:content-type multipart+boundary?
+                        :content-map {:binary #(str/starts-with? % "HTTP/1.1")}}}
                 (martian/response-for m :upload-data {:binary socket})))))
       (if-bb
         nil
         (testing "Path"
-          (let [path (.toPath (create-temp-file))]
+          (let [tmp-file (create-temp-file)
+                path (.toPath tmp-file)]
             ;; NB: This test case requires IOFactory extension for Path.
             (extend-io-factory-for-path)
             (is (match?
@@ -335,6 +341,6 @@
                   {:version :http1.1
                    :status 200
                    :headers {:content-type "application/json;charset=utf-8"}
-                   :body {:payload ["binary"]
-                          :content-type multipart+boundary?}}
+                   :body {:content-type multipart+boundary?
+                          :content-map {:binary (slurp tmp-file)}}}
                   (martian/response-for m :upload-data {:binary path})))))))))

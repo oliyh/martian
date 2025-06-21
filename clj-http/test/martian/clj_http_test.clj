@@ -1,5 +1,6 @@
 (ns martian.clj-http-test
   (:require [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.test :refer [deftest testing is use-fixtures]]
             [martian.clj-http :as martian-http]
             [martian.core :as martian]
@@ -10,15 +11,17 @@
                                          openapi-test-url
                                          openapi-test-yaml-url
                                          openapi-multipart-url
+                                         test-multipart-file-url
                                          with-server]]
-            [martian.test-utils :refer [create-temp-file
+            [martian.test-utils :refer [binary-content
+                                        create-temp-file
                                         extend-io-factory-for-path
                                         input-stream?
                                         input-stream->byte-array
                                         multipart+boundary?]]
             [matcher-combinators.test])
   (:import (java.io PrintWriter)
-           (java.net Socket)
+           (java.net Socket URI)
            (org.apache.http Consts)
            (org.apache.http.entity ContentType)
            (org.apache.http.entity.mime.content ByteArrayBody FileBody InputStreamBody StringBody)))
@@ -98,16 +101,16 @@
       (testing "String"
         (is (= {:method :post
                 :url "http://localhost:8888/upload"
-                :multipart [{:name "string" :content "String"}]
+                :multipart [{:name "string" :content "Howdy!"}]
                 :headers {"Accept" "application/json"}
                 :as :text}
-               (martian/request-for m :upload-data {:string "String"})))
+               (martian/request-for m :upload-data {:string "Howdy!"})))
         (is (match?
               {:status 200
                :headers {:content-type "application/json;charset=utf-8"}
-               :body {:payload ["string"]
-                      :content-type multipart+boundary?}}
-              (martian/response-for m :upload-data {:string "String"}))))
+               :body {:content-type multipart+boundary?
+                      :content-map {:string "Howdy!"}}}
+              (martian/response-for m :upload-data {:string "Howdy!"}))))
       (testing "File"
         (let [tmp-file (create-temp-file)]
           (is (= {:method :post
@@ -119,11 +122,12 @@
           (is (match?
                 {:status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:payload ["binary"]
-                        :content-type multipart+boundary?}}
+                 :body {:content-type multipart+boundary?
+                        :content-map {:binary (binary-content tmp-file)}}}
                 (martian/response-for m :upload-data {:binary tmp-file})))))
       (testing "InputStream"
-        (let [tmp-file-is (io/input-stream (create-temp-file))]
+        (let [tmp-file (create-temp-file)
+              tmp-file-is (io/input-stream tmp-file)]
           (is (= {:method :post
                   :url "http://localhost:8888/upload"
                   :multipart [{:name "binary" :content tmp-file-is}]
@@ -133,11 +137,11 @@
           (is (match?
                 {:status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:payload ["binary"]
-                        :content-type multipart+boundary?}}
+                 :body {:content-type multipart+boundary?
+                        :content-map {:binary (binary-content tmp-file "binary")}}}
                 (martian/response-for m :upload-data {:binary tmp-file-is})))))
       (testing "byte array"
-        (let [byte-arr (byte-array [67 108 111 106 117 114 101 33])]
+        (let [byte-arr (String/.getBytes "Clojure!")]
           (is (= {:method :post
                   :url "http://localhost:8888/upload"
                   :multipart [{:name "binary" :content byte-arr}]
@@ -147,13 +151,16 @@
           (is (match?
                 {:status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:payload ["binary"]
-                        :content-type multipart+boundary?}}
+                 :body {:content-type multipart+boundary?
+                        :content-map {:binary {:filename "binary"
+                                               :content-type "application/octet-stream"
+                                               :tempfile "Clojure!"
+                                               :size 8}}}}
                 (martian/response-for m :upload-data {:binary byte-arr}))))))
 
     (testing "extra types:"
       (testing "URL"
-        (let [url (io/as-url (create-temp-file))]
+        (let [url (.toURL (URI. test-multipart-file-url))]
           (is (match?
                 {:method :post
                  :url "http://localhost:8888/upload"
@@ -164,11 +171,14 @@
           (is (match?
                 {:status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:payload ["binary"]
-                        :content-type multipart+boundary?}}
+                 :body {:content-type multipart+boundary?
+                        :content-map {:binary {:filename "binary"
+                                               :content-type "application/octet-stream"
+                                               :tempfile "Content retrieved via URL/URI"
+                                               :size 29}}}}
                 (martian/response-for m :upload-data {:binary url})))))
       (testing "URI"
-        (let [uri (.toURI (io/as-url (create-temp-file)))]
+        (let [uri (URI. test-multipart-file-url)]
           (is (match?
                 {:method :post
                  :url "http://localhost:8888/upload"
@@ -179,14 +189,17 @@
           (is (match?
                 {:status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:payload ["binary"]
-                        :content-type multipart+boundary?}}
+                 :body {:content-type multipart+boundary?
+                        :content-map {:binary {:filename "binary"
+                                               :content-type "application/octet-stream"
+                                               :tempfile "Content retrieved via URL/URI"
+                                               :size 29}}}}
                 (martian/response-for m :upload-data {:binary uri})))))
       (testing "Socket"
         (with-open [socket (Socket. "localhost" 8888)
                     writer (PrintWriter. (.getOutputStream socket) true)]
           (binding [*out* writer]
-            (println "Hello, server! This is a raw text message."))
+            (println "Hello, server! This is an invalid HTTP message."))
           (is (match?
                 {:method :post
                  :url "http://localhost:8888/upload"
@@ -197,11 +210,14 @@
           (is (match?
                 {:status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:payload ["binary"]
-                        :content-type multipart+boundary?}}
+                 :body {:content-type multipart+boundary?
+                        :content-map {:binary {:filename "binary"
+                                               :content-type "application/octet-stream"
+                                               :tempfile #(str/starts-with? % "HTTP/1.1")}}}}
                 (martian/response-for m :upload-data {:binary socket})))))
       (testing "Path"
-        (let [path (.toPath (create-temp-file))]
+        (let [tmp-file (create-temp-file)
+              path (.toPath tmp-file)]
           ;; NB: This test case requires IOFactory extension for Path.
           (extend-io-factory-for-path)
           (is (match?
@@ -214,8 +230,8 @@
           (is (match?
                 {:status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:payload ["binary"]
-                        :content-type multipart+boundary?}}
+                 :body {:content-type multipart+boundary?
+                        :content-map {:binary (binary-content tmp-file "binary")}}}
                 (martian/response-for m :upload-data {:binary path}))))))
 
     (testing "custom types:"
@@ -231,12 +247,13 @@
           (is (match?
                 {:status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:payload ["custom"]
-                        :content-type multipart+boundary?}}
+                 :body {:content-type multipart+boundary?
+                        :content-map {:custom (binary-content tmp-file)}}}
                 (martian/response-for m :upload-data {:custom file-body})))))
       (testing "ContentBody > InputStreamBody"
-        (let [tmp-file-is (io/input-stream (create-temp-file))
-              is-body (InputStreamBody. tmp-file-is "filename")]
+        (let [tmp-file (create-temp-file)
+              tmp-file-is (io/input-stream tmp-file)
+              is-body (InputStreamBody. tmp-file-is "input-stream")]
           (is (= {:method :post
                   :url "http://localhost:8888/upload"
                   :multipart [{:name "custom" :content is-body}]
@@ -246,12 +263,12 @@
           (is (match?
                 {:status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:payload ["custom"]
-                        :content-type multipart+boundary?}}
+                 :body {:content-type multipart+boundary?
+                        :content-map {:custom (binary-content tmp-file "input-stream")}}}
                 (martian/response-for m :upload-data {:custom is-body})))))
       (testing "ContentBody > ByteArrayBody"
-        (let [byte-arr (byte-array [67 108 111 106 117 114 101 33])
-              byte-arr-body (ByteArrayBody. byte-arr "filename")]
+        (let [byte-arr (String/.getBytes "Clojure!")
+              byte-arr-body (ByteArrayBody. byte-arr "byte-array")]
           (is (= {:method :post
                   :url "http://localhost:8888/upload"
                   :multipart [{:name "custom" :content byte-arr-body}]
@@ -261,8 +278,11 @@
           (is (match?
                 {:status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:payload ["custom"]
-                        :content-type multipart+boundary?}}
+                 :body {:content-type multipart+boundary?
+                        :content-map {:custom {:filename "byte-array"
+                                               :content-type "application/octet-stream"
+                                               :tempfile "Clojure!"
+                                               :size 8}}}}
                 (martian/response-for m :upload-data {:custom byte-arr-body})))))
       (testing "ContentBody > StringBody"
         (let [content-type (ContentType/create "text/plain" Consts/UTF_8)
@@ -276,6 +296,6 @@
           (is (match?
                 {:status 200
                  :headers {:content-type "application/json;charset=utf-8"}
-                 :body {:payload ["custom"]
-                        :content-type multipart+boundary?}}
+                 :body {:content-type multipart+boundary?
+                        :content-map {:custom "Hello, server! This is text."}}}
                 (martian/response-for m :upload-data {:custom str-body}))))))))

@@ -1,10 +1,13 @@
 (ns martian.server-stub
-  (:require [io.pedestal.http :as bootstrap]
+  (:require [clojure.walk :as w]
+            [io.pedestal.http :as bootstrap]
             [io.pedestal.http.ring-middlewares :as ring-mw]
             [pedestal-api
              [core :as api]
              [helpers :refer [before defbefore defhandler handler]]]
-            [schema.core :as s]))
+            [schema.core :as s])
+  (:import (java.io File)
+           (java.nio.file Path)))
 
 (defonce the-pets (atom {}))
 
@@ -45,15 +48,24 @@
       (get-in request [:headers "Content-Type"])
       (get-in request [:headers :content-type])))
 
+(defn- get-prepared-content-map [request]
+  (w/postwalk (fn [obj]
+                (cond
+                  (instance? File obj) (slurp obj)
+                  (instance? Path obj) (slurp (.toFile obj))
+                  (= 'org.httpkit.client.MultipartEntity (type obj)) (bean obj)
+                  :else obj))
+              (:form-params request)))
+
 (defhandler upload-data
   {:summary    "Upload data via multipart"
    :parameters {:form-params Upload}
-   :responses  {200 {:body {:payload [s/Str]
-                            :content-type s/Str}}}}
+   :responses  {200 {:body {:content-type s/Str
+                            :content-map {s/Keyword s/Any}}}}}
   [request]
   {:status 200
-   :body {:payload (map name (keys (:form-params request)))
-          :content-type (get-content-type-header request)}})
+   :body {:content-type (get-content-type-header request)
+          :content-map (get-prepared-content-map request)}})
 
 (s/with-fn-validation
   (api/defroutes routes
