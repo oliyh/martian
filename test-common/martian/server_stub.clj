@@ -40,12 +40,16 @@
 
 (defhandler upload-data
   {:summary    "Upload data via multipart"
-   ;; TODO: Switch to `:multipart-params` to retrieve params.
+   ;; TODO: Switch to `:multipart-params` to retrieve params?
    :parameters {:body-params #_:multipart-params Upload}
-   :responses  {200 {:body s/Str}}}
+   :responses  {200 {:body {:code s/Int
+                            :type s/Str
+                            :message s/Str}}}}
   [request]
   {:status 200
-   :body "Upload was successful"})
+   :body {:code 200
+          :type "OK"
+          :message "Upload was successful"}})
 
 (s/with-fn-validation
   (api/defroutes routes
