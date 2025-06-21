@@ -289,4 +289,22 @@
                  :headers {:content-type "application/json;charset=utf-8"}
                  :body {:content-type multipart+boundary?
                         :content-map {:binary (slurp tmp-file)}}}
-                (martian/response-for m :upload-data {:binary path}))))))))
+                (martian/response-for m :upload-data {:binary path}))))))
+
+    (testing "custom types:"
+      (testing "Number"
+        (let [int-num 1234567890]
+          (is (= {:version :http-1.1
+                  :method :post
+                  :url "http://localhost:8888/upload"
+                  :multipart [{:name "custom" :content (str int-num)}]
+                  :headers {"Accept" "application/json"}
+                  :as :text}
+                 (martian/request-for m :upload-data {:custom int-num})))
+          (is (match?
+                {:version :http-1.1
+                 :status 200
+                 :headers {:content-type "application/json;charset=utf-8"}
+                 :body {:content-type multipart+boundary?
+                        :content-map {:custom (str int-num)}}}
+                (martian/response-for m :upload-data {:custom int-num}))))))))

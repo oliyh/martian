@@ -22,12 +22,13 @@
                                      (fn [response]
                                        (:response (tc/execute (assoc ctx :response response))))))))})
 
-(defn byte-buffer-or-number? [obj]
-  (or (instance? ByteBuffer obj) (number? obj)))
+;; NB: Although 'http-kit' has built-in support for numbers, we omit it.
+(defn custom-type? [obj]
+  (instance? ByteBuffer obj))
 
 (def encoders
   (assoc (encoders/default-encoders)
-    "multipart/form-data" {:encode #(encoders/multipart-encode % byte-buffer-or-number?)
+    "multipart/form-data" {:encode #(encoders/multipart-encode % custom-type?)
                            :as :multipart}))
 
 (def default-interceptors

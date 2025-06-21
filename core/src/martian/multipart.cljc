@@ -3,7 +3,7 @@
   (:require [clojure.java.io :as io])
   (:import (java.io File InputStream)))
 
-;; http-kit = {String | File, InputStream, byte[] | ByteBuffer! | Number!??}
+;; http-kit = {String | File, InputStream, byte[] | ByteBuffer! | ~Number!~}
 ;; clj-http = {String | File, InputStream, byte[] | o.a.h.e.m.c.ContentBody}
 ;; hato     = {String | File, InputStream, byte[] | URL, URI, Socket, Path!}
 ;; bb/http  = {String | File, InputStream, byte[] | URL, URI, Socket, Path?}

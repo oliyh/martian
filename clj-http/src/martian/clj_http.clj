@@ -13,12 +13,12 @@
    :leave (fn [{:keys [request] :as ctx}]
             (assoc ctx :response (http/request request)))})
 
-(defn content-body? [obj]
+(defn custom-type? [obj]
   (instance? ContentBody obj))
 
 (def encoders
   (assoc (encoders/default-encoders)
-    "multipart/form-data" {:encode #(encoders/multipart-encode % content-body?)
+    "multipart/form-data" {:encode #(encoders/multipart-encode % custom-type?)
                            :as :multipart}))
 
 (def default-interceptors
