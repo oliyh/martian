@@ -1,11 +1,21 @@
 (ns martian.server-stub
   (:require [io.pedestal.http :as bootstrap]
+            [io.pedestal.http.ring-middlewares :as ring-mw]
             [pedestal-api
              [core :as api]
              [helpers :refer [before defbefore defhandler handler]]]
-            [schema.core :as s]))
+            [schema.core :as s])
+  (:import (java.util.concurrent.atomic AtomicInteger)))
 
 (defonce the-pets (atom {}))
+
+(defonce last-pet-id (AtomicInteger.))
+
+(defn get-last-pet-id []
+  (AtomicInteger/.get last-pet-id))
+
+(defn next-pet-id []
+  (AtomicInteger/.incrementAndGet last-pet-id))
 
 (s/defschema Pet
   {:name s/Str
@@ -17,7 +27,7 @@
    :parameters {:body-params Pet}
    :responses  {201 {:body {:id s/Int}}}}
   [request]
-  (let [id 123]
+  (let [id (next-pet-id)]
     (swap! the-pets assoc id (:body-params request))
     {:status 201
      :body {:id id}}))
@@ -35,12 +45,13 @@
      :body "No pet found with this id"}))
 
 (s/defschema Upload
-  {:string s/Str
-   :binary s/Any})
+  {(s/optional-key :string) s/Str
+   (s/optional-key :binary) s/Any})
 
 (defhandler upload-data
   {:summary    "Upload data via multipart"
-   :parameters {:body-params Upload}
+   ;; TODO: Switch to `:multipart-params` to retrieve params.
+   :parameters {:body-params #_:multipart-params Upload}
    :responses  {200 {:body s/Str}}}
   [request]
   {:status 200
@@ -49,17 +60,28 @@
 (s/with-fn-validation
   (api/defroutes routes
     {}
-    [[["/" ^:interceptors [api/error-responses
-                           (api/negotiate-response)
-                           (api/body-params)
-                           api/common-body
-                           (api/coerce-request)
-                           (api/validate-response)]
+    [[;; TODO: Figure out why uploading doesn't work under "/".
+      ["/openapi/v3"
+       ^:interceptors [api/error-responses
+                       (api/negotiate-response)
+                       (api/body-params)
+                       api/common-body
+                       (api/coerce-request)
+                       (api/validate-response)]
+       ["/upload" {:post upload-data}]]
+
+      ["/"
+       ^:interceptors [api/error-responses
+                       (api/negotiate-response)
+                       (api/body-params)
+                       api/common-body
+                       (api/coerce-request)
+                       (api/validate-response)]
        ["/pets"
         ["/" {:post create-pet}]
         ["/:id" {:get get-pet}]]
 
-       ["/upload" {:post upload-data}]
+       #_["/upload" {:post upload-data}]
 
        ["/swagger.json" {:get api/swagger-json}]]]]))
 
@@ -82,16 +104,15 @@
 (def openapi-test-url (format "http://localhost:%s/openapi-test.json" (::bootstrap/port service)))
 (def openapi-test-yaml-url (format "http://localhost:%s/openapi-test.yaml" (::bootstrap/port service)))
 
-(def with-server
-  (fn [f]
-    (let [server-instance (bootstrap/create-server (bootstrap/default-interceptors service))]
-      (try
-        (bootstrap/start server-instance)
-        (f)
-        (finally (bootstrap/stop server-instance))))))
+(defn add-interceptors
+  [service-map]
+  (update service-map
+          ::bootstrap/interceptors
+          #(into [(ring-mw/multipart-params)] %)))
 
-;; for use at the repl
-(def server-instance (atom nil))
+;; For use at the REPL
+
+(defonce server-instance (atom nil))
 
 (defn stop-server! []
   (when-let [instance @server-instance]
@@ -101,6 +122,18 @@
 (defn start-server! []
   (when @server-instance
     (stop-server!))
-  (let [instance (bootstrap/create-server (bootstrap/default-interceptors service))]
+  (let [instance (-> (bootstrap/default-interceptors service)
+                     (add-interceptors)
+                     (bootstrap/create-server))]
     (bootstrap/start instance)
     (reset! server-instance instance)))
+
+;; For test fixtures
+
+(def with-server
+  (fn [f]
+    (start-server!)
+    (try
+      (f)
+      (finally
+        (stop-server!)))))
