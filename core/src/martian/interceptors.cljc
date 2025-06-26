@@ -84,8 +84,15 @@
               (update ctx ::tc/queue #(into (into tc/queue i) %))
               ctx))})
 
-(defn- prepare-multipart-request-headers [request]
-  (update request :headers dissoc "Content-Type" "content-type" :content-type))
+(defn- content-type? [header-key]
+  (= "content-type" (str/lower-case (name header-key))))
+
+(def memo:content-type? (memoize content-type?))
+
+(defn drop-content-type [headers]
+  (if-let [header-key (some #(when (memo:content-type? %) %) (keys headers))]
+    (dissoc headers header-key)
+    headers))
 
 (defn encode-request [encoders]
   {:name ::encode-request
@@ -100,17 +107,17 @@
                   {:keys [encode]} (encoding/find-encoder encoders content-type)
                   encoded-request (cond-> request
 
-                                          has-body?
-                                          (update :body encode)
+                                    has-body?
+                                    (update :body encode)
 
-                                          multipart?
-                                          ;; NB: Luckily, all target HTTP clients — clj-http (but not lite), http-kit,
-                                          ;;     even hato and org.babashka/http-client — all support the same syntax.
-                                          (-> (set/rename-keys {:body :multipart})
-                                              (prepare-multipart-request-headers))
+                                    multipart?
+                                    ;; NB: Luckily, all target HTTP clients — clj-http (but not lite), http-kit,
+                                    ;;     even hato and org.babashka/http-client — all support the same syntax.
+                                    (-> (set/rename-keys {:body :multipart})
+                                        (update :headers drop-content-type))
 
-                                          (and content-type (not multipart?))
-                                          (assoc-in [:headers "Content-Type"] content-type))]
+                                    (and content-type (not multipart?))
+                                    (assoc-in [:headers "Content-Type"] content-type))]
               (assoc ctx :request encoded-request)))})
 
 (def default-encode-request (encode-request (encoders/default-encoders)))
