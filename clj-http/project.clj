@@ -7,7 +7,7 @@
   :parent-project {:path "../project.clj"
                    :inherit [:managed-dependencies]}
   :dependencies [[com.github.oliyh/martian]
-                 [clj-http "3.13.0"]]
+                 [clj-http "3.13.1"]]
   :profiles {:provided {:dependencies [[org.clojure/clojure]]}
              :dev {:source-paths ["../test-common"]
                    :dependencies [[org.slf4j/slf4j-simple "2.0.17"]
