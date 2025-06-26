@@ -76,11 +76,14 @@
                     (:request ((:enter i) {:request {:body body}
                                            :handler {:consumes ["multipart/form-data"]}}))))))))))
 
-(defn- stub-response [content-type body]
-  {:name ::stub-response
-   :enter (fn [ctx]
-            (assoc ctx :response {:body body
-                                  :headers {:content-type content-type}}))})
+(defn- stub-response
+  ([content-type-val body]
+   (stub-response :content-type content-type-val body))
+  ([content-type-key content-type-val body]
+   {:name ::stub-response
+    :enter (fn [ctx]
+             (assoc ctx :response {:body body
+                                   :headers {content-type-key content-type-val}}))}))
 
 (deftest coerce-response-test
   (let [i i/default-coerce-response]
@@ -112,7 +115,7 @@
         (testing "transit"
           (testing "+json"
             (let [ctx (tc/enqueue* {} [i (stub-response "application/transit+json"
-                                                        #?(:clj (slurp (encoders/transit-encode body :json))
+                                                        #?(:clj  (slurp (encoders/transit-encode body :json))
                                                            :cljs (encoders/transit-encode body :json)))])]
               (is (= body
                      (-> (tc/execute ctx) :response :body)))))
@@ -123,7 +126,20 @@
                (let [ctx (tc/enqueue* {} [i (stub-response "application/transit+msgpack"
                                                            (tu/input-stream->byte-array (encoders/transit-encode body :msgpack)))])]
                  (is (= body
-                        (-> (tc/execute ctx) :response :body)))))))))))
+                        (-> (tc/execute ctx) :response :body)))))))))
+
+    (testing "alternative content-type header"
+      (let [body {:the {:wheels ["on" "the" "bus"]}
+                  :go {:round {:and "round"}}}]
+        (testing "Content-Type"
+          (let [ctx (tc/enqueue* {} [i (stub-response "Content-Type" "application/json" (encoders/json-encode body))])]
+            (is (= body
+                   (-> (tc/execute ctx) :response :body)))))
+
+        (testing "content-type"
+          (let [ctx (tc/enqueue* {} [i (stub-response "content-type" "application/json" (encoders/json-encode body))])]
+            (is (= body
+                   (-> (tc/execute ctx) :response :body)))))))))
 
 (deftest custom-encoding-test
   (testing "a user can support an encoding that martian doesn't know about by default"
