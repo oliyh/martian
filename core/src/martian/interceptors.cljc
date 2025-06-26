@@ -89,6 +89,9 @@
 
 (def memo:content-type? (memoize content-type?))
 
+(defn get-content-type [headers]
+  (some #(when (memo:content-type? %) (headers %)) (keys headers)))
+
 (defn drop-content-type [headers]
   (if-let [header-key (some #(when (memo:content-type? %) %) (keys headers))]
     (dissoc headers header-key)
@@ -129,19 +132,20 @@
   {:name ::coerce-response
    :decodes (keys encoders)
    :enter (fn [{:keys [request handler] :as ctx}]
-            (let [content-type (and (not (get-in request [:headers "Accept"]))
-                                    (encoding/choose-content-type encoders (:produces handler)))
-                  {:keys [as] :or {as :text}} (encoding/find-encoder encoders content-type)]
-
-              (cond-> (assoc-in ctx [:request :as] as)
-                content-type (assoc-in [:request :headers "Accept"] content-type))))
-
+            (let [resp-content-type (when (not (get-in request [:headers "Accept"]))
+                                      (encoding/choose-content-type encoders (:produces handler)))
+                  ;; TODO: Must not pick up an unsupported value `:auto` for the `bb-http-client`.
+                  {:keys [as] :or {as :text}} (encoding/find-encoder encoders resp-content-type)
+                  req-with-out-coercion (cond-> (assoc request :as as)
+                                          resp-content-type (assoc-in [:headers "Accept"] resp-content-type))]
+              (assoc ctx :request req-with-out-coercion)))
    :leave (fn [{:keys [response] :as ctx}]
-            (assoc ctx :response
-                   (let [content-type (and (:body response)
-                                           (not-empty (get-in response [:headers :content-type])))
-                         {:keys [decode]} (encoding/find-encoder encoders content-type)]
-                     (update response :body decode))))})
+            ;; TODO: In some cases (`http-kit`) it may be necessary to decode an `:error :body`.
+            (let [content-type (when (:body response)
+                                 (not-empty (get-content-type (:headers response))))
+                  {:keys [decode]} (encoding/find-encoder encoders content-type)
+                  decoded-response (update response :body decode)]
+              (assoc ctx :response decoded-response)))})
 
 (def default-coerce-response (coerce-response (encoders/default-encoders)))
 
