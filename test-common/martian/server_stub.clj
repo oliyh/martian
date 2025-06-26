@@ -70,13 +70,12 @@
 (s/with-fn-validation
   (api/defroutes routes
     {}
-    [[["/"
-       ^:interceptors [api/error-responses
-                       (api/negotiate-response)
-                       (api/body-params)
-                       api/common-body
-                       (api/coerce-request)
-                       (api/validate-response)]
+    [[["/" ^:interceptors [api/error-responses
+                           (api/negotiate-response)
+                           (api/body-params)
+                           api/common-body
+                           (api/coerce-request)
+                           (api/validate-response)]
        ["/pets"
         ["/" {:post create-pet}]
         ["/:id" {:get get-pet}]]
