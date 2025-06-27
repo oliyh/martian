@@ -15,6 +15,7 @@
                                         input-stream->byte-array
                                         without-content-type?
                                         multipart+boundary?]]
+            [matcher-combinators.matchers :as m]
             [matcher-combinators.test])
   (:import (java.io PrintWriter)
            (java.net Socket URI)))
@@ -60,7 +61,6 @@
                 :body {:name "Doggy McDogFace", :type "Dog", :age 3}
                 :headers {"Accept" "application/transit+json"
                           "Content-Type" "application/transit+json"}
-                :as :text
                 :version :http-1.1}
 
                {:method :post
@@ -98,7 +98,6 @@
                 :body {:name "Doggy McDogFace", :type "Dog", :age 3}
                 :headers {"Accept" "application/transit+json"
                           "Content-Type" "application/transit+json"}
-                :as :text
                 :version :http-1.1}
 
                {:method :post
@@ -356,7 +355,7 @@
     (testing "application/edn"
       (is (match?
             {:headers {"Accept" "application/edn"}
-             :as :text}
+             :as m/absent}
             (martian/request-for m :get-edn)))
       (is (match?
             {:status 200
@@ -366,7 +365,7 @@
     (testing "application/json"
       (is (match?
             {:headers {"Accept" "application/json"}
-             :as :text}
+             :as m/absent}
             (martian/request-for m :get-json)))
       (is (match?
             {:status 200
@@ -376,7 +375,7 @@
     (testing "application/transit+json"
       (is (match?
             {:headers {"Accept" "application/transit+json"}
-             :as :text}
+             :as m/absent}
             (martian/request-for m :get-transit+json)))
       (is (match?
             {:status 200
@@ -403,7 +402,7 @@
       (testing "application/x-www-form-urlencoded"
         (is (match?
               {:headers {"Accept" "application/x-www-form-urlencoded"}
-               :as :text}
+               :as m/absent}
               (martian/request-for m :get-form-data)))
         (is (match?
               {:status 200
@@ -417,7 +416,7 @@
             (martian/handler-for m :get-something)))
       (is (match?
             {:headers {"Accept" "application/json"}
-             :as :text}
+             :as m/absent}
             (martian/request-for m :get-something)))
       (is (match?
             {:status 200
@@ -425,14 +424,13 @@
              :body {:message "Here's some text content"}}
             (martian/response-for m :get-something))))
 
-    ;; TODO: This one fails with "No matching clause: :auto".
     (testing "any response content type (operation with '*/*' content)"
       (is (match?
             {:produces []}
             (martian/handler-for m :get-anything)))
       (let [request (martian/request-for m :get-anything)]
-        #_(is (not (contains? request :as))
-              "The response auto-coercion is NOT set")
+        (is (not (contains? request :as))
+            "The response auto-coercion is NOT set")
         (is (not (contains? (:headers request) "Accept"))
             "The 'Accept' request header is absent"))
       (is (match?
