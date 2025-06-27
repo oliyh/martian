@@ -129,18 +129,22 @@
 (def default-encode-body default-encode-request)
 
 (defn coerce-as
-  "Returns an HTTP-client-specific `:as` value for response coercion, using
+  "Returns an HTTP-client-specific request entry for response coercion, using
    the provided default values:
+   - `:request-key`        — usually `:as`, though some clients expect other
+                             keys, e.g. `:response-type` for the `cljs-http`
    - `:missing-encoder-as` — for the case where the media type is missing or
                              when there is no encoder for the specified type
    - `:default-encoder-as` — for in case the found encoder for the specified
                              media type omits its own `:as` value"
-  [encoder {:keys [missing-encoder-as default-encoder-as]
-            :or {missing-encoder-as :auto
+  [encoder {:keys [request-key missing-encoder-as default-encoder-as]
+            :or {request-key :as
+                 missing-encoder-as :auto
                  default-encoder-as :text}}]
-  (if (= encoding/auto-encoder encoder)
-    missing-encoder-as
-    (or (:as encoder) default-encoder-as)))
+  (when-let [val (if (= encoding/auto-encoder encoder)
+                   missing-encoder-as
+                   (or (:as encoder) default-encoder-as))]
+    {request-key val}))
 
 (defn coerce-response
   ([encoders]
@@ -154,7 +158,7 @@
                    ;; TODO: Must not pick up an unsupported value `:auto` for the `bb-http-client`.
                    resp-coerce-as (coerce-as (encoding/find-encoder encoders resp-media-type) coerce-as-opts)
                    req-with-out-coercion (cond-> request
-                                           resp-coerce-as (assoc :as resp-coerce-as)
+                                           resp-coerce-as (conj resp-coerce-as)
                                            resp-media-type (assoc-in [:headers "Accept"] resp-media-type))]
                (assoc ctx :request req-with-out-coercion)))
     :leave (fn [{:keys [response] :as ctx}]
