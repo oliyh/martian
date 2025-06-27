@@ -22,7 +22,6 @@
            writer (transit/writer out type)]
        (transit/write writer body)
        (io/input-stream (.toByteArray out)))
-
      :cljs
      (transit/write (transit/writer type {}) body)))
 
@@ -65,28 +64,31 @@
 (defn default-encoders
   ([] (default-encoders keyword))
   ([key-fn]
-   (merge
-    #?(:bb
-       {"application/transit+json" {:encode #(transit-encode % :json)
-                                    :decode #(transit-decode % :json)}})
-    #?(:clj
-       {"application/transit+msgpack" {:encode #(transit-encode % :msgpack)
-                                       :decode #(transit-decode % :msgpack)
-                                       :as     :byte-array}
-        "application/transit+json"    {:encode #(transit-encode % :json)
-                                       :decode #(transit-decode (.getBytes ^String %) :json)}})
-    #?(:cljs
-       {"application/transit+json" {:encode #(transit-encode % :json)
-                                    :decode #(transit-decode % :json)}})
-    (ordered-map
-     "application/edn"             {:encode pr-str
-                                    :decode edn/read-string}
-     "application/json"            {:encode json-encode
-                                    :decode #(json-decode % key-fn)})
-    #?(:bb nil
-       :clj
-       {"application/x-www-form-urlencoded" {:encode codec/form-encode
-                                             :decode (comp keywordize-keys codec/form-decode)}}
-       :cljs
-       {"application/x-www-form-urlencoded" {:encode form-encode
-                                             :decode form-decode}}))))
+   ;; NB: The order in this map is critically important, since we choose an appropriate
+   ;;     encoder for a particular media type sequentially (see `martian.encoding` ns).
+   (ordered-map
+     ;; NB: This one must go first and stay separate from the following `:clj/cljs` one
+     ;;     so to be overridden by the `:clj`-specific value on the JVM.
+     #?@(:bb
+         ["application/transit+json" {:encode #(transit-encode % :json)
+                                      :decode #(transit-decode % :json)}])
+     #?@(:clj
+         ["application/transit+msgpack" {:encode #(transit-encode % :msgpack)
+                                         :decode #(transit-decode % :msgpack)
+                                         :as :byte-array}
+          "application/transit+json" {:encode #(transit-encode % :json)
+                                      :decode #(transit-decode (.getBytes ^String %) :json)}]
+         :cljs
+         ["application/transit+json" {:encode #(transit-encode % :json)
+                                      :decode #(transit-decode % :json)}])
+     "application/edn"  {:encode pr-str
+                         :decode edn/read-string}
+     "application/json" {:encode json-encode
+                         :decode #(json-decode % key-fn)}
+     #?@(:bb []
+         :clj
+         ["application/x-www-form-urlencoded" {:encode codec/form-encode
+                                               :decode (comp keywordize-keys codec/form-decode)}]
+         :cljs
+         ["application/x-www-form-urlencoded" {:encode form-encode
+                                               :decode form-decode}]))))
