@@ -128,6 +128,11 @@
 ;; todo left for the backward compatibility - drop later, upon a major version release
 (def default-encode-body default-encode-request)
 
+(defn get-as-value [encoder]
+  (if (= encoding/auto-encoder encoder)
+    :auto
+    (or (:as encoder) :text)))
+
 (defn coerce-response [encoders]
   {:name ::coerce-response
    :decodes (keys encoders)
@@ -135,8 +140,9 @@
             (let [resp-content-type (when (not (get-in request [:headers "Accept"]))
                                       (encoding/choose-content-type encoders (:produces handler)))
                   ;; TODO: Must not pick up an unsupported value `:auto` for the `bb-http-client`.
-                  {:keys [as] :or {as :text}} (encoding/find-encoder encoders resp-content-type)
-                  req-with-out-coercion (cond-> (assoc request :as as)
+                  resp-coerce-as (get-as-value (encoding/find-encoder encoders resp-content-type))
+                  req-with-out-coercion (cond-> request
+                                          resp-coerce-as (assoc :as resp-coerce-as)
                                           resp-content-type (assoc-in [:headers "Accept"] resp-content-type))]
               (assoc ctx :request req-with-out-coercion)))
    :leave (fn [{:keys [response] :as ctx}]

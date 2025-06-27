@@ -6,8 +6,7 @@
 
 (def auto-encoder
   {:encode identity
-   :decode identity
-   :as :auto})
+   :decode identity})
 
 (defn find-encoder [encoders content-type]
   (if (string/blank? content-type)
