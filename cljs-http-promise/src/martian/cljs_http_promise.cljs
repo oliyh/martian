@@ -1,5 +1,6 @@
 (ns martian.cljs-http-promise
-  (:require [cljs-http.client :as http]
+  (:require [cljs-http.client :as http-client]
+            [cljs-http.core :as http]
             [martian.core :as martian]
             [martian.encoders :as encoders]
             [martian.interceptors :as i]
@@ -11,27 +12,44 @@
 (def ^:private go-async
   i/remove-stack)
 
+;; NB: The `cljs-http` by default decodes EDN, JSON, and Transit JSON via mws.
+;;     Martian does the same and more via the `::coerce-response` interceptor.
+(defn wrap-request
+  [request]
+  (-> request
+      http-client/wrap-accept
+      http-client/wrap-form-params
+      http-client/wrap-multipart-params
+      http-client/wrap-edn-params
+      #_http-client/wrap-edn-response
+      http-client/wrap-transit-params
+      #_http-client/wrap-transit-response
+      http-client/wrap-json-params
+      #_http-client/wrap-json-response
+      http-client/wrap-content-type
+      http-client/wrap-query-params
+      http-client/wrap-basic-auth
+      http-client/wrap-oauth
+      http-client/wrap-method
+      http-client/wrap-url
+      http-client/wrap-default-headers))
+
+(def make-request! (wrap-request http/request))
+
 (def perform-request
   {:name ::perform-request
    :leave (fn [{:keys [request] :as ctx}]
             (-> ctx
                 go-async
                 (assoc :response
-                       (prom/then (http/request request)
+                       (prom/then (make-request! request)
                                   (fn [response]
                                     (:response (tc/execute (assoc ctx :response response))))))))})
-
-;; NB: The `cljs-http` by default decodes EDN, JSON, and Transit JSON via mws.
-(def response-encoders
-  (dissoc (encoders/default-encoders)
-          "application/edn"
-          "application/json"
-          "application/transit+json"))
 
 (def default-interceptors
   (conj martian/default-interceptors
         i/default-encode-body
-        (i/coerce-response response-encoders
+        (i/coerce-response (encoders/default-encoders)
                            {:request-key :response-type
                             :missing-encoder-as :default
                             :default-encoder-as :default})
@@ -43,7 +61,7 @@
   (martian/bootstrap api-root concise-handlers (merge default-opts opts)))
 
 (defn bootstrap-openapi [url & [{:keys [server-url trim-base-url?] :as opts} load-opts]]
-  (prom/then (http/get url (merge {:as :json} load-opts))
+  (prom/then (http-client/get url load-opts)
              (fn [response]
                (let [definition (:body response)
                      raw-base-url (openapi/base-url url server-url definition)
