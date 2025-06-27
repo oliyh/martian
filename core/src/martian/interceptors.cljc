@@ -104,7 +104,7 @@
             (let [has-body? (:body request)
                   content-type (when (and has-body?
                                           (not (get-in request [:headers "Content-Type"])))
-                                 (encoding/choose-content-type encoders (:consumes handler)))
+                                 (encoding/choose-media-type encoders (:consumes handler)))
                   ;; NB: There are many possible subtypes of multipart requests.
                   multipart? (when content-type (str/starts-with? content-type "multipart/"))
                   {:keys [encode]} (encoding/find-encoder encoders content-type)
@@ -128,22 +128,24 @@
 ;; todo left for the backward compatibility - drop later, upon a major version release
 (def default-encode-body default-encode-request)
 
-(defn get-as-value [encoder]
+(defn coerce-as
+  [encoder]
   (if (= encoding/auto-encoder encoder)
     :auto
     (or (:as encoder) :text)))
 
-(defn coerce-response [encoders]
+(defn coerce-response
+  [encoders]
   {:name ::coerce-response
    :decodes (keys encoders)
    :enter (fn [{:keys [request handler] :as ctx}]
-            (let [resp-content-type (when (not (get-in request [:headers "Accept"]))
-                                      (encoding/choose-content-type encoders (:produces handler)))
+            (let [resp-media-type (when (not (get-in request [:headers "Accept"]))
+                                    (encoding/choose-media-type encoders (:produces handler)))
                   ;; TODO: Must not pick up an unsupported value `:auto` for the `bb-http-client`.
-                  resp-coerce-as (get-as-value (encoding/find-encoder encoders resp-content-type))
+                  resp-coerce-as (coerce-as (encoding/find-encoder encoders resp-media-type))
                   req-with-out-coercion (cond-> request
                                           resp-coerce-as (assoc :as resp-coerce-as)
-                                          resp-content-type (assoc-in [:headers "Accept"] resp-content-type))]
+                                          resp-media-type (assoc-in [:headers "Accept"] resp-media-type))]
               (assoc ctx :request req-with-out-coercion)))
    :leave (fn [{:keys [response] :as ctx}]
             ;; TODO: In some cases (`http-kit`) it may be necessary to decode an `:error :body`.
