@@ -1,8 +1,9 @@
 (ns martian.cljs-http-test
-  (:require [martian.cljs-http :as martian-http]
+  (:require [cljs.core.async :refer [<!]]
+            [cljs.test :refer-macros [async deftest is]]
+            [martian.cljs-http :as martian-http]
             [martian.core :as martian]
-            [cljs.test :refer-macros [deftest is async]]
-            [cljs.core.async :refer [<!]])
+            [martian.interceptors :as i])
   (:require-macros [cljs.core.async.macros :refer [go]]
                    [martian.file :refer [load-local-resource]]))
 
@@ -57,3 +58,17 @@
     (is (= "https://sandbox.example.com" (:api-root m)))
     (is (= [[:list-items "Gets a list of items."]]
            (martian/explore m)))))
+
+(deftest supported-content-types-test
+  (async done
+    (go (let [m (<! (martian-http/bootstrap-openapi openapi-url))]
+          (is (= {:encodes #{"application/transit+json"
+                             "application/json"
+                             "application/edn"
+                             "application/x-www-form-urlencoded"}
+                  :decodes #{"application/transit+json"
+                             "application/json"
+                             "application/edn"
+                             "application/x-www-form-urlencoded"}}
+                 (i/supported-content-types (:interceptors m)))))
+        (done))))
