@@ -13,13 +13,13 @@
   (if (string/blank? content-type)
     auto-encoder
     (loop [encoders encoders]
-      (let [[ct encoder] (first encoders)]
+      (let [[encoder-content-type encoder] (first encoders)]
         (cond
-          (not content-type) auto-encoder
+          (not encoder)
+          auto-encoder
 
-          (not encoder) auto-encoder
-
-          (string/includes? content-type ct) encoder
+          (string/includes? content-type encoder-content-type)
+          encoder
 
           :else
           (recur (rest encoders)))))))
