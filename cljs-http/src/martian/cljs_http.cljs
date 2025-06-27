@@ -2,6 +2,7 @@
   (:require [cljs-http.client :as http]
             [cljs.core.async :refer [<!]]
             [martian.core :as martian]
+            [martian.encoders :as encoders]
             [martian.interceptors :as i]
             [martian.openapi :as openapi]
             [tripod.context :as tc]
@@ -20,8 +21,21 @@
                        (go (let [response (<! (http/request request))]
                              (:response (tc/execute (assoc ctx :response response))))))))})
 
+;; NB: The `cljs-http` by default decodes EDN, JSON, and Transit JSON via mws.
+(def response-encoders
+  (dissoc (encoders/default-encoders)
+          "application/edn"
+          "application/json"
+          "application/transit+json"))
+
 (def default-interceptors
-  (concat martian/default-interceptors [i/default-encode-body i/default-coerce-response perform-request]))
+  (conj martian/default-interceptors
+        i/default-encode-body
+        (i/coerce-response response-encoders
+                           {:request-key :response-type
+                            :missing-encoder-as :default
+                            :default-encoder-as :default})
+        perform-request))
 
 (def default-opts {:interceptors default-interceptors})
 
