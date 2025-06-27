@@ -155,7 +155,6 @@
     :enter (fn [{:keys [request handler] :as ctx}]
              (let [resp-media-type (when (not (get-in request [:headers "Accept"]))
                                      (encoding/choose-media-type encoders (:produces handler)))
-                   ;; TODO: Must not pick up an unsupported value `:auto` for the `bb-http-client`.
                    resp-coerce-as (coerce-as (encoding/find-encoder encoders resp-media-type) coerce-as-opts)
                    req-with-out-coercion (cond-> request
                                            resp-coerce-as (conj resp-coerce-as)

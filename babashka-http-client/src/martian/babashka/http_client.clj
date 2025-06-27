@@ -74,7 +74,9 @@
 (def babashka-http-client-interceptors
   (conj martian/default-interceptors
         (interceptors/encode-request request-encoders)
-        interceptors/default-coerce-response
+        (interceptors/coerce-response (encoders/default-encoders)
+                                      {:missing-encoder-as nil
+                                       :default-encoder-as nil})
         keywordize-headers
         default-to-http-1))
 
