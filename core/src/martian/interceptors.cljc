@@ -141,7 +141,10 @@
                                media type omits its own `:as` value"
   [{:keys [skip-decode request-key missing-encoder-as default-encoder-as]
     :or {missing-encoder-as :auto
-         default-encoder-as :text}}]
+         ;; NB: Better be `:auto` to leverage the built-in client coercions
+         ;;     which are usually based on the Content-Type response header.
+         ;;     Leaving `:string` (the same as `:text`) for backward compat.
+         default-encoder-as :string}}]
   {:skip-decode (or skip-decode #{})
    :request-key (or request-key :as)
    ;; NB: Passing `nil` to any of these must be a valid option.

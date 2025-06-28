@@ -30,11 +30,14 @@
   (assoc (encoders/default-encoders)
     "multipart/form-data" {:encode #(encoders/multipart-encode % custom-type?)}))
 
+;; NB: `http-kit` does not support the `:json` response coercion.
+(def response-coerce-opts
+  {:default-encoder-as :text})
+
 (def default-interceptors
   (conj martian/default-interceptors
         (interceptors/encode-request request-encoders)
-        ;; `http-kit` does not support the `:json` response coercion
-        interceptors/default-coerce-response
+        (interceptors/coerce-response (encoders/default-encoders) response-coerce-opts)
         perform-request))
 
 (def default-opts {:interceptors default-interceptors})

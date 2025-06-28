@@ -27,6 +27,9 @@
                   "application/transit+json"}
    :request-key :response-type
    :missing-encoder-as :default
+   ;; NB: This must not be `:text`, since this previous global default value
+   ;;     never actually affected `cljs-http` response coercion due to being
+   ;;     passed under the wrong request key, `:as`.
    :default-encoder-as :default})
 
 (def default-interceptors

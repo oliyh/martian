@@ -46,16 +46,18 @@
   (assoc (encoders/default-encoders)
     "multipart/form-data" {:encode encoders/multipart-encode}))
 
-;; TODO: This actually doesn't work for some reason... Double-check and fix!
-;; NB: In accordance with the `hato`'s Optional Dependencies which just happen
+;; NB: In accordance with the `hato`'s Optional Dependencies, which all happen
 ;;     to be on the classpath already as the Martian core module dependencies,
-;;     we should skip decoding some media types.
+;;     we could and, actually, should skip decoding some media types.
 ;;     https://github.com/gnarroway/hato#request-options
 (def response-coerce-opts
-  {:skip-decode #{"application/edn"
-                  "application/json"
-                  "application/transit+json"
-                  "application/transit+msgpack"}})
+  ;; TODO: It better go through the built-in client coercions, but this change is breaking!
+  #_{:skip-decode #{"application/edn"
+                    "application/json"
+                    "application/transit+json"
+                    "application/transit+msgpack"}
+     :default-encoder-as :auto}
+  {:default-encoder-as nil})
 
 (def hato-interceptors
   (conj martian/default-interceptors

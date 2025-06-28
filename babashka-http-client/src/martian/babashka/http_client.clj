@@ -19,6 +19,8 @@
     (= :byte-array (:as request))
     (assoc :as :bytes)
 
+    ;; NB: This value is no longer passed by the library itself.
+    ;;     Leaving this clause intact for better compatibility.
     (= :text (:as request))
     (dissoc :as)
 
@@ -99,6 +101,7 @@
       (let [body (:body (http/get url (normalize-request load-opts)))]
         (if (yaml/yaml-url? url)
           (yaml/yaml->edn body)
+          ;; `babashka-http-client` has no support for `:json` response coercion
           (json/read-str body)))))
 
 (defn bootstrap-openapi [url & [{:keys [server-url] :as opts} load-opts]]
