@@ -310,6 +310,7 @@
              :headers {:content-type "application/transit+msgpack;charset=UTF-8"}
              :body {:message "Here's some text content"}}
             (martian/response-for m :get-transit+msgpack))))
+    ;; TODO: Fails due to a raw type mismatch (expects a string, gets a stream).
     (testing "application/x-www-form-urlencoded"
       (is (match?
             {:headers {"Accept" "application/x-www-form-urlencoded"}

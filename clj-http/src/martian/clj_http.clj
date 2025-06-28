@@ -26,14 +26,14 @@
 ;;     https://github.com/dakrone/clj-http#optional-dependencies
 (def response-coerce-opts
   ;; TODO: It better go through the built-in client coercions, but this change is breaking!
-  #_{:skip-decode (cond-> #{"application/json"
-                            "application/transit+json"
-                            "application/transit+msgpack"
-                            "application/x-www-form-urlencoded"}
-                          ;; NB: This one may not be available to the end user!
-                          http/edn-enabled? (conj "application/edn"))
-     :default-encoder-as :auto}
-  {:default-encoder-as nil})
+  {:skip-decode (cond-> #{"application/json"
+                          "application/transit+json"
+                          "application/transit+msgpack"
+                          "application/x-www-form-urlencoded"}
+                        ;; NB: This one may not be available to the end user!
+                        http/edn-enabled? (conj "application/edn"))
+   :default-encoder-as :auto}
+  #_{:default-encoder-as nil})
 
 (def default-interceptors
   (conj martian/default-interceptors

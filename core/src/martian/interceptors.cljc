@@ -7,7 +7,8 @@
             [martian.encoding :as encoding]
             [martian.schema :as schema]
             [schema.core :as s]
-            [tripod.context :as tc]))
+            [tripod.context :as tc])
+  #?(:clj (:import (java.io InputStream))))
 
 (defn remove-stack [ctx]
   (-> ctx tc/terminate (dissoc ::tc/stack)))
@@ -158,11 +159,23 @@
                    (or (:as encoder) default-encoder-as))]
     {request-key val}))
 
+(defn has-coerce-as-value?
+  [type request {:keys [request-key missing-encoder-as default-encoder-as]}]
+  (= (case type
+       :missing missing-encoder-as
+       :default default-encoder-as)
+     (get request request-key ::not-found)))
+
+(def raw-type?
+  #?(:clj  #(or (string? %) (bytes? %) (instance? InputStream %))
+     :cljs (constantly false)))
+
 (defn coerce-response
   ([encoders]
    (coerce-response encoders nil))
   ([encoders coerce-opts]
-   (let [coerce-opts (set-default-coerce-opts coerce-opts)]
+   (let [{:keys [skip-decode request-key default-encoder-as] :as coerce-opts}
+         (set-default-coerce-opts coerce-opts)]
      {:name ::coerce-response
       :decodes (keys encoders)
       :enter (fn [{:keys [request handler] :as ctx}]
@@ -173,12 +186,15 @@
                  (cond-> ctx
                    response-coerce-as (update :request conj response-coerce-as)
                    response-media-type (assoc-in [:request :headers "Accept"] response-media-type))))
-      :leave (fn [{:keys [response] :as ctx}]
+      :leave (fn [{:keys [request response] :as ctx}]
                ;; TODO: In some cases (`http-kit`) it may be necessary to decode an `:error :body`.
                (let [content-type (when (:body response)
                                     (get-content-type (:headers response)))
                      type-subtype (encoding/get-type-subtype content-type)]
-                 (if-not (contains? (:skip-decode coerce-opts) type-subtype)
+                 (if-not (and (contains? skip-decode type-subtype)
+                              ;; NB: Meaning there was an encoder with a custom `:as` value,
+                              ;;     so we expect to hit it anyway.
+                              (= default-encoder-as (get request request-key ::not-found)))
                    (let [{:keys [decode]} (encoding/find-encoder encoders content-type)
                          decoded-response (update response :body decode)]
                      (assoc ctx :response decoded-response))
