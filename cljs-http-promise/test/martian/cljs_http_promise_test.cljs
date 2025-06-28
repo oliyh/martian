@@ -11,50 +11,60 @@
 (def openapi-url "http://localhost:8888/openapi.json")
 (def openapi-test-url "http://localhost:8888/openapi-test.json")
 
+(defn report-error-and-throw [err]
+  (cljs.test/report
+    {:type :error
+     :message (.-message err)
+     :actual err
+     :expected :none})
+  (throw err))
+
 (deftest swagger-http-test
   (async done
-         (-> (prom/let [m (martian-http/bootstrap-swagger swagger-url)
-                        create-response (martian/response-for m :create-pet {:pet {:name "Doggy McDogFace"
-                                                                            :type "Dog"
-                                                                            :age 3}})
-                        get-response (martian/response-for m :get-pet {:id 123})]
+    (-> (prom/let [m (martian-http/bootstrap-swagger swagger-url)
+                   create-response (martian/response-for m :create-pet {:pet {:name "Doggy McDogFace"
+                                                                              :type "Dog"
+                                                                              :age 3}})
+                   get-response (martian/response-for m :get-pet {:id 123})]
 
-               (is (= {:status 201
-                       :body {:id 123}}
-                      (select-keys create-response [:status :body])))
+          (is (= {:status 201
+                  :body {:id 123}}
+                 (select-keys create-response [:status :body])))
 
-               (is (= {:name "Doggy McDogFace"
-                       :type "Dog"
-                       :age 3}
-                      (:body get-response))))
-             (prom/finally (fn []
-                             (done))))))
+          (is (= {:name "Doggy McDogFace"
+                  :type "Dog"
+                  :age 3}
+                 (:body get-response))))
+        (prom/catch report-error-and-throw)
+        (prom/finally (fn []
+                        (done))))))
 
 (deftest openapi-bootstrap-test
   (async done
-         (-> (martian-http/bootstrap-openapi openapi-test-url)
-             (prom/then (fn [m]
-                          (is (= "https://sandbox.example.com"
-                                 (:api-root m)) "check absolute server url"))))
+    (-> (martian-http/bootstrap-openapi openapi-test-url)
+        (prom/then (fn [m]
+                     (is (= "https://sandbox.example.com"
+                            (:api-root m)) "check absolute server url")))
+        (prom/catch report-error-and-throw))
 
-         (-> (martian-http/bootstrap-openapi openapi-test-url {:server-url "https://sandbox.com"})
-             (prom/then (fn [m]
-                          (is (= "https://sandbox.com"
-                                 (:api-root m)) "check absolute server url via opts"))))
-         (-> (martian-http/bootstrap-openapi openapi-test-url {:server-url "/v3.1"})
-             (prom/then (fn [m]
-                          (is (= "http://localhost:8888/v3.1"
-                                 (:api-root m)) "check relative server url via opts"))))
+    (-> (martian-http/bootstrap-openapi openapi-test-url {:server-url "https://sandbox.com"})
+        (prom/then (fn [m]
+                     (is (= "https://sandbox.com"
+                            (:api-root m)) "check absolute server url via opts")))
+        (prom/catch report-error-and-throw))
 
-         (-> (prom/let [m (martian-http/bootstrap-openapi openapi-url)]
+    (-> (martian-http/bootstrap-openapi openapi-test-url {:server-url "/v3.1"})
+        (prom/then (fn [m]
+                     (is (= "http://localhost:8888/v3.1"
+                            (:api-root m)) "check relative server url via opts")))
+        (prom/catch report-error-and-throw))
 
-               (is (= "http://localhost:8888/openapi/v3"
-                      (:api-root m)))
-
-               (is (contains? (set (map first (martian/explore m)))
-                              :get-order-by-id)))
-             (prom/finally (fn []
-                             (done))))))
+    (-> (prom/let [m (martian-http/bootstrap-openapi openapi-url)]
+          (is (= "http://localhost:8888/openapi/v3" (:api-root m)))
+          (is (contains? (set (map first (martian/explore m))) :get-order-by-id)))
+        (prom/catch report-error-and-throw)
+        (prom/finally (fn []
+                        (done))))))
 
 (deftest local-file-test
   (let [m (martian/bootstrap-openapi "https://sandbox.example.com" (load-local-resource "public/openapi-test.json") martian-http/default-opts)]
@@ -74,22 +84,24 @@
                              "application/edn"
                              "application/x-www-form-urlencoded"}}
                  (i/supported-content-types (:interceptors m)))))
+        (prom/catch report-error-and-throw)
         (prom/finally (fn []
                         (done))))))
 
 (deftest issue-189-test
   (async done
-    (-> (testing "operation with '*/*' response content type"
-          (prom/let [m (martian-http/bootstrap-openapi openapi-url {:server-url "http://localhost:8888"})]
+    (testing "operation with '*/*' response content type"
+      (-> (prom/let [m (martian-http/bootstrap-openapi openapi-url {:server-url "http://localhost:8888"})
+                     response (martian/response-for m :get-something {})]
             (is (match?
                   {:method :get
                    :url "http://localhost:8888/issue/189"
                    :response-type :default}
                   (martian/request-for m :get-something {})))
-            (prom/let [response (martian/response-for m :get-something {})]
-              (is (match?
-                    {:status 200
-                     :body {:message "Here's some JSON content"}}
-                    response)))))
-        (prom/finally (fn []
-                        (done))))))
+            (is (match?
+                  {:status 200
+                   :body {:message "Here's some JSON content"}}
+                  response)))
+          (prom/catch report-error-and-throw)
+          (prom/finally (fn []
+                          (done)))))))
