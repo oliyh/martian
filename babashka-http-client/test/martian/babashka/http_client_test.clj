@@ -206,8 +206,7 @@
       (testing "String"
         (is (match?
               {:multipart [{:name "string" :content "Howdy!"}]
-               :headers {"Accept" "application/json"}
-               :as :text}
+               :headers {"Accept" "application/json"}}
               (martian/request-for m :upload-data {:string "Howdy!"})))
         (is (match?
               {:status 200
@@ -219,8 +218,7 @@
         (let [tmp-file (create-temp-file)]
           (is (match?
                 {:multipart [{:name "binary" :content tmp-file}]
-                 :headers {"Accept" "application/json"}
-                 :as :text}
+                 :headers {"Accept" "application/json"}}
                 (martian/request-for m :upload-data {:binary tmp-file})))
           (is (match?
                 {:status 200
@@ -233,8 +231,7 @@
               tmp-file-is (io/input-stream tmp-file)]
           (is (match?
                 {:multipart [{:name "binary" :content tmp-file-is}]
-                 :headers {"Accept" "application/json"}
-                 :as :text}
+                 :headers {"Accept" "application/json"}}
                 (martian/request-for m :upload-data {:binary tmp-file-is})))
           (is (match?
                 {:status 200
@@ -246,8 +243,7 @@
         (let [byte-arr (String/.getBytes "Clojure!")]
           (is (match?
                 {:multipart [{:name "binary" :content byte-arr}]
-                 :headers {"Accept" "application/json"}
-                 :as :text}
+                 :headers {"Accept" "application/json"}}
                 (martian/request-for m :upload-data {:binary byte-arr})))
           (is (match?
                 {:status 200
@@ -261,8 +257,7 @@
         (let [url (.toURL (URI. test-multipart-file-url))]
           (is (match?
                 {:multipart [{:name "binary" :content input-stream?}]
-                 :headers {"Accept" "application/json"}
-                 :as :text}
+                 :headers {"Accept" "application/json"}}
                 (martian/request-for m :upload-data {:binary url})))
           (is (match?
                 {:status 200
@@ -274,8 +269,7 @@
         (let [uri (URI. test-multipart-file-url)]
           (is (match?
                 {:multipart [{:name "binary" :content input-stream?}]
-                 :headers {"Accept" "application/json"}
-                 :as :text}
+                 :headers {"Accept" "application/json"}}
                 (martian/request-for m :upload-data {:binary uri})))
           (is (match?
                 {:status 200
@@ -290,8 +284,7 @@
             (println "Hello, server! This is an invalid HTTP message."))
           (is (match?
                 {:multipart [{:name "binary" :content input-stream?}]
-                 :headers {"Accept" "application/json"}
-                 :as :text}
+                 :headers {"Accept" "application/json"}}
                 (martian/request-for m :upload-data {:binary socket})))
           (is (match?
                 {:status 200
@@ -308,8 +301,7 @@
             (extend-io-factory-for-path)
             (is (match?
                   {:multipart [{:name "binary" :content input-stream?}]
-                   :headers {"Accept" "application/json"}
-                   :as :text}
+                   :headers {"Accept" "application/json"}}
                   (martian/request-for m :upload-data {:binary path})))
             (is (match?
                   {:status 200
@@ -323,8 +315,7 @@
         (let [int-num 1234567890]
           (is (match?
                 {:multipart [{:name "custom" :content (str int-num)}]
-                 :headers {"Accept" "application/json"}
-                 :as :text}
+                 :headers {"Accept" "application/json"}}
                 (martian/request-for m :upload-data {:custom int-num})))
           (is (match?
                 {:status 200
