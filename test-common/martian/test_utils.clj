@@ -44,5 +44,8 @@
         :make-output-stream (fn [^Path path opts]
                               (io/make-output-stream (Path/.toFile path) opts))))))
 
+(defn without-content-type? [headers]
+  (not (contains? headers "Content-Type")))
+
 (def multipart+boundary?
   (m/via #(subs % 0 30) "multipart/form-data; boundary="))

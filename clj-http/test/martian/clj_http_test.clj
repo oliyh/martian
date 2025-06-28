@@ -18,6 +18,7 @@
                                         extend-io-factory-for-path
                                         input-stream?
                                         input-stream->byte-array
+                                        without-content-type?
                                         multipart+boundary?]]
             [matcher-combinators.test])
   (:import (java.io PrintWriter)
@@ -102,11 +103,10 @@
       (testing "String"
         (is (match?
               {:multipart [{:name "string" :content "Howdy!"}]
-               :headers {"Accept" "application/json"}}
+               :headers without-content-type?}
               (martian/request-for m :upload-data {:string "Howdy!"})))
         (is (match?
               {:status 200
-               :headers {:content-type "application/json;charset=utf-8"}
                :body {:content-type multipart+boundary?
                       :content-map {:string "Howdy!"}}}
               (martian/response-for m :upload-data {:string "Howdy!"}))))
@@ -114,11 +114,10 @@
         (let [tmp-file (create-temp-file)]
           (is (match?
                 {:multipart [{:name "binary" :content tmp-file}]
-                 :headers {"Accept" "application/json"}}
+                 :headers without-content-type?}
                 (martian/request-for m :upload-data {:binary tmp-file})))
           (is (match?
                 {:status 200
-                 :headers {:content-type "application/json;charset=utf-8"}
                  :body {:content-type multipart+boundary?
                         :content-map {:binary (binary-content tmp-file)}}}
                 (martian/response-for m :upload-data {:binary tmp-file})))))
@@ -127,11 +126,10 @@
               tmp-file-is (io/input-stream tmp-file)]
           (is (match?
                 {:multipart [{:name "binary" :content tmp-file-is}]
-                 :headers {"Accept" "application/json"}}
+                 :headers without-content-type?}
                 (martian/request-for m :upload-data {:binary tmp-file-is})))
           (is (match?
                 {:status 200
-                 :headers {:content-type "application/json;charset=utf-8"}
                  :body {:content-type multipart+boundary?
                         :content-map {:binary (binary-content tmp-file "binary")}}}
                 (martian/response-for m :upload-data {:binary tmp-file-is})))))
@@ -139,11 +137,10 @@
         (let [byte-arr (String/.getBytes "Clojure!")]
           (is (match?
                 {:multipart [{:name "binary" :content byte-arr}]
-                 :headers {"Accept" "application/json"}}
+                 :headers without-content-type?}
                 (martian/request-for m :upload-data {:binary byte-arr})))
           (is (match?
                 {:status 200
-                 :headers {:content-type "application/json;charset=utf-8"}
                  :body {:content-type multipart+boundary?
                         :content-map {:binary {:filename "binary"
                                                :content-type "application/octet-stream"
@@ -156,11 +153,10 @@
         (let [url (.toURL (URI. test-multipart-file-url))]
           (is (match?
                 {:multipart [{:name "binary" :content input-stream?}]
-                 :headers {"Accept" "application/json"}}
+                 :headers without-content-type?}
                 (martian/request-for m :upload-data {:binary url})))
           (is (match?
                 {:status 200
-                 :headers {:content-type "application/json;charset=utf-8"}
                  :body {:content-type multipart+boundary?
                         :content-map {:binary {:filename "binary"
                                                :content-type "application/octet-stream"
@@ -171,11 +167,10 @@
         (let [uri (URI. test-multipart-file-url)]
           (is (match?
                 {:multipart [{:name "binary" :content input-stream?}]
-                 :headers {"Accept" "application/json"}}
+                 :headers without-content-type?}
                 (martian/request-for m :upload-data {:binary uri})))
           (is (match?
                 {:status 200
-                 :headers {:content-type "application/json;charset=utf-8"}
                  :body {:content-type multipart+boundary?
                         :content-map {:binary {:filename "binary"
                                                :content-type "application/octet-stream"
@@ -189,11 +184,10 @@
             (println "Hello, server! This is an invalid HTTP message."))
           (is (match?
                 {:multipart [{:name "binary" :content input-stream?}]
-                 :headers {"Accept" "application/json"}}
+                 :headers without-content-type?}
                 (martian/request-for m :upload-data {:binary socket})))
           (is (match?
                 {:status 200
-                 :headers {:content-type "application/json;charset=utf-8"}
                  :body {:content-type multipart+boundary?
                         :content-map {:binary {:filename "binary"
                                                :content-type "application/octet-stream"
@@ -206,11 +200,10 @@
           (extend-io-factory-for-path)
           (is (match?
                 {:multipart [{:name "binary" :content input-stream?}]
-                 :headers {"Accept" "application/json"}}
+                 :headers without-content-type?}
                 (martian/request-for m :upload-data {:binary path})))
           (is (match?
                 {:status 200
-                 :headers {:content-type "application/json;charset=utf-8"}
                  :body {:content-type multipart+boundary?
                         :content-map {:binary (binary-content tmp-file "binary")}}}
                 (martian/response-for m :upload-data {:binary path}))))))
@@ -221,11 +214,10 @@
               file-body (FileBody. tmp-file)]
           (is (match?
                 {:multipart [{:name "custom" :content file-body}]
-                 :headers {"Accept" "application/json"}}
+                 :headers without-content-type?}
                 (martian/request-for m :upload-data {:custom file-body})))
           (is (match?
                 {:status 200
-                 :headers {:content-type "application/json;charset=utf-8"}
                  :body {:content-type multipart+boundary?
                         :content-map {:custom (binary-content tmp-file)}}}
                 (martian/response-for m :upload-data {:custom file-body})))))
@@ -235,11 +227,10 @@
               is-body (InputStreamBody. tmp-file-is "input-stream")]
           (is (match?
                 {:multipart [{:name "custom" :content is-body}]
-                 :headers {"Accept" "application/json"}}
+                 :headers without-content-type?}
                 (martian/request-for m :upload-data {:custom is-body})))
           (is (match?
                 {:status 200
-                 :headers {:content-type "application/json;charset=utf-8"}
                  :body {:content-type multipart+boundary?
                         :content-map {:custom (binary-content tmp-file "input-stream")}}}
                 (martian/response-for m :upload-data {:custom is-body})))))
@@ -248,11 +239,10 @@
               byte-arr-body (ByteArrayBody. byte-arr "byte-array")]
           (is (match?
                 {:multipart [{:name "custom" :content byte-arr-body}]
-                 :headers {"Accept" "application/json"}}
+                 :headers without-content-type?}
                 (martian/request-for m :upload-data {:custom byte-arr-body})))
           (is (match?
                 {:status 200
-                 :headers {:content-type "application/json;charset=utf-8"}
                  :body {:content-type multipart+boundary?
                         :content-map {:custom {:filename "byte-array"
                                                :content-type "application/octet-stream"
@@ -264,11 +254,10 @@
               str-body (StringBody. "Hello, server! This is text." content-type)]
           (is (match?
                 {:multipart [{:name "custom" :content str-body}]
-                 :headers {"Accept" "application/json"}}
+                 :headers without-content-type?}
                 (martian/request-for m :upload-data {:custom str-body})))
           (is (match?
                 {:status 200
-                 :headers {:content-type "application/json;charset=utf-8"}
                  :body {:content-type multipart+boundary?
                         :content-map {:custom "Hello, server! This is text."}}}
                 (martian/response-for m :upload-data {:custom str-body})))))
@@ -277,11 +266,10 @@
         (let [int-num 1234567890]
           (is (match?
                 {:multipart [{:name "custom" :content (str int-num)}]
-                 :headers {"Accept" "application/json"}}
+                 :headers without-content-type?}
                 (martian/request-for m :upload-data {:custom int-num})))
           (is (match?
                 {:status 200
-                 :headers {:content-type "application/json;charset=utf-8"}
                  :body {:content-type multipart+boundary?
                         :content-map {:custom (str int-num)}}}
                 (martian/response-for m :upload-data {:custom int-num}))))))))
