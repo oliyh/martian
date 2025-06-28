@@ -67,6 +67,13 @@
    :body {:content-type (get-content-type-header request)
           :content-map (get-prepared-content-map request)}})
 
+(defhandler get-something
+  {:summary   "Test case for #189"
+   :responses {200 {:body {:message s/Str}}}}
+  [request]
+  {:status 200
+   :body {:message "Here's some JSON content"}})
+
 (s/with-fn-validation
   (api/defroutes routes
     {}
@@ -82,6 +89,9 @@
 
        ;; endpoint for multipart request tests
        ["/upload" {:post upload-data}]
+
+       ;; endpoints for GitHub issues
+       ["/issue/189" {:get get-something}]
 
        ["/swagger.json" {:get api/swagger-json}]]]]))
 

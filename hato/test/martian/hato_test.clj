@@ -261,3 +261,16 @@
                  :body {:content-type multipart+boundary?
                         :content-map {:custom (str int-num)}}}
                 (martian/response-for m :upload-data {:custom int-num}))))))))
+
+(deftest issue-189-test
+  (testing "operation with '*/*' response content type"
+    (let [m (martian-http/bootstrap-openapi openapi-url {:server-url "http://localhost:8888"})]
+      (is (match?
+            {:method :get
+             :url "http://localhost:8888/issue/189"
+             :as :auto}
+            (martian/request-for m :get-something {})))
+      (is (match?
+            {:status 200
+             :body {:message "Here's some JSON content"}}
+            (martian/response-for m :get-something {}))))))

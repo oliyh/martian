@@ -34,7 +34,7 @@
                                   [nrepl/nrepl "1.3.1"]
                                   [cider/piggieback "0.6.0"]
 
-                                  [nubank/matcher-combinators "3.8.5"]]
+                                  [nubank/matcher-combinators "3.9.1"]]
                    :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}}}
   :aliases {"fig"       ["trampoline" "run" "-m" "figwheel.main"]
             "fig:build" ["trampoline" "run" "-m" "figwheel.main" "-b" "dev" "-r"]

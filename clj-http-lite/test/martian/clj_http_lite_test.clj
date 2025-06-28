@@ -1,10 +1,16 @@
 (ns martian.clj-http-lite-test
-  (:require [martian.clj-http-lite :as martian-http]
+  (:require [clojure.test :refer [deftest testing is use-fixtures]]
+            [martian.clj-http-lite :as martian-http]
             [martian.core :as martian]
             [martian.encoders :as encoders]
-            [martian.server-stub :refer [with-server swagger-url openapi-url openapi-test-url openapi-yaml-url openapi-test-yaml-url]]
+            [martian.server-stub :refer [swagger-url
+                                         openapi-url
+                                         openapi-test-url
+                                         openapi-yaml-url
+                                         openapi-test-yaml-url
+                                         with-server]]
             [martian.test-utils :refer [input-stream->byte-array]]
-            [clojure.test :refer [deftest testing is use-fixtures]]))
+            [matcher-combinators.test]))
 
 (use-fixtures :once with-server)
 
@@ -72,3 +78,16 @@
     (is (= "https://sandbox.example.com" (:api-root m)))
     (is (= [[:list-items "Gets a list of items."]]
            (martian/explore m)))))
+
+(deftest issue-189-test
+  (testing "operation with '*/*' response content type"
+    (let [m (martian-http/bootstrap-openapi openapi-url {:server-url "http://localhost:8888"})]
+      (is (match?
+            {:method :get
+             :url "http://localhost:8888/issue/189"
+             :as :auto}
+            (martian/request-for m :get-something {})))
+      (is (match?
+            {:status 200
+             :body {:message "Here's some JSON content"}}
+            (martian/response-for m :get-something {}))))))

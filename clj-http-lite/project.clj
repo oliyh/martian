@@ -18,4 +18,4 @@
                                   [io.pedestal/pedestal.service "0.5.9"]
                                   [io.pedestal/pedestal.jetty "0.5.9"]
 
-                                  [nubank/matcher-combinators "3.8.5"]]}})
+                                  [nubank/matcher-combinators "3.9.1"]]}})

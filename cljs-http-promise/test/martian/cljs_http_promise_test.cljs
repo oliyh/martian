@@ -1,8 +1,9 @@
 (ns martian.cljs-http-promise-test
-  (:require [cljs.test :refer-macros [async deftest is]]
+  (:require [cljs.test :refer-macros [async deftest is testing]]
             [martian.cljs-http-promise :as martian-http]
             [martian.core :as martian]
             [martian.interceptors :as i]
+            [matcher-combinators.test]
             [promesa.core :as prom])
   (:require-macros [martian.file :refer [load-local-resource]]))
 
@@ -73,5 +74,22 @@
                              "application/edn"
                              "application/x-www-form-urlencoded"}}
                  (i/supported-content-types (:interceptors m)))))
+        (prom/finally (fn []
+                        (done))))))
+
+(deftest issue-189-test
+  (async done
+    (-> (testing "operation with '*/*' response content type"
+          (prom/let [m (martian-http/bootstrap-openapi openapi-url {:server-url "http://localhost:8888"})]
+            (is (match?
+                  {:method :get
+                   :url "http://localhost:8888/issue/189"
+                   :response-type :default}
+                  (martian/request-for m :get-something {})))
+            (prom/let [response (martian/response-for m :get-something {})]
+              (is (match?
+                    {:status 200
+                     :body {:message "Here's some JSON content"}}
+                    response)))))
         (prom/finally (fn []
                         (done))))))
