@@ -16,14 +16,13 @@
 (defn custom-type? [obj]
   (instance? ContentBody obj))
 
-(def encoders
+(def request-encoders
   (assoc (encoders/default-encoders)
-    "multipart/form-data" {:encode #(encoders/multipart-encode % custom-type?)
-                           :as :multipart}))
+    "multipart/form-data" {:encode #(encoders/multipart-encode % custom-type?)}))
 
 (def default-interceptors
   (conj martian/default-interceptors
-        (interceptors/encode-request encoders)
+        (interceptors/encode-request request-encoders)
         interceptors/default-coerce-response
         perform-request))
 
