@@ -33,8 +33,8 @@
 (def default-interceptors
   (conj martian/default-interceptors
         (interceptors/encode-request request-encoders)
-        (interceptors/coerce-response (encoders/default-encoders)
-                                      {:delegate-on-missing? false})
+        ;; `http-kit` does not support the `:json` response coercion
+        interceptors/default-coerce-response
         perform-request))
 
 (def default-opts {:interceptors default-interceptors})

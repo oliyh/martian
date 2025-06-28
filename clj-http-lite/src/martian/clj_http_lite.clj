@@ -2,7 +2,6 @@
   (:require [cheshire.core :as json]
             [clj-http.lite.client :as http]
             [martian.core :as martian]
-            [martian.encoders :as encoders]
             [martian.file :as file]
             [martian.interceptors :as interceptors]
             [martian.openapi :as openapi]
@@ -22,8 +21,8 @@
   (conj martian/default-interceptors
         ;; `clj-http-lite` does not support 'multipart/form-data' uploads
         interceptors/default-encode-body
-        (interceptors/coerce-response (encoders/default-encoders)
-                                      {:delegate-on-missing? false})
+        ;; `clj-http-lite` does not support the `:json` response coercion
+        interceptors/default-coerce-response
         perform-request))
 
 (def default-opts {:interceptors default-interceptors})

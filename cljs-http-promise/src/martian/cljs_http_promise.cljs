@@ -21,13 +21,18 @@
                                   (fn [response]
                                     (:response (tc/execute (assoc ctx :response response))))))))})
 
+(def response-coerce-opts
+  {:skip-decode #{"application/edn"
+                  "application/json"
+                  "application/transit+json"}
+   :request-key :response-type
+   :missing-encoder-as :default
+   :default-encoder-as :default})
+
 (def default-interceptors
   (conj martian/default-interceptors
         i/default-encode-body
-        (i/coerce-response (encoders/default-encoders)
-                           {:request-key :response-type
-                            :missing-encoder-as :default
-                            :default-encoder-as :default})
+        (i/coerce-response (encoders/default-encoders) response-coerce-opts)
         perform-request))
 
 (def default-opts {:interceptors default-interceptors})

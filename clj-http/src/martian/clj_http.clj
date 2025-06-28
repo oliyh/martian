@@ -20,10 +20,22 @@
   (assoc (encoders/default-encoders)
     "multipart/form-data" {:encode #(encoders/multipart-encode % custom-type?)}))
 
+;; TODO: This actually doesn't work for some reason... Double-check and fix!
+;; NB: In accordance with the `clj-http`'s Optional Dependencies which happen
+;;     to be on the classpath already as the Martian core module dependencies,
+;;     we should skip decoding some media types.
+;;     https://github.com/dakrone/clj-http#optional-dependencies
+(def response-coerce-opts
+  {:skip-decode #{"application/edn"
+                  "application/json"
+                  "application/transit+json"
+                  "application/transit+msgpack"
+                  "application/x-www-form-urlencoded"}})
+
 (def default-interceptors
   (conj martian/default-interceptors
         (interceptors/encode-request request-encoders)
-        interceptors/default-coerce-response
+        (interceptors/coerce-response (encoders/default-encoders) response-coerce-opts)
         perform-request))
 
 (def default-opts {:interceptors default-interceptors})

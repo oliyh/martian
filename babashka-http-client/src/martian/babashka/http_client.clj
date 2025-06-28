@@ -71,12 +71,15 @@
   (assoc (encoders/default-encoders)
     "multipart/form-data" {:encode encoders/multipart-encode}))
 
+;; NB: `babashka-http-client` does not support the `:json` response coercion.
+(def response-coerce-opts
+  {:missing-encoder-as nil
+   :default-encoder-as nil})
+
 (def babashka-http-client-interceptors
   (conj martian/default-interceptors
         (interceptors/encode-request request-encoders)
-        (interceptors/coerce-response (encoders/default-encoders)
-                                      {:missing-encoder-as nil
-                                       :default-encoder-as nil})
+        (interceptors/coerce-response (encoders/default-encoders) response-coerce-opts)
         keywordize-headers
         default-to-http-1))
 
