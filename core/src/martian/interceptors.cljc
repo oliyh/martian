@@ -128,7 +128,6 @@
 ;; todo left for the backward compatibility - drop later, upon a major version release
 (def default-encode-body default-encode-request)
 
-;; NB: It exists purely for the backward compatibility with previous versions.
 (defn set-default-coerce-opts
   "Returns an HTTP client-specific response coercion options, applying default
    values, if necessary:
@@ -149,36 +148,38 @@
    :missing-encoder-as missing-encoder-as
    :default-encoder-as default-encoder-as})
 
+(defn coerce-as
+  [encoder {:keys [request-key missing-encoder-as default-encoder-as]}]
+  (when-let [val (if (= encoding/auto-encoder encoder)
+                   missing-encoder-as
+                   (or (:as encoder) default-encoder-as))]
+    {request-key val}))
+
 (defn coerce-response
   ([encoders]
    (coerce-response encoders nil))
   ([encoders coerce-opts]
-   (let [{:keys [skip-decode
-                 request-key
-                 missing-encoder-as
-                 default-encoder-as]} (set-default-coerce-opts coerce-opts)]
+   (let [coerce-opts (set-default-coerce-opts coerce-opts)]
      {:name ::coerce-response
       :decodes (keys encoders)
       :enter (fn [{:keys [request handler] :as ctx}]
                (let [response-media-type (when (not (get-in request [:headers "Accept"]))
                                            (encoding/choose-media-type encoders (:produces handler)))
-                     response-encoder (encoding/find-encoder encoders response-media-type)
-                     response-coerce-as (if (= encoding/auto-encoder response-encoder)
-                                          missing-encoder-as
-                                          (or (:as response-encoder) default-encoder-as))]
+                     response-coerce-as (coerce-as (encoding/find-encoder encoders response-media-type)
+                                                   coerce-opts)]
                  (cond-> ctx
-                   response-coerce-as (update :request assoc request-key response-coerce-as)
+                   response-coerce-as (update :request conj response-coerce-as)
                    response-media-type (assoc-in [:request :headers "Accept"] response-media-type))))
       :leave (fn [{:keys [response] :as ctx}]
                ;; TODO: In some cases (`http-kit`) it may be necessary to decode an `:error :body`.
                (let [content-type (when (:body response)
                                     (get-content-type (:headers response)))
                      type-subtype (encoding/get-type-subtype content-type)]
-                 (if (contains? skip-decode type-subtype)
-                   ctx
+                 (if-not (contains? (:skip-decode coerce-opts) type-subtype)
                    (let [{:keys [decode]} (encoding/find-encoder encoders content-type)
                          decoded-response (update response :body decode)]
-                     (assoc ctx :response decoded-response)))))})))
+                     (assoc ctx :response decoded-response))
+                   ctx)))})))
 
 (def default-coerce-response (coerce-response (encoders/default-encoders)))
 
