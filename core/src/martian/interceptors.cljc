@@ -147,10 +147,12 @@
     {request-key val}))
 
 (defn delegate-response-decoding?
-  [coerce-as {:keys [request-key missing-encoder-as]
+  [coerce-as {:keys [request-key missing-encoder-as delegate-on-missing?]
               :or {request-key :as
-                   missing-encoder-as :auto}}]
-  (= missing-encoder-as (get coerce-as request-key ::not-found)))
+                   missing-encoder-as :auto
+                   delegate-on-missing? true}}]
+  (and delegate-on-missing?
+       (= missing-encoder-as (get coerce-as request-key ::not-found))))
 
 (defn coerce-response
   ([encoders]

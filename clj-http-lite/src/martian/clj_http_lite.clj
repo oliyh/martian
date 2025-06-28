@@ -2,6 +2,7 @@
   (:require [cheshire.core :as json]
             [clj-http.lite.client :as http]
             [martian.core :as martian]
+            [martian.encoders :as encoders]
             [martian.file :as file]
             [martian.interceptors :as interceptors]
             [martian.openapi :as openapi]
@@ -19,9 +20,10 @@
 
 (def default-interceptors
   (conj martian/default-interceptors
-        ;; clj-http-lite does not support 'multipart/form-data' uploads
+        ;; `clj-http-lite` does not support 'multipart/form-data' uploads
         interceptors/default-encode-body
-        interceptors/default-coerce-response
+        (interceptors/coerce-response (encoders/default-encoders)
+                                      {:delegate-on-missing? false})
         perform-request))
 
 (def default-opts {:interceptors default-interceptors})
@@ -34,7 +36,7 @@
       (let [body (:body (http/get url (or load-opts {})))]
         (if (yaml/yaml-url? url)
           (yaml/yaml->edn body)
-          ;; clj-http-lite does not support {:as :json} body conversion (yet) so we do it right here
+          ;; `clj-http-lite` has no support for `:json` response coercion
           (json/parse-string body keyword)))))
 
 (defn bootstrap-openapi [url & [{:keys [server-url] :as opts} load-opts]]

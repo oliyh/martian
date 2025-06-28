@@ -33,7 +33,8 @@
 (def default-interceptors
   (conj martian/default-interceptors
         (interceptors/encode-request request-encoders)
-        interceptors/default-coerce-response
+        (interceptors/coerce-response (encoders/default-encoders)
+                                      {:delegate-on-missing? false})
         perform-request))
 
 (def default-opts {:interceptors default-interceptors})
@@ -48,6 +49,7 @@
                  (fn [{:keys [body]}]
                    (if (yaml/yaml-url? url)
                      (yaml/yaml->edn body)
+                     ;; `http-kit` has no support for `:json` response coercion
                      (json/decode body keyword))))))
 
 (defn bootstrap-openapi [url & [{:keys [server-url] :as opts} load-opts]]
