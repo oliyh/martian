@@ -1,42 +1,16 @@
 (ns martian.cljs-http
-  (:require [cljs-http.client :as http-client]
-            [cljs-http.core :as http]
+  (:require [cljs-http.client :as http]
             [cljs.core.async :refer [<!]]
+            [clojure.string :as str]
             [martian.core :as martian]
             [martian.encoders :as encoders]
             [martian.interceptors :as i]
             [martian.openapi :as openapi]
-            [tripod.context :as tc]
-            [clojure.string :as string])
+            [tripod.context :as tc])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
 (def ^:private go-async
   i/remove-stack)
-
-;; NB: The `cljs-http` by default decodes EDN, JSON, and Transit JSON via mws.
-;;     Martian does the same and more via the `::coerce-response` interceptor.
-(defn wrap-request
-  [request]
-  (-> request
-      http-client/wrap-accept
-      http-client/wrap-form-params
-      http-client/wrap-multipart-params
-      http-client/wrap-edn-params
-      #_http-client/wrap-edn-response
-      http-client/wrap-transit-params
-      #_http-client/wrap-transit-response
-      http-client/wrap-json-params
-      #_http-client/wrap-json-response
-      http-client/wrap-content-type
-      http-client/wrap-query-params
-      http-client/wrap-basic-auth
-      http-client/wrap-oauth
-      http-client/wrap-method
-      http-client/wrap-url
-      http-client/wrap-channel-from-request-map
-      http-client/wrap-default-headers))
-
-(def make-request! (wrap-request http/request))
 
 (def perform-request
   {:name ::perform-request
@@ -44,7 +18,7 @@
             (-> ctx
                 go-async
                 (assoc :response
-                       (go (let [response (<! (make-request! request))]
+                       (go (let [response (<! (http/request request))]
                              (:response (tc/execute (assoc ctx :response response))))))))})
 
 (def default-interceptors
@@ -62,10 +36,10 @@
   (martian/bootstrap api-root concise-handlers (merge default-opts opts)))
 
 (defn bootstrap-openapi [url & [{:keys [server-url trim-base-url?] :as opts} load-opts]]
-  (go (let [definition (:body (<! (http-client/get url load-opts)))
+  (go (let [definition (:body (<! (http/get url load-opts)))
             raw-base-url (openapi/base-url url server-url definition)
             base-url (if trim-base-url?
-                       (string/replace raw-base-url #"/$" "")
+                       (str/replace raw-base-url #"/$" "")
                        raw-base-url)]
         (martian/bootstrap-openapi base-url definition (merge default-opts opts)))))
 
