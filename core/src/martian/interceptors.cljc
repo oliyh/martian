@@ -128,58 +128,64 @@
 ;; todo left for the backward compatibility - drop later, upon a major version release
 (def default-encode-body default-encode-request)
 
-(defn coerce-as
-  "Returns an HTTP-client-specific request entry for response coercion, using
-   the provided default values:
-   - `:request-key`        — usually `:as`, though some clients expect other
-                             keys, e.g. `:response-type` for the `cljs-http`
-   - `:missing-encoder-as` — for the case where the media type is missing or
-                             when there is no encoder for the specified type
-   - `:default-encoder-as` — for in case the found encoder for the specified
-                             media type omits its own `:as` value"
-  [encoder {:keys [request-key missing-encoder-as default-encoder-as]
-            :or {request-key :as
-                 missing-encoder-as :auto
-                 default-encoder-as :text}}]
-  (when-let [val (if (= encoding/auto-encoder encoder)
-                   missing-encoder-as
-                   (or (:as encoder) default-encoder-as))]
-    {request-key val}))
-
-(defn delegate-response-decoding?
-  [coerce-as {:keys [request-key missing-encoder-as delegate-on-missing?]
-              :or {request-key :as
-                   missing-encoder-as :auto
-                   delegate-on-missing? true}}]
-  (and delegate-on-missing?
-       (= missing-encoder-as (get coerce-as request-key ::not-found))))
+;; NB: It exists purely for the backward compatibility with previous versions.
+(defn coerce-as-defaults
+  "Returns an HTTP client-specific response coercion options, applying default
+   values, if necessary:
+   - `:request-key`          — usually `:as`, though some clients expect other
+                               keys, e.g. `:response-type` for the `cljs-http`
+   - `:missing-encoder-as`   — for the case where the media type is missing or
+                               when there is no encoder for the specified type
+   - `:default-encoder-as`   — for in case the found encoder for the specified
+                               media type omits its own `:as` value
+   - `:delegate-on-missing?` — whether or not to delegate a response coercion
+                               to the client upon missing media type encoder"
+  [{:keys [request-key missing-encoder-as default-encoder-as delegate-on-missing?]
+    :or {request-key :as
+         missing-encoder-as :auto
+         default-encoder-as :text
+         delegate-on-missing? true}}]
+  ;; NB: Passing `nil` to any of these must be a valid option.
+  {:request-key request-key
+   :missing-encoder-as missing-encoder-as
+   :default-encoder-as default-encoder-as
+   :delegate-on-missing? delegate-on-missing?})
 
 (defn coerce-response
   ([encoders]
    (coerce-response encoders nil))
   ([encoders coerce-as-opts]
-   {:name ::coerce-response
-    :decodes (keys encoders)
-    :enter (fn [{:keys [request handler] :as ctx}]
-             (let [response-media-type (when (not (get-in request [:headers "Accept"]))
-                                         (encoding/choose-media-type encoders (:produces handler)))
-                   response-coerce-as (coerce-as (encoding/find-encoder encoders response-media-type)
-                                                 coerce-as-opts)
-                   ;; NB: Do disable Martian response decoding in case it was delegated to the client.
-                   delegate-decoding? (delegate-response-decoding? response-coerce-as coerce-as-opts)]
-               (cond-> ctx
-                 response-coerce-as (-> (assoc :delegate-decoding? delegate-decoding?)
-                                        (update :request conj response-coerce-as))
-                 response-media-type (assoc-in [:request :headers "Accept"] response-media-type))))
-    :leave (fn [{:keys [response delegate-decoding?] :as ctx}]
-             ;; TODO: In some cases (`http-kit`) it may be necessary to decode an `:error :body`.
-             (if-not delegate-decoding?
-               (let [content-type (when (:body response)
-                                    (not-empty (get-content-type (:headers response))))
-                     {:keys [decode]} (encoding/find-encoder encoders content-type)
-                     decoded-response (update response :body decode)]
-                 (assoc ctx :response decoded-response))
-               ctx))}))
+   (let [{:keys [request-key
+                 missing-encoder-as
+                 default-encoder-as
+                 delegate-on-missing?]} (coerce-as-defaults coerce-as-opts)]
+     {:name ::coerce-response
+      :decodes (keys encoders)
+      :enter (fn [{:keys [request handler] :as ctx}]
+               (let [response-media-type (when (not (get-in request [:headers "Accept"]))
+                                           (encoding/choose-media-type encoders (:produces handler)))
+                     response-encoder (encoding/find-encoder encoders response-media-type)
+                     missing-media-type? (= encoding/auto-encoder response-encoder)
+                     response-coerce-as (if missing-media-type?
+                                          missing-encoder-as
+                                          (or (:as response-encoder) default-encoder-as))
+                     ;; NB: Disable Martian response decoding in case it was delegated to the client.
+                     ;;     Only use when there is an HTTP client-specific response coercion in play,
+                     ;;     i.e. when the `response-coerce-as` is not `nil`.
+                     delegate-decoding? (and (some? response-coerce-as)
+                                             missing-media-type? delegate-on-missing?)]
+                 (cond-> (assoc ctx :decode? (not delegate-decoding?))
+                   response-coerce-as (update :request assoc request-key response-coerce-as)
+                   response-media-type (assoc-in [:request :headers "Accept"] response-media-type))))
+      :leave (fn [{:keys [response decode?] :as ctx}]
+               ;; TODO: In some cases (`http-kit`) it may be necessary to decode an `:error :body`.
+               (if decode?
+                 (let [content-type (when (:body response)
+                                      (not-empty (get-content-type (:headers response))))
+                       {:keys [decode]} (encoding/find-encoder encoders content-type)
+                       decoded-response (update response :body decode)]
+                   (assoc ctx :response decoded-response))
+                 ctx))})))
 
 (def default-coerce-response (coerce-response (encoders/default-encoders)))
 
