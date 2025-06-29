@@ -132,7 +132,7 @@
 (defn set-default-coerce-opts
   "Returns an HTTP client-specific response coercion options, applying default
    values, if necessary:
-   - `:skip-decode`          — a set of media types for which the decoding can
+   - `:skip-decoding-for`    — a set of media types for which the decoding can
                                be skipped in favor of the client built-in one
    - `:request-key`          — usually `:as`, though some clients expect other
                                keys, e.g. `:response-type` for the `cljs-http`
@@ -140,13 +140,13 @@
                                when there is no encoder for the specified type
    - `:default-encoder-as`   — for in case the found encoder for the specified
                                media type omits its own `:as` value"
-  [{:keys [skip-decode request-key missing-encoder-as default-encoder-as]
+  [{:keys [skip-decoding-for request-key missing-encoder-as default-encoder-as]
     :or {missing-encoder-as :auto
          ;; NB: Better be `:auto` to leverage the built-in client coercions
          ;;     which are usually based on the Content-Type response header.
          ;;     Leaving `:string` (the same as `:text`) for backward compat.
          default-encoder-as :string}}]
-  {:skip-decode (or skip-decode #{})
+  {:skip-decoding-for (or skip-decoding-for #{})
    :request-key (or request-key :as)
    ;; NB: Passing `nil` to any of these must be a valid option.
    :missing-encoder-as missing-encoder-as
@@ -195,7 +195,7 @@
                            ;;     which may not be the case if the "Accept" encoder had some custom
                            ;;     (non-default) `:as` value, meaning it still expects to decode the
                            ;;     response from this (intermediary) type to the final one.
-                           (and (contains? (:skip-decode coerce-opts) type-subtype)
+                           (and (contains? (:skip-decoding-for coerce-opts) type-subtype)
                                 (has-coerce-as-value? :default request coerce-opts))
                            ;; NB: Avoid double coercion of same sort by the client and then Martian.
                            ;;     A workaround needed specifically for `clj-http` and `hato` clients

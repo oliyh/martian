@@ -22,9 +22,9 @@
                              (:response (tc/execute (assoc ctx :response response))))))))})
 
 (def response-coerce-opts
-  {:skip-decode #{"application/edn"
-                  "application/json"
-                  "application/transit+json"}
+  {:skip-decoding-for #{"application/edn"
+                        "application/json"
+                        "application/transit+json"}
    :request-key :response-type
    :missing-encoder-as :default
    ;; NB: This must not be `:text`, since this previous global default value

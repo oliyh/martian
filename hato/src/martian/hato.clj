@@ -51,10 +51,10 @@
 ;;     we could and, actually, should skip decoding some media types.
 ;;     https://github.com/gnarroway/hato#request-options
 (def response-coerce-opts
-  {:skip-decode #{"application/edn"
-                  "application/json"
-                  "application/transit+json"
-                  "application/transit+msgpack"}
+  {:skip-decoding-for #{"application/edn"
+                        "application/json"
+                        "application/transit+json"
+                        "application/transit+msgpack"}
    :default-encoder-as :auto})
 
 (def hato-interceptors
