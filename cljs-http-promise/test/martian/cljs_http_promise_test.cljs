@@ -10,6 +10,7 @@
 (def swagger-url "http://localhost:8888/swagger.json")
 (def openapi-url "http://localhost:8888/openapi.json")
 (def openapi-test-url "http://localhost:8888/openapi-test.json")
+(def openapi-coercions-url "http://localhost:8888/openapi-coercions.json")
 
 (defn report-error-and-throw [err]
   (cljs.test/report
@@ -91,7 +92,7 @@
 (deftest issue-189-test
   (async done
     (testing "operation with '*/*' response content type"
-      (-> (prom/let [m (martian-http/bootstrap-openapi openapi-url {:server-url "http://localhost:8888"})
+      (-> (prom/let [m (martian-http/bootstrap-openapi openapi-coercions-url)
                      response (martian/response-for m :get-something {})]
             (is (match?
                   {:method :get

@@ -11,6 +11,7 @@
 (def swagger-url "http://localhost:8888/swagger.json")
 (def openapi-url "http://localhost:8888/openapi.json")
 (def openapi-test-url "http://localhost:8888/openapi-test.json")
+(def openapi-coercions-url "http://localhost:8888/openapi-coercions.json")
 
 (deftest swagger-http-test
   (async done
@@ -76,7 +77,7 @@
 (deftest issue-189-test
   (async done
     (go (testing "operation with '*/*' response content type"
-          (let [m (<! (martian-http/bootstrap-openapi openapi-url {:server-url "http://localhost:8888"}))]
+          (let [m (<! (martian-http/bootstrap-openapi openapi-coercions-url))]
             (is (match?
                   {:method :get
                    :url "http://localhost:8888/issue/189"

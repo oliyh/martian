@@ -809,39 +809,6 @@
                     }
                 }
             }
-        },
-        "/issue/189": {
-            "get": {
-                "summary": "Test case for #189",
-                "description": "https://github.com/oliyh/martian/issues/189",
-                "operationId": "get-something",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful operation",
-                        "content": {
-                            "*/*": {
-                                "schema": {
-                                    "message": {
-                                        "type": "string"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [{
-                    "api_key": []
-                }]
-            }
         }
     },
     "components": {

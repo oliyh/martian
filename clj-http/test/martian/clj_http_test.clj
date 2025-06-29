@@ -12,6 +12,7 @@
                                          openapi-test-yaml-url
                                          openapi-multipart-url
                                          test-multipart-file-url
+                                         openapi-coercions-url
                                          with-server]]
             [martian.test-utils :refer [binary-content
                                         create-temp-file
@@ -276,7 +277,7 @@
 
 (deftest issue-189-test
   (testing "operation with '*/*' response content type"
-    (let [m (martian-http/bootstrap-openapi openapi-url {:server-url "http://localhost:8888"})]
+    (let [m (martian-http/bootstrap-openapi openapi-coercions-url)]
       (is (match?
             {:method :get
              :url "http://localhost:8888/issue/189"

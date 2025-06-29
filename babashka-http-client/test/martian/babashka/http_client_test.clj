@@ -26,7 +26,8 @@
     (def openapi-test-url (format "http://localhost:%s/openapi-test.json" port))
     (def openapi-test-yaml-url (format "http://localhost:%s/openapi-test.yaml" port))
     (def openapi-multipart-url (format "http://localhost:%s/openapi-multipart.json" port))
-    (def test-multipart-file-url (format "http://localhost:%s/test-multipart.txt" port)))
+    (def test-multipart-file-url (format "http://localhost:%s/test-multipart.txt" port))
+    (def openapi-coercions-url (format "http://localhost:%s/openapi-coercions.json" port)))
   (do
     (require '[martian.server-stub :refer [swagger-url
                                            openapi-url
@@ -35,6 +36,7 @@
                                            openapi-test-yaml-url
                                            openapi-multipart-url
                                            test-multipart-file-url
+                                           openapi-coercions-url
                                            with-server]])
     (require '[martian.test-utils :refer [extend-io-factory-for-path]])
     (use-fixtures :once with-server)))
@@ -318,7 +320,7 @@
 
 (deftest issue-189-test
   (testing "operation with '*/*' response content type"
-    (let [m (martian-http/bootstrap-openapi openapi-url {:server-url "http://localhost:8888"})]
+    (let [m (martian-http/bootstrap-openapi openapi-coercions-url)]
       (is (match?
             {:method :get
              :url "http://localhost:8888/issue/189"}
