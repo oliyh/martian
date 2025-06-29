@@ -174,8 +174,7 @@
   ([encoders]
    (coerce-response encoders nil))
   ([encoders coerce-opts]
-   (let [{:keys [skip-decode request-key default-encoder-as] :as coerce-opts}
-         (set-default-coerce-opts coerce-opts)]
+   (let [coerce-opts (set-default-coerce-opts coerce-opts)]
      {:name ::coerce-response
       :decodes (keys encoders)
       :enter (fn [{:keys [request handler] :as ctx}]
@@ -191,10 +190,19 @@
                (let [content-type (when (:body response)
                                     (get-content-type (:headers response)))
                      type-subtype (encoding/get-type-subtype content-type)]
-                 (if-not (and (contains? skip-decode type-subtype)
-                              ;; NB: Meaning there was an encoder with a custom `:as` value,
-                              ;;     so we expect to hit it anyway.
-                              (= default-encoder-as (get request request-key ::not-found)))
+                 (if-not (or
+                           ;; NB: Skip only when the client did coerce a response to the final type,
+                           ;;     which may not be the case if the "Accept" encoder had some custom
+                           ;;     (non-default) `:as` value, meaning it still expects to decode the
+                           ;;     response from this (intermediary) type to the final one.
+                           (and (contains? (:skip-decode coerce-opts) type-subtype)
+                                (has-coerce-as-value? :default request coerce-opts))
+                           ;; NB: Avoid double coercion of same sort by the client and then Martian.
+                           ;;     A workaround needed specifically for `clj-http` and `hato` clients
+                           ;;     with response auto-coercion getting turned on due to e.g. presence
+                           ;;     of the "*/*" response content the OpenAPI definition of this path.
+                           (and (has-coerce-as-value? :missing request coerce-opts)
+                                (not (raw-type? (:body response)))))
                    (let [{:keys [decode]} (encoding/find-encoder encoders content-type)
                          decoded-response (update response :body decode)]
                      (assoc ctx :response decoded-response))
