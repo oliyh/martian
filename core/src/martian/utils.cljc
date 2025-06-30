@@ -1,8 +1,8 @@
 (ns martian.utils)
 
-
+;; TODO: Substitute with `parse-long` (built-in, cross-platform).
 (defn string->int [s]
-  #?(:clj (Long/parseLong s)
+  #?(:clj  (Long/parseLong s)
      :cljs (js/parseInt s)))
 
 (defn update*
