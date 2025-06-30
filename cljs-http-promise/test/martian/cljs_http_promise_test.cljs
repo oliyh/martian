@@ -89,15 +89,13 @@
         (prom/finally (fn []
                         (done))))))
 
-;; TODO: The `cljs-http` uses `:response-type` request key for output coercion.
-
 (deftest response-coercion-edn-test
   (async done
     (testing "application/edn"
       (-> (prom/let [m (martian-http/bootstrap-openapi openapi-coercions-url)]
             (is (match?
                   {:headers {"Accept" "application/edn"}
-                   #_#_:response-type :default}
+                   :response-type :default}
                   (martian/request-for m :get-edn)))
             (-> (martian/response-for m :get-edn)
                 (prom/then (fn [response]
@@ -116,7 +114,7 @@
       (-> (prom/let [m (martian-http/bootstrap-openapi openapi-coercions-url)]
             (is (match?
                   {:headers {"Accept" "application/json"}
-                   #_#_:response-type :default}
+                   :response-type :default}
                   (martian/request-for m :get-json)))
             (-> (martian/response-for m :get-json)
                 (prom/then (fn [response]
@@ -135,7 +133,7 @@
       (-> (prom/let [m (martian-http/bootstrap-openapi openapi-coercions-url)]
             (is (match?
                   {:headers {"Accept" "application/transit+json"}
-                   #_#_:response-type :default}
+                   :response-type :default}
                   (martian/request-for m :get-transit+json)))
             (-> (martian/response-for m :get-transit+json)
                 (prom/then (fn [response]
@@ -154,16 +152,14 @@
       (-> (prom/let [m (martian-http/bootstrap-openapi openapi-coercions-url)]
             (is (match?
                   {:headers {"Accept" "application/x-www-form-urlencoded"}
-                   #_#_:response-type :default}
+                   :response-type :text}
                   (martian/request-for m :get-form-data)))
             (-> (martian/response-for m :get-form-data)
                 (prom/then (fn [response]
-                             ;; TODO: Fails due to a raw type mismatch (does not apply encoder).
                              (is (match?
                                    {:status 200
                                     :headers {"content-type" "application/x-www-form-urlencoded"}
-                                    :body {:message "Here's some text content"}
-                                    #_"message=Here%27s+some+text+content"}
+                                    :body {:message "Here's some text content"}}
                                    response))))))
           (prom/catch report-error-and-throw)
           (prom/finally (fn []
@@ -178,7 +174,7 @@
                   (martian/handler-for m :get-something)))
             (is (match?
                   {:headers {"Accept" "application/transit+json"}
-                   #_#_:response-type :default}
+                   :response-type :default}
                   (martian/request-for m :get-something)))
             (-> (martian/response-for m :get-something)
                 (prom/then (fn [response]
@@ -199,8 +195,8 @@
                   {:produces []}
                   (martian/handler-for m :get-anything)))
             (let [request (martian/request-for m :get-anything)]
-              #_(is (= :default (:response-type request))
-                    "The response auto-coercion is set")
+              (is (= :default (:response-type request))
+                  "The response auto-coercion is set")
               (is (not (contains? (:headers request) "Accept"))
                   "The 'Accept' request header is absent"))
             (-> (martian/response-for m :get-anything)
