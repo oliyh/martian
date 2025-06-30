@@ -229,13 +229,16 @@
              ctx)}))
 
 (defn supported-content-types
-  "Return the full set of supported content-types as declared by any encoding/decoding interceptors"
+  "Return the full set of supported content-types as declared by any encoding/decoding interceptors,
+   preserving their original declaration order."
   [interceptors]
-  (reduce (fn [acc interceptor]
-            (merge-with into acc (select-keys interceptor [:encodes :decodes])))
-          {:encodes #{}
-           :decodes #{}}
-          interceptors))
+  (-> (reduce (fn [acc interceptor]
+                (merge-with into acc (select-keys interceptor [:encodes :decodes])))
+              {:encodes []
+               :decodes []}
+              interceptors)
+      (update :encodes distinct)
+      (update :decodes distinct)))
 
 ;; borrowed from https://github.com/walmartlabs/lacinia-pedestal/blob/master/src/com/walmartlabs/lacinia/pedestal.clj#L40
 (defn inject

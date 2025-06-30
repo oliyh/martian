@@ -98,7 +98,9 @@
   ([] (default-encoders keyword))
   ([key-fn]
    ;; NB: The order in this map is critically important, since we choose an appropriate
-   ;;     encoder for a particular media type sequentially (see `martian.encoding` ns).
+   ;;     encoder for a particular media type sequentially (see `martian.encoding` ns),
+   ;;     as well as preserve the order when collecting supported content types for the
+   ;;     OpenAPI definition parsing.
    (ordered-map
      ;; NB: The `transit+msgpack` is not available when running in BB, but is on the JVM.
      ;;     j.l.NoClassDefFoundError: Could not initialize class org.msgpack.MessagePack
