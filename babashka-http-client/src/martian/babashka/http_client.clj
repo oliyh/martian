@@ -7,6 +7,7 @@
             [martian.file :as file]
             [martian.interceptors :as interceptors]
             [martian.openapi :as openapi]
+            [martian.utils :as utils]
             [martian.yaml :as yaml]
             [tripod.context :as tc])
   (:import [java.util.function Function]))
@@ -16,6 +17,8 @@
     (not (:uri request))
     (assoc :uri (:url request))
 
+    ;; NB: This value is no longer passed by the library itself.
+    ;;     Leaving this clause intact for better compatibility.
     (= :byte-array (:as request))
     (assoc :as :bytes)
 
@@ -73,6 +76,10 @@
   (assoc (encoders/default-encoders)
     "multipart/form-data" {:encode encoders/multipart-encode}))
 
+(def response-encoders
+  (utils/update* (encoders/default-encoders)
+                 "application/transit+msgpack" assoc :as :bytes))
+
 ;; NB: `babashka-http-client` does not support the `:json` response coercion.
 (def response-coerce-opts
   {:missing-encoder-as nil
@@ -81,7 +88,7 @@
 (def babashka-http-client-interceptors
   (conj martian/default-interceptors
         (interceptors/encode-request request-encoders)
-        (interceptors/coerce-response (encoders/default-encoders) response-coerce-opts)
+        (interceptors/coerce-response response-encoders response-coerce-opts)
         keywordize-headers
         default-to-http-1))
 
