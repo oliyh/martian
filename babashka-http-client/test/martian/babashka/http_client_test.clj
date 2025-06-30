@@ -7,6 +7,7 @@
             [martian.babashka.http-client :as martian-http]
             [martian.core :as martian]
             [martian.encoders :as encoders]
+            [martian.interceptors :as i]
             [martian.test-utils :refer [if-bb
                                         binary-content
                                         create-temp-file
@@ -42,7 +43,8 @@
     (use-fixtures :once with-server)))
 
 (defn- decode-body
-  "transit+msgpack is not available when running in BB, but is on the JVM"
+  "The `transit+msgpack` is not available when running in BB, but is available
+   when running on the JVM"
   [body]
   (if-bb
     (encoders/transit-decode (input-stream->byte-array body) :json)
@@ -190,7 +192,9 @@
   (deftest babashka-test
     (if (not (fs/which "bb"))
       (println "babashka not installed, skipping test")
-      (process/shell "bb" "-e" "(require '[babashka.classpath :as cp] '[babashka.process :as process])
+      (process/shell
+        {:inherit true}
+        "bb" "-e" "(require '[babashka.classpath :as cp] '[babashka.process :as process])
       (let [classpath (str/trim (:out (process/sh \"lein classpath\")))
             split (cp/split-classpath classpath)
             without-spec (remove #(str/includes? % \"spec.alpha\") split)
@@ -317,6 +321,31 @@
                  :body {:content-type multipart+boundary?
                         :content-map {:custom (str int-num)}}}
                 (martian/response-for m :upload-data {:custom int-num}))))))))
+
+;; TODO: Fails for BB! The "application/transit+msgpack" sneaks into!
+(deftest supported-content-types-test
+  (let [m (martian-http/bootstrap-openapi openapi-url)]
+    (if-bb
+      (is (= {:encodes #{"application/transit+json"
+                         "application/json"
+                         "application/edn"
+                         "multipart/form-data"}
+              :decodes #{"application/transit+json"
+                         "application/json"
+                         "application/edn"}}
+             (i/supported-content-types (:interceptors m))))
+      (is (= {:encodes #{"application/transit+msgpack"
+                         "application/transit+json"
+                         "application/json"
+                         "application/edn"
+                         "application/x-www-form-urlencoded"
+                         "multipart/form-data"}
+              :decodes #{"application/transit+msgpack"
+                         "application/transit+json"
+                         "application/json"
+                         "application/edn"
+                         "application/x-www-form-urlencoded"}}
+             (i/supported-content-types (:interceptors m)))))))
 
 ;; TODO: The `:as` values `:text` and `:byte-array` are invalid for this client.
 
