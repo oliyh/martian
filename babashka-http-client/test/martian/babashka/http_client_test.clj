@@ -68,7 +68,7 @@
                 :body {:name "Doggy McDogFace", :type "Dog", :age 3}
                 :headers {"Accept" "application/transit+msgpack"
                           "Content-Type" "application/transit+msgpack"}
-                :as :byte-array
+                :as :bytes
                 :version :http-1.1})
 
              (-> (martian/request-for m :create-pet {:pet {:name "Doggy McDogFace"
@@ -105,7 +105,7 @@
                 :body {:name "Doggy McDogFace", :type "Dog", :age 3}
                 :headers {"Accept" "application/transit+msgpack"
                           "Content-Type" "application/transit+msgpack"}
-                :as :byte-array
+                :as :bytes
                 :version :http-1.1})
              (-> (martian/request-for m :create-pet {:pet {:name "Doggy McDogFace"
                                                            :type "Dog"
@@ -346,8 +346,6 @@
                          "application/x-www-form-urlencoded"}}
              (i/supported-content-types (:interceptors m)))))))
 
-;; TODO: The `:as` values `:text` and `:byte-array` are invalid for this client.
-
 (deftest response-coercion-test
   (let [m (martian-http/bootstrap-openapi openapi-coercions-url)]
     (is (= "http://localhost:8888" (:api-root m)))
@@ -388,7 +386,7 @@
       (testing "application/transit+msgpack"
         (is (match?
               {:headers {"Accept" "application/transit+msgpack"}
-               :as :byte-array}
+               :as :bytes}
               (martian/request-for m :get-transit+msgpack))
             "The 'application/transit+msgpack' has a custom `:as` value set")
         (is (match?
