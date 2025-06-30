@@ -76,14 +76,14 @@
 (deftest supported-content-types-test
   (async done
     (-> (prom/let [m (martian-http/bootstrap-openapi openapi-url)]
-          (is (= {:encodes #{"application/transit+json"
-                             "application/json"
-                             "application/edn"
-                             "application/x-www-form-urlencoded"}
-                  :decodes #{"application/transit+json"
-                             "application/json"
-                             "application/edn"
-                             "application/x-www-form-urlencoded"}}
+          (is (= {:encodes ["application/transit+json"
+                            "application/edn"
+                            "application/json"
+                            "application/x-www-form-urlencoded"]
+                  :decodes ["application/transit+json"
+                            "application/edn"
+                            "application/json"
+                            "application/x-www-form-urlencoded"]}
                  (i/supported-content-types (:interceptors m)))))
         (prom/catch report-error-and-throw)
         (prom/finally (fn []

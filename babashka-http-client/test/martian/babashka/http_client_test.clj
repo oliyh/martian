@@ -324,25 +324,25 @@
 (deftest supported-content-types-test
   (let [m (martian-http/bootstrap-openapi openapi-url)]
     (if-bb
-      (is (= {:encodes #{"application/transit+json"
-                         "application/json"
-                         "application/edn"
-                         "multipart/form-data"}
-              :decodes #{"application/transit+json"
-                         "application/json"
-                         "application/edn"}}
+      (is (= {:encodes ["application/transit+json"
+                        "application/edn"
+                        "application/json"
+                        "multipart/form-data"]
+              :decodes ["application/transit+json"
+                        "application/edn"
+                        "application/json"]}
              (i/supported-content-types (:interceptors m))))
-      (is (= {:encodes #{"application/transit+msgpack"
-                         "application/transit+json"
-                         "application/json"
-                         "application/edn"
-                         "application/x-www-form-urlencoded"
-                         "multipart/form-data"}
-              :decodes #{"application/transit+msgpack"
-                         "application/transit+json"
-                         "application/json"
-                         "application/edn"
-                         "application/x-www-form-urlencoded"}}
+      (is (= {:encodes ["application/transit+msgpack"
+                        "application/transit+json"
+                        "application/edn"
+                        "application/json"
+                        "application/x-www-form-urlencoded"
+                        "multipart/form-data"]
+              :decodes ["application/transit+msgpack"
+                        "application/transit+json"
+                        "application/edn"
+                        "application/json"
+                        "application/x-www-form-urlencoded"]}
              (i/supported-content-types (:interceptors m)))))))
 
 (deftest response-coercion-test
@@ -409,15 +409,15 @@
 
     (testing "multiple response content types (default encoders order)"
       (is (match?
-            {:produces ["application/json"]}
+            {:produces ["application/transit+json"]}
             (martian/handler-for m :get-something)))
       (is (match?
-            {:headers {"Accept" "application/json"}
+            {:headers {"Accept" "application/transit+json"}
              :as m/absent}
             (martian/request-for m :get-something)))
       (is (match?
             {:status 200
-             :headers {:content-type "application/json;charset=utf-8"}
+             :headers {:content-type "application/transit+json;charset=UTF-8"}
              :body {:message "Here's some text content"}}
             (martian/response-for m :get-something))))
 

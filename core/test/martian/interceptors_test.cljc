@@ -203,12 +203,33 @@
                                                                          :decode #(encoders/json-decode % keyword)
                                                                          :as :magic}))]
 
-      (is (= {:encodes #?(:bb #{"application/json" "application/transit+msgpack" "application/transit+json" "application/edn"}
-                          :clj #{"application/json" "application/transit+msgpack" "application/transit+json" "application/edn" "application/x-www-form-urlencoded"}
-                          :cljs #{"application/json" "application/transit+json" "application/edn" "application/x-www-form-urlencoded"})
-              :decodes #?(:bb #{"application/json" "text/magical+json" "application/transit+msgpack" "application/transit+json" "application/edn"}
-                          :clj #{"application/json" "text/magical+json" "application/transit+msgpack" "application/transit+json" "application/edn" "application/x-www-form-urlencoded"}
-                          :cljs #{"application/json" "text/magical+json" "application/transit+json" "application/edn" "application/x-www-form-urlencoded"})}
+      (is (= {:encodes #?(:bb   ["application/transit+json"
+                                 "application/edn"
+                                 "application/json"]
+                          :clj  ["application/transit+msgpack"
+                                 "application/transit+json"
+                                 "application/edn"
+                                 "application/json"
+                                 "application/x-www-form-urlencoded"]
+                          :cljs ["application/transit+json"
+                                 "application/edn"
+                                 "application/json"
+                                 "application/x-www-form-urlencoded"])
+              :decodes #?(:bb   ["application/transit+json"
+                                 "application/edn"
+                                 "application/json"
+                                 "text/magical+json"]
+                          :clj  ["application/transit+msgpack"
+                                 "application/transit+json"
+                                 "application/edn"
+                                 "application/json"
+                                 "application/x-www-form-urlencoded"
+                                 "text/magical+json"]
+                          :cljs ["application/transit+json"
+                                 "application/edn"
+                                 "application/json"
+                                 "application/x-www-form-urlencoded"
+                                 "text/magical+json"])}
              (i/supported-content-types [encode-request coerce-response]))))))
 
 (deftest validate-response-test

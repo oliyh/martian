@@ -333,15 +333,15 @@
 
     (testing "multiple response content types (default encoders order)"
       (is (match?
-            {:produces ["application/json"]}
+            {:produces ["application/transit+json"]}
             (martian/handler-for m :get-something)))
       (is (match?
-            {:headers {"Accept" "application/json"}
+            {:headers {"Accept" "application/transit+json"}
              :as :auto}
             (martian/request-for m :get-something)))
       (is (match?
             {:status 200
-             :headers {"Content-Type" "application/json;charset=utf-8"}
+             :headers {"Content-Type" "application/transit+json;charset=UTF-8"}
              :body {:message "Here's some text content"}}
             (martian/response-for m :get-something))))
 
