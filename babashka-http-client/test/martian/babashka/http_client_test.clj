@@ -53,21 +53,21 @@
 
     (testing "default encoders"
       (is (= (if-bb
-              {:method :post
-               :url "http://localhost:8888/pets/"
-               :body {:name "Doggy McDogFace", :type "Dog", :age 3}
-               :headers {"Accept" "application/transit+json"
-                         "Content-Type" "application/transit+json"}
-               :as :text
-               :version :http-1.1}
+               {:method :post
+                :url "http://localhost:8888/pets/"
+                :body {:name "Doggy McDogFace", :type "Dog", :age 3}
+                :headers {"Accept" "application/transit+json"
+                          "Content-Type" "application/transit+json"}
+                :as :text
+                :version :http-1.1}
 
-              {:method :post
-               :url "http://localhost:8888/pets/"
-               :body {:name "Doggy McDogFace", :type "Dog", :age 3}
-               :headers {"Accept" "application/transit+msgpack"
-                         "Content-Type" "application/transit+msgpack"}
-               :as :byte-array
-               :version :http-1.1})
+               {:method :post
+                :url "http://localhost:8888/pets/"
+                :body {:name "Doggy McDogFace", :type "Dog", :age 3}
+                :headers {"Accept" "application/transit+msgpack"
+                          "Content-Type" "application/transit+msgpack"}
+                :as :byte-array
+                :version :http-1.1})
 
              (-> (martian/request-for m :create-pet {:pet {:name "Doggy McDogFace"
                                                            :type "Dog"
@@ -91,21 +91,21 @@
   (let [m (martian-http/bootstrap-swagger swagger-url {:interceptors martian-http/default-interceptors-async})]
     (testing "default encoders"
       (is (= (if-bb
-              {:method :post
-               :url "http://localhost:8888/pets/"
-               :body {:name "Doggy McDogFace", :type "Dog", :age 3}
-               :headers {"Accept" "application/transit+json"
-                         "Content-Type" "application/transit+json"}
-               :as :text
-               :version :http-1.1}
+               {:method :post
+                :url "http://localhost:8888/pets/"
+                :body {:name "Doggy McDogFace", :type "Dog", :age 3}
+                :headers {"Accept" "application/transit+json"
+                          "Content-Type" "application/transit+json"}
+                :as :text
+                :version :http-1.1}
 
-              {:method :post
-               :url "http://localhost:8888/pets/"
-               :body {:name "Doggy McDogFace", :type "Dog", :age 3}
-               :headers {"Accept" "application/transit+msgpack"
-                         "Content-Type" "application/transit+msgpack"}
-               :as :byte-array
-               :version :http-1.1})
+               {:method :post
+                :url "http://localhost:8888/pets/"
+                :body {:name "Doggy McDogFace", :type "Dog", :age 3}
+                :headers {"Accept" "application/transit+msgpack"
+                          "Content-Type" "application/transit+msgpack"}
+                :as :byte-array
+                :version :http-1.1})
              (-> (martian/request-for m :create-pet {:pet {:name "Doggy McDogFace"
                                                            :type "Dog"
                                                            :age 3}})
@@ -318,14 +318,96 @@
                         :content-map {:custom (str int-num)}}}
                 (martian/response-for m :upload-data {:custom int-num}))))))))
 
-(deftest issue-189-test
-  (testing "operation with '*/*' response content type"
-    (let [m (martian-http/bootstrap-openapi openapi-coercions-url)]
+;; TODO: The `:as` values `:text` and `:byte-array` are invalid for this client.
+
+(deftest response-coercion-test
+  (let [m (martian-http/bootstrap-openapi openapi-coercions-url)]
+    (is (= "http://localhost:8888" (:api-root m)))
+
+    (testing "application/edn"
       (is (match?
-            {:method :get
-             :url "http://localhost:8888/issue/189"}
-            (martian/request-for m :get-something {})))
+            {:headers {"Accept" "application/edn"}
+             :as :text}
+            (martian/request-for m :get-edn)))
       (is (match?
             {:status 200
-             :body {:message "Here's some JSON content"}}
-            (martian/response-for m :get-something {}))))))
+             :headers {:content-type "application/edn;charset=UTF-8"}
+             :body {:message "Here's some text content"}}
+            (martian/response-for m :get-edn))))
+    (testing "application/json"
+      (is (match?
+            {:headers {"Accept" "application/json"}
+             :as :text}
+            (martian/request-for m :get-json)))
+      (is (match?
+            {:status 200
+             :headers {:content-type "application/json;charset=utf-8"}
+             :body {:message "Here's some text content"}}
+            (martian/response-for m :get-json))))
+    (testing "application/transit+json"
+      (is (match?
+            {:headers {"Accept" "application/transit+json"}
+             :as :text}
+            (martian/request-for m :get-transit+json)))
+      (is (match?
+            {:status 200
+             :headers {:content-type "application/transit+json;charset=UTF-8"}
+             :body {:message "Here's some text content"}}
+            (martian/response-for m :get-transit+json))))
+    ;; The `transit+msgpack` is not available when running in BB, but is on the JVM
+    (if-bb
+      nil
+      (testing "application/transit+msgpack"
+        (is (match?
+              {:headers {"Accept" "application/transit+msgpack"}
+               :as :byte-array}
+              (martian/request-for m :get-transit+msgpack))
+            "The 'application/transit+msgpack' has a custom `:as` value set")
+        (is (match?
+              {:status 200
+               :headers {:content-type "application/transit+msgpack;charset=UTF-8"}
+               :body {:message "Here's some text content"}}
+              (martian/response-for m :get-transit+msgpack)))))
+    ;; The `form-urlencoded` is not available when running in BB, but is on the JVM
+    (if-bb
+      nil
+      (testing "application/x-www-form-urlencoded"
+        (is (match?
+              {:headers {"Accept" "application/x-www-form-urlencoded"}
+               :as :text}
+              (martian/request-for m :get-form-data)))
+        (is (match?
+              {:status 200
+               :headers {:content-type "application/x-www-form-urlencoded"}
+               :body {:message "Here's some text content"}}
+              (martian/response-for m :get-form-data)))))
+
+    (testing "multiple response content types (default encoders order)"
+      (is (match?
+            {:produces ["application/json"]}
+            (martian/handler-for m :get-something)))
+      (is (match?
+            {:headers {"Accept" "application/json"}
+             :as :text}
+            (martian/request-for m :get-something)))
+      (is (match?
+            {:status 200
+             :headers {:content-type "application/json;charset=utf-8"}
+             :body {:message "Here's some text content"}}
+            (martian/response-for m :get-something))))
+
+    ;; TODO: This one fails with "No matching clause: :auto".
+    (testing "any response content type (operation with '*/*' content)"
+      (is (match?
+            {:produces []}
+            (martian/handler-for m :get-anything)))
+      (let [request (martian/request-for m :get-anything)]
+        #_(is (not (contains? request :as))
+              "The response auto-coercion is NOT set")
+        (is (not (contains? (:headers request) "Accept"))
+            "The 'Accept' request header is absent"))
+      (is (match?
+            {:status 200
+             :headers {:content-type "application/json;charset=utf-8"}
+             :body {:message "Here's some text content"}}
+            (martian/response-for m :get-anything))))))

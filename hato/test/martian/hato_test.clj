@@ -263,15 +263,90 @@
                         :content-map {:custom (str int-num)}}}
                 (martian/response-for m :upload-data {:custom int-num}))))))))
 
-(deftest issue-189-test
-  (testing "operation with '*/*' response content type"
-    (let [m (martian-http/bootstrap-openapi openapi-coercions-url)]
+;; TODO: The `:as` value `:text` is an improper (yet valid) one for this client.
+
+(deftest response-coercion-test
+  (let [m (martian-http/bootstrap-openapi openapi-coercions-url)]
+    (is (= "http://localhost:8888" (:api-root m)))
+
+    (testing "application/edn"
       (is (match?
-            {:method :get
-             :url "http://localhost:8888/issue/189"
-             :as :auto}
-            (martian/request-for m :get-something {})))
+            {:headers {"Accept" "application/edn"}
+             :as :text}
+            (martian/request-for m :get-edn)))
       (is (match?
             {:status 200
-             :body {:message "Here's some JSON content"}}
-            (martian/response-for m :get-something {}))))))
+             :headers {:content-type "application/edn;charset=UTF-8"}
+             :body {:message "Here's some text content"}}
+            (martian/response-for m :get-edn))))
+    (testing "application/json"
+      (is (match?
+            {:headers {"Accept" "application/json"}
+             :as :text}
+            (martian/request-for m :get-json)))
+      (is (match?
+            {:status 200
+             :headers {:content-type "application/json;charset=utf-8"}
+             :body {:message "Here's some text content"}}
+            (martian/response-for m :get-json))))
+    (testing "application/transit+json"
+      (is (match?
+            {:headers {"Accept" "application/transit+json"}
+             :as :text}
+            (martian/request-for m :get-transit+json)))
+      (is (match?
+            {:status 200
+             :headers {:content-type "application/transit+json;charset=UTF-8"}
+             :body {:message "Here's some text content"}}
+            (martian/response-for m :get-transit+json))))
+    (testing "application/transit+msgpack"
+      (is (match?
+            {:headers {"Accept" "application/transit+msgpack"}
+             :as :byte-array}
+            (martian/request-for m :get-transit+msgpack))
+          "The 'application/transit+msgpack' has a custom `:as` value set")
+      (is (match?
+            {:status 200
+             :headers {:content-type "application/transit+msgpack;charset=UTF-8"}
+             :body {:message "Here's some text content"}}
+            (martian/response-for m :get-transit+msgpack))))
+    (testing "application/x-www-form-urlencoded"
+      (is (match?
+            {:headers {"Accept" "application/x-www-form-urlencoded"}
+             :as :text}
+            (martian/request-for m :get-form-data)))
+      (is (match?
+            {:status 200
+             :headers {:content-type "application/x-www-form-urlencoded"}
+             :body {:message "Here's some text content"}}
+            (martian/response-for m :get-form-data))))
+
+    (testing "multiple response content types (default encoders order)"
+      (is (match?
+            {:produces ["application/json"]}
+            (martian/handler-for m :get-something)))
+      (is (match?
+            {:headers {"Accept" "application/json"}
+             :as :text}
+            (martian/request-for m :get-something)))
+      (is (match?
+            {:status 200
+             :headers {:content-type "application/json;charset=utf-8"}
+             :body {:message "Here's some text content"}}
+            (martian/response-for m :get-something))))
+
+    (testing "any response content type (operation with '*/*' content)"
+      (is (match?
+            {:produces []}
+            (martian/handler-for m :get-anything)))
+      (let [request (martian/request-for m :get-anything)]
+        (is (= :auto (:as request))
+            "The response auto-coercion is set")
+        (is (not (contains? (:headers request) "Accept"))
+            "The 'Accept' request header is absent"))
+      ;; TODO: Fails with "class clojure.lang.PersistentArrayMap cannot be cast to class java.lang.String".
+      (is (match?
+            {:status 200
+             :headers {:content-type "application/json;charset=utf-8"}
+             :body {:message "Here's some text content"}}
+            (martian/response-for m :get-anything))))))

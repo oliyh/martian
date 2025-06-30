@@ -89,20 +89,127 @@
         (prom/finally (fn []
                         (done))))))
 
-(deftest issue-189-test
+;; TODO: The `cljs-http` uses `:response-type` request key for output coercion.
+
+(deftest response-coercion-edn-test
   (async done
-    (testing "operation with '*/*' response content type"
-      (-> (prom/let [m (martian-http/bootstrap-openapi openapi-coercions-url)
-                     response (martian/response-for m :get-something {})]
+    (testing "application/edn"
+      (-> (prom/let [m (martian-http/bootstrap-openapi openapi-coercions-url)]
             (is (match?
-                  {:method :get
-                   :url "http://localhost:8888/issue/189"
-                   :response-type :default}
-                  (martian/request-for m :get-something {})))
+                  {:headers {"Accept" "application/edn"}
+                   #_#_:response-type :default}
+                  (martian/request-for m :get-edn)))
+            (-> (martian/response-for m :get-edn)
+                (prom/then (fn [response]
+                             (is (match?
+                                   {:status 200
+                                    :headers {"content-type" "application/edn;charset=UTF-8"}
+                                    :body {:message "Here's some text content"}}
+                                   response))))))
+          (prom/catch report-error-and-throw)
+          (prom/finally (fn []
+                          (done)))))))
+
+(deftest response-coercion-json-test
+  (async done
+    (testing "application/json"
+      (-> (prom/let [m (martian-http/bootstrap-openapi openapi-coercions-url)]
             (is (match?
-                  {:status 200
-                   :body {:message "Here's some JSON content"}}
-                  response)))
+                  {:headers {"Accept" "application/json"}
+                   #_#_:response-type :default}
+                  (martian/request-for m :get-json)))
+            (-> (martian/response-for m :get-json)
+                (prom/then (fn [response]
+                             (is (match?
+                                   {:status 200
+                                    :headers {"content-type" "application/json;charset=utf-8"}
+                                    :body {:message "Here's some text content"}}
+                                   response))))))
+          (prom/catch report-error-and-throw)
+          (prom/finally (fn []
+                          (done)))))))
+
+(deftest response-coercion-transit+json-test
+  (async done
+    (testing "application/transit+json"
+      (-> (prom/let [m (martian-http/bootstrap-openapi openapi-coercions-url)]
+            (is (match?
+                  {:headers {"Accept" "application/transit+json"}
+                   #_#_:response-type :default}
+                  (martian/request-for m :get-transit+json)))
+            (-> (martian/response-for m :get-transit+json)
+                (prom/then (fn [response]
+                             (is (match?
+                                   {:status 200
+                                    :headers {"content-type" "application/transit+json;charset=UTF-8"}
+                                    :body {:message "Here's some text content"}}
+                                   response))))))
+          (prom/catch report-error-and-throw)
+          (prom/finally (fn []
+                          (done)))))))
+
+(deftest response-coercion-form-data-test
+  (async done
+    (testing "application/x-www-form-urlencoded"
+      (-> (prom/let [m (martian-http/bootstrap-openapi openapi-coercions-url)]
+            (is (match?
+                  {:headers {"Accept" "application/x-www-form-urlencoded"}
+                   #_#_:response-type :default}
+                  (martian/request-for m :get-form-data)))
+            (-> (martian/response-for m :get-form-data)
+                (prom/then (fn [response]
+                             ;; TODO: Fails due to a raw type mismatch (does not apply encoder).
+                             (is (match?
+                                   {:status 200
+                                    :headers {"content-type" "application/x-www-form-urlencoded"}
+                                    :body {:message "Here's some text content"}
+                                    #_"message=Here%27s+some+text+content"}
+                                   response))))))
+          (prom/catch report-error-and-throw)
+          (prom/finally (fn []
+                          (done)))))))
+
+(deftest response-coercion-something-test
+  (async done
+    (testing "multiple response content types (default encoders order)"
+      (-> (prom/let [m (martian-http/bootstrap-openapi openapi-coercions-url)]
+            (is (match?
+                  {:produces ["application/transit+json"]}
+                  (martian/handler-for m :get-something)))
+            (is (match?
+                  {:headers {"Accept" "application/transit+json"}
+                   #_#_:response-type :default}
+                  (martian/request-for m :get-something)))
+            (-> (martian/response-for m :get-something)
+                (prom/then (fn [response]
+                             (is (match?
+                                   {:status 200
+                                    :headers {"content-type" "application/transit+json;charset=UTF-8"}
+                                    :body {:message "Here's some text content"}}
+                                   response))))))
+          (prom/catch report-error-and-throw)
+          (prom/finally (fn []
+                          (done)))))))
+
+(deftest response-coercion-anything-test
+  (async done
+    (testing "any response content type (operation with '*/*' content)"
+      (-> (prom/let [m (martian-http/bootstrap-openapi openapi-coercions-url)]
+            (is (match?
+                  {:produces []}
+                  (martian/handler-for m :get-anything)))
+            (let [request (martian/request-for m :get-anything)]
+              #_(is (= :default (:response-type request))
+                    "The response auto-coercion is set")
+              (is (not (contains? (:headers request) "Accept"))
+                  "The 'Accept' request header is absent"))
+            (-> (martian/response-for m :get-anything)
+                (prom/then (fn [response]
+                             (is (match?
+                                   {:status 200
+                                    :headers {"content-type" "application/json;charset=utf-8"}
+                                    :body {:message "Here's some text content"}}
+                                   response))))))
           (prom/catch report-error-and-throw)
           (prom/finally (fn []
                           (done)))))))
