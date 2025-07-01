@@ -12,7 +12,6 @@
                                         binary-content
                                         create-temp-file
                                         input-stream?
-                                        input-stream->byte-array
                                         without-content-type?
                                         multipart+boundary?]]
             [matcher-combinators.matchers :as m]
@@ -47,9 +46,7 @@
   "The `transit+msgpack` is not available when running in BB, but is available
    when running on the JVM"
   [body]
-  (if-bb
-    (encoders/transit-decode (input-stream->byte-array body) :json)
-    (encoders/transit-decode (input-stream->byte-array body) :msgpack)))
+  (encoders/transit-decode body (if-bb :json :msgpack)))
 
 (deftest swagger-http-test
   (let [m (martian-http/bootstrap-swagger swagger-url)]

@@ -18,7 +18,6 @@
                                         create-temp-file
                                         extend-io-factory-for-path
                                         input-stream?
-                                        input-stream->byte-array
                                         without-content-type?
                                         multipart+boundary?]]
             [matcher-combinators.test])
@@ -41,7 +40,7 @@
              (-> (martian/request-for m :create-pet {:pet {:name "Doggy McDogFace"
                                                            :type "Dog"
                                                            :age 3}})
-                 (update :body #(encoders/transit-decode (input-stream->byte-array %) :msgpack))))))
+                 (update :body #(encoders/transit-decode % :msgpack))))))
 
 
     (let [response (martian/response-for m :create-pet {:pet {:name "Doggy McDogFace"
@@ -71,7 +70,7 @@
              (-> (martian/request-for m :create-pet {:pet {:name "Doggy McDogFace"
                                                            :type "Dog"
                                                            :age 3}})
-                 (update :body #(encoders/transit-decode (input-stream->byte-array %) :msgpack))))))
+                 (update :body #(encoders/transit-decode % :msgpack))))))
 
 
     (let [response @(martian/response-for m :create-pet {:pet {:name "Doggy McDogFace"

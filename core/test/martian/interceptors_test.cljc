@@ -3,9 +3,8 @@
             [martian.encoders :as encoders]
             [tripod.context :as tc]
             [schema.core :as s]
-            #?(:clj [clojure.test :refer [deftest is testing]]
-               :cljs [cljs.test :refer-macros [deftest testing is]])
-            #?(:clj [martian.test-utils :as tu])))
+            #?(:clj  [clojure.test :refer [deftest is testing]]
+               :cljs [cljs.test :refer-macros [deftest testing is]])))
 
 #?(:cljs
    (def Throwable js/Error))
@@ -36,7 +35,7 @@
                                         :handler {:consumes ["application/json"]}})))))
 
         (testing "edn"
-          (is (= {:body (pr-str body)
+          (is (= {:body (encoders/edn-encode body)
                   :headers {"Content-Type" "application/edn"}}
                  (:request ((:enter i) {:request {:body body}
                                         :handler {:consumes ["application/edn"]}})))))
@@ -48,9 +47,7 @@
                    (-> ((:enter i) {:request {:body body}
                                     :handler {:consumes ["application/transit+json"]}})
                        :request
-                       (update :body #?(:clj  (comp #(encoders/transit-decode % :json)
-                                                    tu/input-stream->byte-array)
-                                        :cljs #(encoders/transit-decode % :json)))))))
+                       (update :body #(encoders/transit-decode % :json))))))
 
           #?(:bb nil
              :clj
@@ -60,8 +57,7 @@
                       (-> ((:enter i) {:request {:body body}
                                        :handler {:consumes ["application/transit+msgpack"]}})
                           :request
-                          (update :body (comp #(encoders/transit-decode % :msgpack)
-                                              tu/input-stream->byte-array)))))))))
+                          (update :body #(encoders/transit-decode % :msgpack)))))))))
 
       #?(:clj
          (testing "multipart"
@@ -95,7 +91,8 @@
                      :on "the"
                      :bus ["go" "round" "and" "round"]}]
            (testing "form"
-             (let [ctx (tc/enqueue* {} [i (stub-response "application/x-www-form-urlencoded" "the=wheels&on=the&bus=go&bus=round&bus=and&bus=round")])]
+             (let [ctx (tc/enqueue* {} [i (stub-response "application/x-www-form-urlencoded"
+                                                         "the=wheels&on=the&bus=go&bus=round&bus=and&bus=round")])]
                (is (= body
                       (-> (tc/execute ctx) :response :body))))))))
 
@@ -108,15 +105,14 @@
                    (-> (tc/execute ctx) :response :body)))))
 
         (testing "edn"
-          (let [ctx (tc/enqueue* {} [i (stub-response "application/edn" (pr-str body))])]
+          (let [ctx (tc/enqueue* {} [i (stub-response "application/edn" (encoders/edn-encode body))])]
             (is (= body
                    (-> (tc/execute ctx) :response :body)))))
 
         (testing "transit"
           (testing "+json"
             (let [ctx (tc/enqueue* {} [i (stub-response "application/transit+json"
-                                                        #?(:clj  (slurp (encoders/transit-encode body :json))
-                                                           :cljs (encoders/transit-encode body :json)))])]
+                                                        (encoders/transit-encode body :json))])]
               (is (= body
                      (-> (tc/execute ctx) :response :body)))))
 
@@ -124,7 +120,7 @@
              :clj
              (testing "+msgpack"
                (let [ctx (tc/enqueue* {} [i (stub-response "application/transit+msgpack"
-                                                           (tu/input-stream->byte-array (encoders/transit-encode body :msgpack)))])]
+                                                           (encoders/transit-encode body :msgpack))])]
                  (is (= body
                         (-> (tc/execute ctx) :response :body)))))))))
 

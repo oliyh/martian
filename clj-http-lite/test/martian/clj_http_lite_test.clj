@@ -10,7 +10,6 @@
                                          openapi-test-yaml-url
                                          openapi-coercions-url
                                          with-server]]
-            [martian.test-utils :refer [input-stream->byte-array]]
             [matcher-combinators.test]))
 
 (use-fixtures :once with-server)
@@ -27,7 +26,7 @@
              (-> (martian/request-for m :create-pet {:pet {:name "Doggy McDogFace"
                                                            :type "Dog"
                                                            :age 3}})
-                 (update :body #(encoders/transit-decode (input-stream->byte-array %) :msgpack))))))
+                 (update :body #(encoders/transit-decode % :msgpack))))))
 
     (let [response (martian/response-for m :create-pet {:pet {:name "Doggy McDogFace"
                                                               :type "Dog"
