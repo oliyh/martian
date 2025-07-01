@@ -10,7 +10,7 @@
             #?(:clj [martian.multipart :as multipart])
             #?@(:bb  []
                 :clj [[ring.util.codec :as codec]]))
-  #?(:clj (:import [java.io ByteArrayInputStream ByteArrayOutputStream InputStream])))
+  #?(:clj (:import [java.io ByteArrayInputStream ByteArrayOutputStream InputStream PushbackReader])))
 
 #?(:clj
    (defn as-bytes [obj]
@@ -45,26 +45,45 @@
         obj
         (slurp obj :encoding charset)))))
 
-(defn transit-encode [body type]
-  #?(:clj  (let [out (ByteArrayOutputStream. 4096)
-                 writer (transit/writer out type)]
-             (transit/write writer body)
-             ;; TODO: Is it necessary to wrap into stream?
-             (io/input-stream (.toByteArray out)))
-     :cljs (transit/write (transit/writer type {}) body)))
+(defn transit-encode
+  ([body type]
+   (transit-encode body type {}))
+  ([body type opts]
+   #?(:clj  (let [out (ByteArrayOutputStream. 4096)
+                  writer (transit/writer out type opts)]
+              (transit/write writer body)
+              ;; TODO: Is it necessary to wrap into stream?
+              (io/input-stream (.toByteArray out)))
+      :cljs (transit/write (transit/writer type opts) body))))
 
-(defn transit-decode [body type]
-  #?(:clj  (transit/read (transit/reader (as-stream body) type))
-     :cljs (transit/read (transit/reader type {}) body)))
+(defn transit-decode
+  ([body type]
+   (transit-decode body type {}))
+  ([body type opts]
+   #?(:clj  (transit/read (transit/reader (as-stream body) type opts))
+      :cljs (transit/read (transit/reader type opts) body))))
 
-(defn json-encode [body]
-  #?(:clj  (json/encode body)
-     :cljs (js/JSON.stringify (clj->js body))))
+(defn json-encode
+  ([body]
+   (json-encode body nil))
+  ([body {:keys [key-fn] :as opts}]
+   #?(:clj  (json/generate-string body opts)
+      :cljs (-> body
+                (clj->js {:keyword-fn (or key-fn name)})
+                (js/JSON.stringify)))))
 
-(defn json-decode [body key-fn]
-  #?(:clj  (json/decode body key-fn)
-     :cljs (when-let [v (if-not (string/blank? body) (js/JSON.parse body))]
-             (js->clj v :keywordize-keys key-fn))))
+(defn json-decode
+  ([body]
+   (json-decode body {:key-fn keyword}))
+  ([body opts-or-fn]
+   (let [{:keys [key-fn array-coerce-fn]} (if (fn? opts-or-fn)
+                                            {:key-fn opts-or-fn}
+                                            opts-or-fn)]
+     #?(:clj  (json/parse-string body key-fn array-coerce-fn)
+        :cljs (when (and (string? body) (not (string/blank? body)))
+                (-> body
+                    (js/JSON.parse)
+                    (js->clj :keywordize-keys (boolean key-fn))))))))
 
 #?(:clj
    (defn multipart-encode
@@ -76,6 +95,22 @@
       (mapv (fn [[k v]]
               {:name (name k) :content (multipart/coerce-content v pass-pred)})
             body))))
+
+(defn edn-encode
+  ([body]
+   (edn-encode body nil))
+  ([body opts]
+   ((if (:trailing-newline opts) prn-str pr-str) body)))
+
+(defn edn-decode
+  [body opts]
+  (let [opts (merge {:eof nil} opts)]
+    #?(:clj  (if (string? body)
+               (edn/read-string opts body)
+               (with-open [rdr (io/reader body)
+                           pb-rdr (PushbackReader. rdr)]
+                 (edn/read opts pb-rdr)))
+       :cljs (edn/read-string opts body))))
 
 (defn form-encode [body]
   #?(:bb   nil
@@ -96,30 +131,32 @@
 
 (defn default-encoders
   ([] (default-encoders keyword))
-  ([key-fn]
-   ;; NB: The order in this map is critically important, since we choose an appropriate
-   ;;     encoder for a particular media type sequentially (see `martian.encoding` ns),
-   ;;     as well as preserve the order when collecting supported content types for the
-   ;;     OpenAPI definition parsing.
-   (ordered-map
-     ;; NB: The `transit+msgpack` is not available when running in BB, but is on the JVM.
-     ;;     j.l.NoClassDefFoundError: Could not initialize class org.msgpack.MessagePack
-     #?@(:bb []
-         :clj
-         ["application/transit+msgpack" {:encode #(transit-encode % :msgpack)
-                                         :decode #(transit-decode % :msgpack)
-                                         :as :byte-array}])
-     "application/transit+json" {:encode #(transit-encode % :json)
-                                 :decode #(transit-decode % :json)}
-     "application/edn"  {:encode pr-str
-                         :decode edn/read-string}
-     "application/json" {:encode json-encode
-                         :decode #(json-decode % key-fn)}
-     #?@(:bb []
-         :clj
-         ["application/x-www-form-urlencoded" {:encode form-encode
-                                               :decode form-decode}]
-         :cljs
-         ["application/x-www-form-urlencoded" {:encode form-encode
-                                               :decode form-decode
-                                               :as :text}]))))
+  ([opts-or-fn]
+   (let [opts (if (fn? opts-or-fn)
+                {:json {:decode {:key-fn opts-or-fn}}}
+                opts-or-fn)
+         {transit-opts :transit, json-opts :json, edn-opts :edn} opts]
+     ;; NB: The order in this map is critically important, since we choose an appropriate
+     ;;     encoder for a particular media type sequentially (see `martian.encoding` ns),
+     ;;     as well as preserve the order when collecting supported content types for the
+     ;;     OpenAPI definition parsing.
+     (ordered-map
+       #?@(:bb []
+           :clj
+           ["application/transit+msgpack" {:encode #(transit-encode % :msgpack (:encode transit-opts))
+                                           :decode #(transit-decode % :msgpack (:decode transit-opts))
+                                           :as :byte-array}])
+       "application/transit+json" {:encode #(transit-encode % :json (:encode transit-opts))
+                                   :decode #(transit-decode % :json (:decode transit-opts))}
+       "application/edn" {:encode #(edn-encode % (:encode edn-opts))
+                          :decode #(edn-decode % (:decode edn-opts))}
+       "application/json" {:encode #(json-encode % (:encode json-opts))
+                           :decode #(json-decode % (:decode json-opts))}
+       #?@(:bb []
+           :clj
+           ["application/x-www-form-urlencoded" {:encode form-encode
+                                                 :decode form-decode}]
+           :cljs
+           ["application/x-www-form-urlencoded" {:encode form-encode
+                                                 :decode form-decode
+                                                 :as :text}])))))
