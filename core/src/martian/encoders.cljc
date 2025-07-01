@@ -135,34 +135,47 @@
                      {}
                      (.keys params)))))
 
+(defn transit-encoder
+  [type transit-opts & kvs]
+  (conj {:encode #(transit-encode % type (:encode transit-opts))
+         :decode #(transit-decode % type (:decode transit-opts))}
+        (apply hash-map kvs)))
+
+(defn json-encoder
+  [json-opts & kvs]
+  (conj {:encode #(json-encode % (:encode json-opts))
+         :decode #(json-decode % (:decode json-opts))}
+        (apply hash-map kvs)))
+
+(defn edn-encoder
+  [edn-opts & kvs]
+  (conj {:encode #(edn-encode % (:encode edn-opts))
+         :decode #(edn-decode % (:decode edn-opts))}
+        (apply hash-map kvs)))
+
+(defn form-encoder
+  [& kvs]
+  (conj {:encode form-encode
+         :decode form-decode}
+        (apply hash-map kvs)))
+
 (defn default-encoders
   ([] (default-encoders keyword))
   ([opts-or-fn]
    (let [opts (if (fn? opts-or-fn)
                 {:json {:decode {:key-fn opts-or-fn}}}
-                opts-or-fn)
-         {transit-opts :transit, json-opts :json, edn-opts :edn} opts]
+                opts-or-fn)]
      ;; NB: The order in this map is critically important, since we choose an appropriate
      ;;     encoder for a particular media type sequentially (see `martian.encoding` ns),
      ;;     as well as preserve the order when collecting supported content types for the
      ;;     OpenAPI definition parsing.
      (ordered-map
-       #?@(:bb []
-           :clj
-           ["application/transit+msgpack" {:encode #(transit-encode % :msgpack (:encode transit-opts))
-                                           :decode #(transit-decode % :msgpack (:decode transit-opts))
-                                           :as :byte-array}])
-       "application/transit+json" {:encode #(transit-encode % :json (:encode transit-opts))
-                                   :decode #(transit-decode % :json (:decode transit-opts))}
-       "application/edn" {:encode #(edn-encode % (:encode edn-opts))
-                          :decode #(edn-decode % (:decode edn-opts))}
-       "application/json" {:encode #(json-encode % (:encode json-opts))
-                           :decode #(json-decode % (:decode json-opts))}
-       #?@(:bb []
-           :clj
-           ["application/x-www-form-urlencoded" {:encode form-encode
-                                                 :decode form-decode}]
-           :cljs
-           ["application/x-www-form-urlencoded" {:encode form-encode
-                                                 :decode form-decode
-                                                 :as :text}])))))
+       #?@(:bb  []
+           :clj ["application/transit+msgpack" (transit-encoder :msgpack (:transit opts)
+                                                                :as :byte-array)])
+       "application/transit+json" (transit-encoder :json (:transit opts))
+       "application/edn" (edn-encoder (:edn opts))
+       "application/json" (json-encoder (:json opts))
+       #?@(:bb   []
+           :clj  ["application/x-www-form-urlencoded" (form-encoder)]
+           :cljs ["application/x-www-form-urlencoded" (form-encoder :as :text)])))))
