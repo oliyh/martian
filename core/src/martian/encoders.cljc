@@ -52,8 +52,7 @@
    #?(:clj  (let [out (ByteArrayOutputStream. 4096)
                   writer (transit/writer out type opts)]
               (transit/write writer body)
-              ;; TODO: Is it necessary to wrap into stream?
-              (io/input-stream (.toByteArray out)))
+              (.toByteArray out))
       :cljs (transit/write (transit/writer type opts) body))))
 
 (defn transit-decode
