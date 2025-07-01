@@ -274,9 +274,12 @@
                         :content-map {:custom (str int-num)}}}
                 (martian/response-for m :upload-data {:custom int-num}))))))))
 
-(deftest response-coercion-test
-  (let [m (martian-http/bootstrap-openapi openapi-coercions-url)
-        default-coerce-as (:default-encoder-as martian-http/response-coerce-opts)]
+(defn do-response-coercion-test
+  [use-client-output-coercion?]
+  (let [m (martian-http/bootstrap-openapi
+            openapi-coercions-url {:use-client-output-coercion? use-client-output-coercion?})
+        default-coerce-as (:default-encoder-as
+                            (martian-http/response-coerce-opts use-client-output-coercion?))]
     (is (= "http://localhost:8888" (:api-root m)))
 
     (testing "application/edn"
@@ -359,3 +362,9 @@
              :headers {"Content-Type" "application/json;charset=utf-8"}
              :body {:message "Here's some text content"}}
             (martian/response-for m :get-anything))))))
+
+(deftest response-coercion-test
+  (testing "without client-specific output coercion"
+    (do-response-coercion-test false))
+  (testing "with client-specific output coercion (:auto)"
+    (do-response-coercion-test true)))

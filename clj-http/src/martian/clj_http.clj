@@ -22,28 +22,42 @@
 
 ;; NB: In accordance with the `clj-http`'s Optional Dependencies, which happen
 ;;     to be on the classpath already as the Martian core module dependencies,
-;;     we could and, actually, should skip decoding some media types.
+;;     we could (or, at the very least, should allow to) skip Martian response
+;;     decoding for those media types.
 ;;     https://github.com/dakrone/clj-http#optional-dependencies
-(def response-coerce-opts
-  #_{:skip-decoding-for (cond-> #{"application/json"
+(defn response-coerce-opts [use-client-output-coercion?]
+  (if use-client-output-coercion?
+    {:skip-decoding-for (cond-> #{"application/json"
                                   "application/transit+json"
                                   "application/transit+msgpack"
                                   "application/x-www-form-urlencoded"}
                                 ;; NB: This one may not be available to the end user!
                                 http/edn-enabled? (conj "application/edn"))
      :default-encoder-as :auto}
-  {:default-encoder-as :string})
+    {:default-encoder-as :string}))
 
-(def default-interceptors
+(defn build-default-interceptors [use-client-output-coercion?]
   (conj martian/default-interceptors
         (interceptors/encode-request request-encoders)
-        (interceptors/coerce-response (encoders/default-encoders) response-coerce-opts)
+        (interceptors/coerce-response (encoders/default-encoders)
+                                      (response-coerce-opts use-client-output-coercion?))
         perform-request))
+
+(defn build-default-opts [use-client-output-coercion?]
+  {:interceptors (build-default-interceptors use-client-output-coercion?)})
+
+(def default-interceptors (build-default-interceptors true))
 
 (def default-opts {:interceptors default-interceptors})
 
+(defn prepare-opts [{:keys [use-client-output-coercion?] :as opts}]
+  (merge (if (some? use-client-output-coercion?)
+           (build-default-opts use-client-output-coercion?)
+           default-opts)
+         (dissoc opts :use-client-output-coercion?)))
+
 (defn bootstrap [api-root concise-handlers & [opts]]
-  (martian/bootstrap api-root concise-handlers (merge default-opts opts)))
+  (martian/bootstrap api-root concise-handlers (prepare-opts opts)))
 
 (defn- load-definition [url load-opts]
   (or (file/local-resource url)
@@ -54,6 +68,6 @@
 (defn bootstrap-openapi [url & [{:keys [server-url] :as opts} load-opts]]
   (let [definition (load-definition url load-opts)
         base-url (openapi/base-url url server-url definition)]
-    (martian/bootstrap-openapi base-url definition (merge default-opts opts))))
+    (martian/bootstrap-openapi base-url definition (prepare-opts opts))))
 
 (def bootstrap-swagger bootstrap-openapi)

@@ -100,8 +100,14 @@
 
 (def default-opts {:interceptors default-interceptors})
 
+(defn prepare-opts [{:keys [async?] :as opts}]
+  (merge (if async?
+           {:interceptors default-interceptors-async}
+           default-opts)
+         (dissoc opts :async? :use-client-output-coercion?)))
+
 (defn bootstrap [api-root concise-handlers & [opts]]
-  (martian/bootstrap api-root concise-handlers (merge default-opts opts)))
+  (martian/bootstrap api-root concise-handlers (prepare-opts opts)))
 
 (defn- load-definition [url load-opts]
   (or (file/local-resource url)
@@ -114,6 +120,6 @@
 (defn bootstrap-openapi [url & [{:keys [server-url] :as opts} load-opts]]
   (let [definition (load-definition url load-opts)
         base-url (openapi/base-url url server-url definition)]
-    (martian/bootstrap-openapi base-url definition (merge default-opts opts))))
+    (martian/bootstrap-openapi base-url definition (prepare-opts opts))))
 
 (def bootstrap-swagger bootstrap-openapi)

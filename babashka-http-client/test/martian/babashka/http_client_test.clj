@@ -87,7 +87,7 @@
              (:body response))))))
 
 (deftest async-test
-  (let [m (martian-http/bootstrap-swagger swagger-url {:interceptors martian-http/default-interceptors-async})]
+  (let [m (martian-http/bootstrap-swagger swagger-url {:async? true})]
     (testing "default encoders"
       (is (= (if-bb
                {:method :post
