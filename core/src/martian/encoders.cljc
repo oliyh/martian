@@ -1,6 +1,5 @@
 (ns martian.encoders
-  (:require [clojure.string :as string]
-            [clojure.walk :refer [keywordize-keys]]
+  (:require [clojure.string :as str]
             [cognitect.transit :as transit]
             [flatland.ordered.map :refer [ordered-map]]
             #?(:clj [cheshire.core :as json])
@@ -12,6 +11,8 @@
                 :clj [[ring.util.codec :as codec]]))
   #?(:clj (:import [java.io ByteArrayInputStream ByteArrayOutputStream InputStream PushbackReader])))
 
+;; NB: THIS NS ASSUMES THAT "UTF-8" IS THE CHARSET OF ALL ENCODED/DECODED VALUES!
+
 #?(:clj
    (defn as-bytes [obj]
      (cond
@@ -21,7 +22,8 @@
        (.getBytes ^String obj)
 
        (instance? InputStream obj)
-       (with-open [^InputStream is obj, baos (ByteArrayOutputStream.)]
+       (with-open [^InputStream is obj
+                   baos (ByteArrayOutputStream.)]
          (io/copy is baos)
          (.toByteArray baos))
 
@@ -75,11 +77,15 @@
   ([body]
    (json-decode body {:key-fn keyword}))
   ([body opts-or-fn]
+   ;; There's also `cheshire.parse/*use-bigdecimals?*` available
    (let [{:keys [key-fn array-coerce-fn]} (if (fn? opts-or-fn)
                                             {:key-fn opts-or-fn}
                                             opts-or-fn)]
-     #?(:clj  (json/parse-string body key-fn array-coerce-fn)
-        :cljs (when (and (string? body) (not (string/blank? body)))
+     #?(:clj  (if (string? body)
+                (json/parse-string body key-fn array-coerce-fn)
+                (with-open [rdr (io/reader body)]
+                  (json/parse-stream rdr key-fn array-coerce-fn)))
+        :cljs (when (and (string? body) (not (str/blank? body)))
                 (-> body
                     (js/JSON.parse)
                     (js->clj :keywordize-keys (boolean key-fn))))))))
@@ -118,7 +124,8 @@
 
 (defn form-decode [body]
   #?(:bb   nil
-     :clj  (keywordize-keys (codec/form-decode (as-string body)))
+     :clj  (let [params (codec/form-decode (as-string body))]
+             (update-keys (if (map? params) params {}) keyword))
      :cljs (let [params (js/URLSearchParams. body)]
              (reduce (fn [acc k]
                        (let [v (.getAll params k)]
