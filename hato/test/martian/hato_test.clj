@@ -263,13 +263,14 @@
                 (martian/response-for m :upload-data {:custom int-num}))))))))
 
 (deftest response-coercion-test
-  (let [m (martian-http/bootstrap-openapi openapi-coercions-url)]
+  (let [m (martian-http/bootstrap-openapi openapi-coercions-url)
+        default-coerce-as (:default-encoder-as martian-http/response-coerce-opts)]
     (is (= "http://localhost:8888" (:api-root m)))
 
     (testing "application/edn"
       (is (match?
             {:headers {"Accept" "application/edn"}
-             :as :auto}
+             :as default-coerce-as}
             (martian/request-for m :get-edn)))
       (is (match?
             {:status 200
@@ -279,7 +280,7 @@
     (testing "application/json"
       (is (match?
             {:headers {"Accept" "application/json"}
-             :as :auto}
+             :as default-coerce-as}
             (martian/request-for m :get-json)))
       (is (match?
             {:status 200
@@ -289,7 +290,7 @@
     (testing "application/transit+json"
       (is (match?
             {:headers {"Accept" "application/transit+json"}
-             :as :auto}
+             :as default-coerce-as}
             (martian/request-for m :get-transit+json)))
       (is (match?
             {:status 200
@@ -310,7 +311,7 @@
     (testing "application/x-www-form-urlencoded"
       (is (match?
             {:headers {"Accept" "application/x-www-form-urlencoded"}
-             :as :auto}
+             :as default-coerce-as}
             (martian/request-for m :get-form-data)))
       (is (match?
             {:status 200
@@ -324,7 +325,7 @@
             (martian/handler-for m :get-something)))
       (is (match?
             {:headers {"Accept" "application/transit+json"}
-             :as :auto}
+             :as default-coerce-as}
             (martian/request-for m :get-something)))
       (is (match?
             {:status 200

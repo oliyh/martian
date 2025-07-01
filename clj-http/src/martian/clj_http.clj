@@ -25,13 +25,14 @@
 ;;     we could and, actually, should skip decoding some media types.
 ;;     https://github.com/dakrone/clj-http#optional-dependencies
 (def response-coerce-opts
-  {:skip-decoding-for (cond-> #{"application/json"
-                                "application/transit+json"
-                                "application/transit+msgpack"
-                                "application/x-www-form-urlencoded"}
-                              ;; NB: This one may not be available to the end user!
-                              http/edn-enabled? (conj "application/edn"))
-   :default-encoder-as :auto})
+  #_{:skip-decoding-for (cond-> #{"application/json"
+                                  "application/transit+json"
+                                  "application/transit+msgpack"
+                                  "application/x-www-form-urlencoded"}
+                                ;; NB: This one may not be available to the end user!
+                                http/edn-enabled? (conj "application/edn"))
+     :default-encoder-as :auto}
+  {:default-encoder-as :string})
 
 (def default-interceptors
   (conj martian/default-interceptors
