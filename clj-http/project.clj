@@ -7,7 +7,7 @@
   :parent-project {:path "../project.clj"
                    :inherit [:managed-dependencies]}
   :dependencies [[com.github.oliyh/martian]
-                 [clj-http "3.13.0"]]
+                 [clj-http "3.13.1"]]
   :profiles {:provided {:dependencies [[org.clojure/clojure]]}
              :dev {:source-paths ["../test-common"]
                    :dependencies [[org.slf4j/slf4j-simple "2.0.17"]
@@ -15,4 +15,6 @@
 
                                   [pedestal-api "0.3.5"]
                                   [io.pedestal/pedestal.service "0.5.9"]
-                                  [io.pedestal/pedestal.jetty "0.5.9"]]}})
+                                  [io.pedestal/pedestal.jetty "0.5.9"]
+
+                                  [nubank/matcher-combinators "3.9.1"]]}})

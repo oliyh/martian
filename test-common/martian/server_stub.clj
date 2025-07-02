@@ -1,9 +1,13 @@
 (ns martian.server-stub
-  (:require [io.pedestal.http :as bootstrap]
+  (:require [clojure.walk :as w]
+            [io.pedestal.http :as bootstrap]
+            [io.pedestal.http.ring-middlewares :as ring-mw]
             [pedestal-api
              [core :as api]
              [helpers :refer [before defbefore defhandler handler]]]
-            [schema.core :as s]))
+            [schema.core :as s])
+  (:import (java.io File)
+           (java.nio.file Path)))
 
 (defonce the-pets (atom {}))
 
@@ -13,9 +17,9 @@
    :age s/Int})
 
 (defhandler create-pet
-  {:summary     "Create a pet"
-   :parameters  {:body-params Pet}
-   :responses   {201 {:body {:id s/Int}}}}
+  {:summary    "Create a pet"
+   :parameters {:body-params Pet}
+   :responses  {201 {:body {:id s/Int}}}}
   [request]
   (let [id 123]
     (swap! the-pets assoc id (:body-params request))
@@ -34,6 +38,35 @@
     {:status 404
      :body "No pet found with this id"}))
 
+(s/defschema Upload
+  {(s/optional-key :string) s/Str
+   (s/optional-key :binary) s/Any
+   (s/optional-key :custom) s/Any})
+
+(defn- get-content-type-header [request]
+  (or (get-in request [:headers "content-type"])
+      (get-in request [:headers "Content-Type"])
+      (get-in request [:headers :content-type])))
+
+(defn- get-prepared-content-map [request]
+  (w/postwalk (fn [obj]
+                (cond
+                  (instance? File obj) (slurp obj)
+                  (instance? Path obj) (slurp (.toFile obj))
+                  (= 'org.httpkit.client.MultipartEntity (type obj)) (bean obj)
+                  :else obj))
+              (:form-params request)))
+
+(defhandler upload-data
+  {:summary    "Upload data via multipart"
+   :parameters {:form-params Upload}
+   :responses  {200 {:body {:content-type s/Str
+                            :content-map {s/Keyword s/Any}}}}}
+  [request]
+  {:status 200
+   :body {:content-type (get-content-type-header request)
+          :content-map (get-prepared-content-map request)}})
+
 (s/with-fn-validation
   (api/defroutes routes
     {}
@@ -46,6 +79,9 @@
        ["/pets"
         ["/" {:post create-pet}]
         ["/:id" {:get get-pet}]]
+
+       ;; endpoint for multipart request tests
+       ["/upload" {:post upload-data}]
 
        ["/swagger.json" {:get api/swagger-json}]]]]))
 
@@ -67,17 +103,18 @@
 (def openapi-yaml-url (format "http://localhost:%s/openapi.yaml" (::bootstrap/port service)))
 (def openapi-test-url (format "http://localhost:%s/openapi-test.json" (::bootstrap/port service)))
 (def openapi-test-yaml-url (format "http://localhost:%s/openapi-test.yaml" (::bootstrap/port service)))
+(def openapi-multipart-url (format "http://localhost:%s/openapi-multipart.json" (::bootstrap/port service)))
+(def test-multipart-file-url (format "http://localhost:%s/test-multipart.txt" (::bootstrap/port service)))
 
-(def with-server
-  (fn [f]
-    (let [server-instance (bootstrap/create-server (bootstrap/default-interceptors service))]
-      (try
-        (bootstrap/start server-instance)
-        (f)
-        (finally (bootstrap/stop server-instance))))))
+(defn add-interceptors
+  [service-map]
+  (update service-map
+          ::bootstrap/interceptors
+          #(into [(ring-mw/multipart-params)] %)))
 
-;; for use at the repl
-(def server-instance (atom nil))
+;; For use at the REPL
+
+(defonce server-instance (atom nil))
 
 (defn stop-server! []
   (when-let [instance @server-instance]
@@ -87,6 +124,18 @@
 (defn start-server! []
   (when @server-instance
     (stop-server!))
-  (let [instance (bootstrap/create-server (bootstrap/default-interceptors service))]
+  (let [instance (-> (bootstrap/default-interceptors service)
+                     (add-interceptors)
+                     (bootstrap/create-server))]
     (bootstrap/start instance)
     (reset! server-instance instance)))
+
+;; For test fixtures
+
+(def with-server
+  (fn [f]
+    (start-server!)
+    (try
+      (f)
+      (finally
+        (stop-server!)))))

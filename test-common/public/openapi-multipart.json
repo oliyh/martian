@@ -1,0 +1,89 @@
+{
+    "openapi": "3.0.2",
+    "externalDocs": {
+        "description": "Find out more about Swagger",
+        "url": "http://swagger.io"
+    },
+    "servers": [{
+        "url": "http://localhost:8888"
+    }],
+    "paths": {
+        "/upload": {
+            "post": {
+                "summary": "Upload data via multipart",
+                "description": "Upload data via multipart",
+                "operationId": "uploadData",
+                "requestBody": {
+                    "description": "Create a new pet in the store",
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Upload"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [{
+                    "api_key": []
+                }]
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "Upload": {
+                "type": "object",
+                "properties": {
+                    "string": {
+                        "type": "string"
+                    },
+                    "binary": {
+                        "type": "string",
+                        "format": "binary"
+                    },
+                    "custom": {
+                        "type": "string",
+                        "format": "binary"
+                    }
+                },
+                "xml": {
+                    "name": "upload"
+                }
+            },
+            "ApiResponse": {
+                "type": "object",
+                "properties": {
+                    "contentType": {
+                        "type": "string"
+                    },
+                    "contentMap": {
+                        "type": "object"
+                    }
+                },
+                "xml": {
+                    "name": "##default"
+                }
+            }
+        },
+        "securitySchemes": {
+            "api_key": {
+                "type": "apiKey",
+                "name": "api_key",
+                "in": "header"
+            }
+        }
+    }
+}

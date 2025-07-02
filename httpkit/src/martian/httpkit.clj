@@ -7,7 +7,8 @@
             [martian.openapi :as openapi]
             [martian.yaml :as yaml]
             [org.httpkit.client :as http]
-            [tripod.context :as tc]))
+            [tripod.context :as tc])
+  (:import (java.nio ByteBuffer)))
 
 (def go-async interceptors/remove-stack)
 
@@ -21,14 +22,17 @@
                                      (fn [response]
                                        (:response (tc/execute (assoc ctx :response response))))))))})
 
-(def encoders
+;; NB: Although 'http-kit' has built-in support for numbers, we omit it.
+(defn custom-type? [obj]
+  (instance? ByteBuffer obj))
+
+(def request-encoders
   (assoc (encoders/default-encoders)
-    "multipart/form-data" {:encode encoders/multipart-encode
-                           :as :multipart}))
+    "multipart/form-data" {:encode #(encoders/multipart-encode % custom-type?)}))
 
 (def default-interceptors
   (conj martian/default-interceptors
-        (interceptors/encode-request encoders)
+        (interceptors/encode-request request-encoders)
         interceptors/default-coerce-response
         perform-request))
 

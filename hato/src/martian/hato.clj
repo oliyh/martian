@@ -42,14 +42,13 @@
    :leave (fn [ctx]
             (update-in ctx [:response :headers] keywordize-keys))})
 
-(def encoders
+(def request-encoders
   (assoc (encoders/default-encoders)
-    "multipart/form-data" {:encode encoders/multipart-encode
-                           :as :multipart}))
+    "multipart/form-data" {:encode encoders/multipart-encode}))
 
 (def hato-interceptors
   (conj martian/default-interceptors
-        (interceptors/encode-request encoders)
+        (interceptors/encode-request request-encoders)
         interceptors/default-coerce-response
         keywordize-headers
         default-to-http-1))

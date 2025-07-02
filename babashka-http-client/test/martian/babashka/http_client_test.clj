@@ -1,25 +1,42 @@
 (ns martian.babashka.http-client-test
-  (:require [babashka.process :as process]
-            [babashka.fs :as fs]
+  (:require [babashka.fs :as fs]
+            [babashka.process :as process]
+            [clojure.java.io :as io]
+            [clojure.string :as str]
+            [clojure.test :refer [deftest testing is use-fixtures]]
             [martian.babashka.http-client :as martian-http]
             [martian.core :as martian]
             [martian.encoders :as encoders]
-            [martian.test-utils :refer [input-stream->byte-array]]
-            [clojure.test :refer [deftest testing is use-fixtures]]))
-
-(defmacro if-bb [then & [else]]
-  (if (System/getProperty "babashka.version")
-    then else))
+            [martian.test-utils :refer [if-bb
+                                        binary-content
+                                        create-temp-file
+                                        input-stream?
+                                        input-stream->byte-array
+                                        without-content-type?
+                                        multipart+boundary?]]
+            [matcher-combinators.test])
+  (:import (java.io PrintWriter)
+           (java.net Socket URI)))
 
 (if-bb
-    (do
-      (def swagger-url (format "http://localhost:%s/swagger.json" 8888))
-      (def openapi-url (format "http://localhost:%s/openapi.json" 8888))
-      (def openapi-yaml-url (format "http://localhost:%s/openapi.yaml" 8888))
-      (def openapi-test-url (format "http://localhost:%s/openapi-test.json" 8888))
-      (def openapi-test-yaml-url (format "http://localhost:%s/openapi-test.yaml" 8888)))
+  (let [port 8888]
+    (def swagger-url (format "http://localhost:%s/swagger.json" port))
+    (def openapi-url (format "http://localhost:%s/openapi.json" port))
+    (def openapi-yaml-url (format "http://localhost:%s/openapi.yaml" port))
+    (def openapi-test-url (format "http://localhost:%s/openapi-test.json" port))
+    (def openapi-test-yaml-url (format "http://localhost:%s/openapi-test.yaml" port))
+    (def openapi-multipart-url (format "http://localhost:%s/openapi-multipart.json" port))
+    (def test-multipart-file-url (format "http://localhost:%s/test-multipart.txt" port)))
   (do
-    (require '[martian.server-stub :refer [with-server swagger-url openapi-url openapi-test-url openapi-yaml-url openapi-test-yaml-url]])
+    (require '[martian.server-stub :refer [swagger-url
+                                           openapi-url
+                                           openapi-yaml-url
+                                           openapi-test-url
+                                           openapi-test-yaml-url
+                                           openapi-multipart-url
+                                           test-multipart-file-url
+                                           with-server]])
+    (require '[martian.test-utils :refer [extend-io-factory-for-path]])
     (use-fixtures :once with-server)))
 
 (defn- decode-body
@@ -167,7 +184,7 @@
            (martian/explore m)))))
 
 (if-bb
-    nil
+  nil
   (deftest babashka-test
     (if (not (fs/which "bb"))
       (println "babashka not installed, skipping test")
@@ -181,3 +198,120 @@
       (require '[clojure.test] '[martian.babashka.http-client-test])
       (let [{:keys [error fail]} (clojure.test/run-tests 'martian.babashka.http-client-test)]
         (when (or (pos? error) (pos? fail)) (System/exit 1)))"))))
+
+(deftest multipart-request-test
+  (let [m (martian-http/bootstrap-openapi openapi-multipart-url)]
+    (is (= "http://localhost:8888" (:api-root m)))
+
+    (testing "common types:"
+      (testing "String"
+        (is (match?
+              {:multipart [{:name "string" :content "Howdy!"}]
+               :headers without-content-type?}
+              (martian/request-for m :upload-data {:string "Howdy!"})))
+        (is (match?
+              {:status 200
+               :body {:content-type multipart+boundary?
+                      :content-map {:string "Howdy!"}}}
+              (martian/response-for m :upload-data {:string "Howdy!"}))))
+      (testing "File"
+        (let [tmp-file (create-temp-file)]
+          (is (match?
+                {:multipart [{:name "binary" :content tmp-file}]
+                 :headers without-content-type?}
+                (martian/request-for m :upload-data {:binary tmp-file})))
+          (is (match?
+                {:status 200
+                 :body {:content-type multipart+boundary?
+                        :content-map {:binary (binary-content tmp-file)}}}
+                (martian/response-for m :upload-data {:binary tmp-file})))))
+      (testing "InputStream"
+        (let [tmp-file (create-temp-file)
+              tmp-file-is (io/input-stream tmp-file)]
+          (is (match?
+                {:multipart [{:name "binary" :content tmp-file-is}]
+                 :headers without-content-type?}
+                (martian/request-for m :upload-data {:binary tmp-file-is})))
+          (is (match?
+                {:status 200
+                 :body {:content-type multipart+boundary?
+                        :content-map {:binary (slurp tmp-file)}}}
+                (martian/response-for m :upload-data {:binary tmp-file-is})))))
+      (testing "byte array"
+        (let [byte-arr (String/.getBytes "Clojure!")]
+          (is (match?
+                {:multipart [{:name "binary" :content byte-arr}]
+                 :headers without-content-type?}
+                (martian/request-for m :upload-data {:binary byte-arr})))
+          (is (match?
+                {:status 200
+                 :body {:content-type multipart+boundary?
+                        :content-map {:binary "Clojure!"}}}
+                (martian/response-for m :upload-data {:binary byte-arr}))))))
+
+    (testing "extra types:"
+      (testing "URL"
+        (let [url (.toURL (URI. test-multipart-file-url))]
+          (is (match?
+                {:multipart [{:name "binary" :content input-stream?}]
+                 :headers without-content-type?}
+                (martian/request-for m :upload-data {:binary url})))
+          (is (match?
+                {:status 200
+                 :body {:content-type multipart+boundary?
+                        :content-map {:binary "Content retrieved via URL/URI"}}}
+                (martian/response-for m :upload-data {:binary url})))))
+      (testing "URI"
+        (let [uri (URI. test-multipart-file-url)]
+          (is (match?
+                {:multipart [{:name "binary" :content input-stream?}]
+                 :headers without-content-type?}
+                (martian/request-for m :upload-data {:binary uri})))
+          (is (match?
+                {:status 200
+                 :body {:content-type multipart+boundary?
+                        :content-map {:binary "Content retrieved via URL/URI"}}}
+                (martian/response-for m :upload-data {:binary uri})))))
+      (testing "Socket"
+        (with-open [socket (Socket. "localhost" 8888)
+                    writer (PrintWriter. (.getOutputStream socket) true)]
+          (binding [*out* writer]
+            (println "Hello, server! This is an invalid HTTP message."))
+          (is (match?
+                {:multipart [{:name "binary" :content input-stream?}]
+                 :headers without-content-type?}
+                (martian/request-for m :upload-data {:binary socket})))
+          (is (match?
+                {:status 200
+                 :body {:content-type multipart+boundary?
+                        :content-map {:binary #(str/starts-with? % "HTTP/1.1")}}}
+                (martian/response-for m :upload-data {:binary socket})))))
+      (if-bb
+        nil
+        (testing "Path"
+          (let [tmp-file (create-temp-file)
+                path (.toPath tmp-file)]
+            ;; NB: This test case requires IOFactory extension for Path.
+            (extend-io-factory-for-path)
+            (is (match?
+                  {:multipart [{:name "binary" :content input-stream?}]
+                   :headers without-content-type?}
+                  (martian/request-for m :upload-data {:binary path})))
+            (is (match?
+                  {:status 200
+                   :body {:content-type multipart+boundary?
+                          :content-map {:binary (slurp tmp-file)}}}
+                  (martian/response-for m :upload-data {:binary path})))))))
+
+    (testing "custom types:"
+      (testing "Number"
+        (let [int-num 1234567890]
+          (is (match?
+                {:multipart [{:name "custom" :content (str int-num)}]
+                 :headers without-content-type?}
+                (martian/request-for m :upload-data {:custom int-num})))
+          (is (match?
+                {:status 200
+                 :body {:content-type multipart+boundary?
+                        :content-map {:custom (str int-num)}}}
+                (martian/response-for m :upload-data {:custom int-num}))))))))

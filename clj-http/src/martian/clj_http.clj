@@ -5,21 +5,24 @@
             [martian.file :as file]
             [martian.interceptors :as interceptors]
             [martian.openapi :as openapi]
-            [martian.yaml :as yaml]))
+            [martian.yaml :as yaml])
+  (:import (org.apache.http.entity.mime.content ContentBody)))
 
 (def perform-request
   {:name ::perform-request
    :leave (fn [{:keys [request] :as ctx}]
             (assoc ctx :response (http/request request)))})
 
-(def encoders
+(defn custom-type? [obj]
+  (instance? ContentBody obj))
+
+(def request-encoders
   (assoc (encoders/default-encoders)
-    "multipart/form-data" {:encode encoders/multipart-encode
-                           :as :multipart}))
+    "multipart/form-data" {:encode #(encoders/multipart-encode % custom-type?)}))
 
 (def default-interceptors
   (conj martian/default-interceptors
-        (interceptors/encode-request encoders)
+        (interceptors/encode-request request-encoders)
         interceptors/default-coerce-response
         perform-request))
 

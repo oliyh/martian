@@ -69,11 +69,10 @@
                        :omega "abc"}
                  i (i/encode-request
                      (assoc (encoders/default-encoders)
-                       "multipart/form-data" {:encode encoders/multipart-encode
-                                              :as :multipart}))]
-             (is (= {:multipart [{:name "alpha" :content 12345}
+                       "multipart/form-data" {:encode encoders/multipart-encode}))]
+             (is (= {:multipart [{:name "alpha" :content "12345"}
                                  {:name "omega" :content "abc"}]
-                     :headers {"Content-Type" "multipart/form-data"}}
+                     :headers nil}
                     (:request ((:enter i) {:request {:body body}
                                            :handler {:consumes ["multipart/form-data"]}}))))))))))
 

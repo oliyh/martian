@@ -1,12 +1,13 @@
 (ns martian.interceptors
-  (:require [martian.schema :as schema]
+  (:require [camel-snake-kebab.core :refer [->kebab-case-keyword]]
             [clojure.set :as set]
+            [clojure.string :as str]
             [clojure.walk :refer [keywordize-keys stringify-keys]]
-            [tripod.context :as tc]
-            [schema.core :as s]
-            [camel-snake-kebab.core :refer [->kebab-case-keyword]]
+            [martian.encoders :as encoders]
             [martian.encoding :as encoding]
-            [martian.encoders :as encoders]))
+            [martian.schema :as schema]
+            [schema.core :as s]
+            [tripod.context :as tc]))
 
 (defn remove-stack [ctx]
   (-> ctx tc/terminate (dissoc ::tc/stack)))
@@ -83,22 +84,41 @@
               (update ctx ::tc/queue #(into (into tc/queue i) %))
               ctx))})
 
+(defn- content-type? [header-key]
+  (= "content-type" (str/lower-case (name header-key))))
+
+(def memo:content-type? (memoize content-type?))
+
+(defn drop-content-type [headers]
+  (if-let [header-key (some #(when (memo:content-type? %) %) (keys headers))]
+    (dissoc headers header-key)
+    headers))
+
 (defn encode-request [encoders]
   {:name ::encode-request
    :encodes (keys encoders)
    :enter (fn [{:keys [request handler] :as ctx}]
             (let [has-body? (:body request)
-                  content-type (and has-body?
-                                    (not (get-in request [:headers "Content-Type"]))
-                                    (encoding/choose-content-type encoders (:consumes handler)))
-                  multipart? (= "multipart/form-data" content-type)
-                  {:keys [encode]} (encoding/find-encoder encoders content-type)]
-              (cond-> ctx
-                      has-body? (update-in [:request :body] encode)
-                      ;; NB: Luckily, all target HTTP clients — clj-http (but not lite), http-kit,
-                      ;;     hato, and even babashka/http-client — all support the same syntax.
-                      multipart? (update :request set/rename-keys {:body :multipart})
-                      content-type (assoc-in [:request :headers "Content-Type"] content-type))))})
+                  content-type (when (and has-body?
+                                          (not (get-in request [:headers "Content-Type"])))
+                                 (encoding/choose-content-type encoders (:consumes handler)))
+                  ;; NB: There are many possible subtypes of multipart requests.
+                  multipart? (when content-type (str/starts-with? content-type "multipart/"))
+                  {:keys [encode]} (encoding/find-encoder encoders content-type)
+                  encoded-request (cond-> request
+
+                                    has-body?
+                                    (update :body encode)
+
+                                    multipart?
+                                    ;; NB: Luckily, all target HTTP clients — clj-http (but not lite), http-kit,
+                                    ;;     even hato and org.babashka/http-client — all support the same syntax.
+                                    (-> (set/rename-keys {:body :multipart})
+                                        (update :headers drop-content-type))
+
+                                    (and content-type (not multipart?))
+                                    (assoc-in [:headers "Content-Type"] content-type))]
+              (assoc ctx :request encoded-request)))})
 
 (def default-encode-request (encode-request (encoders/default-encoders)))
 
