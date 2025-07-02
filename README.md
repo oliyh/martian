@@ -487,6 +487,8 @@ martian.urlFor("get-pet", new HashMap<String, Object> {{ put("id", 123); }});
 ## Caveats
 - You need `:operationId` in the OpenAPI/Swagger spec to name routes when using `bootstrap-openapi`
   - [pedestal-api](https://github.com/oliyh/pedestal-api) automatically generates these from the route name
+- martian does not yet cover every intricacy of jsonschema, and as such it may not transmit data that it decides does not conform to the schema it has derived
+  - The main examples currently are `anyOf`, `allOf` and `oneOf`
 
 ## Development
 [![Circle CI](https://circleci.com/gh/oliyh/martian.svg?style=svg)](https://circleci.com/gh/oliyh/martian)
