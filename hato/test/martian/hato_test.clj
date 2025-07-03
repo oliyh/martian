@@ -263,8 +263,6 @@
                         :content-map {:custom (str int-num)}}}
                 (martian/response-for m :upload-data {:custom int-num}))))))))
 
-;; TODO: The `:as` value `:text` is an improper (yet valid) one for this client.
-
 (deftest response-coercion-test
   (let [m (martian-http/bootstrap-openapi openapi-coercions-url)]
     (is (= "http://localhost:8888" (:api-root m)))
@@ -272,7 +270,7 @@
     (testing "application/edn"
       (is (match?
             {:headers {"Accept" "application/edn"}
-             :as :text}
+             :as :auto}
             (martian/request-for m :get-edn)))
       (is (match?
             {:status 200
@@ -282,7 +280,7 @@
     (testing "application/json"
       (is (match?
             {:headers {"Accept" "application/json"}
-             :as :text}
+             :as :auto}
             (martian/request-for m :get-json)))
       (is (match?
             {:status 200
@@ -292,7 +290,7 @@
     (testing "application/transit+json"
       (is (match?
             {:headers {"Accept" "application/transit+json"}
-             :as :text}
+             :as :auto}
             (martian/request-for m :get-transit+json)))
       (is (match?
             {:status 200
@@ -314,7 +312,7 @@
     (testing "application/x-www-form-urlencoded"
       (is (match?
             {:headers {"Accept" "application/x-www-form-urlencoded"}
-             :as :text}
+             :as :auto}
             (martian/request-for m :get-form-data)))
       (is (match?
             {:status 200
@@ -328,7 +326,7 @@
             (martian/handler-for m :get-something)))
       (is (match?
             {:headers {"Accept" "application/json"}
-             :as :text}
+             :as :auto}
             (martian/request-for m :get-something)))
       (is (match?
             {:status 200
@@ -345,7 +343,6 @@
             "The response auto-coercion is set")
         (is (not (contains? (:headers request) "Accept"))
             "The 'Accept' request header is absent"))
-      ;; TODO: Fails with "class clojure.lang.PersistentArrayMap cannot be cast to class java.lang.String".
       (is (match?
             {:status 200
              :headers {:content-type "application/json;charset=utf-8"}

@@ -321,7 +321,6 @@
                         :content-map {:custom (str int-num)}}}
                 (martian/response-for m :upload-data {:custom int-num}))))))))
 
-;; TODO: Fails for BB! The "application/transit+msgpack" sneaks into!
 (deftest supported-content-types-test
   (let [m (martian-http/bootstrap-openapi openapi-url)]
     (if-bb
