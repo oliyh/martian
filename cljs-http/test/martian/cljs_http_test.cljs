@@ -4,6 +4,7 @@
             [martian.cljs-http :as martian-http]
             [martian.core :as martian]
             [martian.interceptors :as i]
+            [matcher-combinators.matchers :as m]
             [matcher-combinators.test])
   (:require-macros [cljs.core.async.macros :refer [go]]
                    [martian.file :refer [load-local-resource]]))
@@ -16,19 +17,18 @@
 (deftest swagger-http-test
   (async done
     (go (let [m (<! (martian-http/bootstrap-swagger swagger-url))]
-
-          (let [response (<! (martian/response-for m :create-pet {:pet {:name "Doggy McDogFace"
-                                                                        :type "Dog"
-                                                                        :age 3}}))]
-            (is (= {:status 201
-                    :body {:id 123}}
-                   (select-keys response [:status :body]))))
-
-          (let [response (<! (martian/response-for m :get-pet {:id 123}))]
-            (is (= {:name "Doggy McDogFace"
-                    :type "Dog"
-                    :age 3}
-                   (:body response)))))
+          (testing "server responses"
+            (is (match?
+                  {:status 201
+                   :body {:id 123}}
+                  (<! (martian/response-for m :create-pet {:pet {:name "Doggy McDogFace"
+                                                                 :type "Dog"
+                                                                 :age 3}}))))
+            (is (match?
+                  {:body {:name "Doggy McDogFace"
+                          :type "Dog"
+                          :age 3}}
+                  (<! (martian/response-for m :get-pet {:id 123}))))))
         (done))))
 
 (deftest openapi-bootstrap-test

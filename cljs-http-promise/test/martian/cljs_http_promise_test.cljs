@@ -22,20 +22,22 @@
 
 (deftest swagger-http-test
   (async done
-    (-> (prom/let [m (martian-http/bootstrap-swagger swagger-url)
-                   create-response (martian/response-for m :create-pet {:pet {:name "Doggy McDogFace"
-                                                                              :type "Dog"
-                                                                              :age 3}})
-                   get-response (martian/response-for m :get-pet {:id 123})]
-
-          (is (= {:status 201
-                  :body {:id 123}}
-                 (select-keys create-response [:status :body])))
-
-          (is (= {:name "Doggy McDogFace"
-                  :type "Dog"
-                  :age 3}
-                 (:body get-response))))
+    (-> (martian-http/bootstrap-swagger swagger-url)
+        (prom/then (fn [m]
+                     (testing "server responses"
+                       (prom/let [create-response (martian/response-for m :create-pet {:pet {:name "Doggy McDogFace"
+                                                                                             :type "Dog"
+                                                                                             :age 3}})
+                                  get-response (martian/response-for m :get-pet {:id 123})]
+                         (is (match?
+                               {:status 201
+                                :body {:id 123}}
+                               create-response))
+                         (is (match?
+                               {:body {:name "Doggy McDogFace"
+                                       :type "Dog"
+                                       :age 3}}
+                               get-response))))))
         (prom/catch report-error-and-throw)
         (prom/finally (fn []
                         (done))))))

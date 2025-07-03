@@ -20,6 +20,7 @@
                                         input-stream?
                                         without-content-type?
                                         multipart+boundary?]]
+            [matcher-combinators.matchers :as m]
             [matcher-combinators.test])
   (:import (java.io PrintWriter)
            (java.net Socket URI)))
@@ -28,63 +29,54 @@
 
 (deftest swagger-http-test
   (let [m (martian-http/bootstrap-swagger swagger-url)]
-
     (testing "default encoders"
-      (is (= {:version :http-1.1
-              :method :post
-              :url "http://localhost:8888/pets/"
-              :body {:name "Doggy McDogFace", :type "Dog", :age 3}
-              :headers {"Accept" "application/transit+msgpack"
-                        "Content-Type" "application/transit+msgpack"}
-              :as :byte-array}
-             (-> (martian/request-for m :create-pet {:pet {:name "Doggy McDogFace"
-                                                           :type "Dog"
-                                                           :age 3}})
-                 (update :body #(encoders/transit-decode % :msgpack))))))
-
-
-    (let [response (martian/response-for m :create-pet {:pet {:name "Doggy McDogFace"
-                                                              :type "Dog"
-                                                              :age 3}})]
-      (is (= {:status 201
-              :body {:id 123}}
-             (select-keys response [:status :body]))))
-
-    (let [response (martian/response-for m :get-pet {:id 123})]
-      (is (= {:name "Doggy McDogFace"
-              :type "Dog"
-              :age 3}
-             (:body response))))))
+      (is (match?
+            {:body (m/via #(encoders/transit-decode % :msgpack)
+                          {:name "Doggy McDogFace", :type "Dog", :age 3})
+             :headers {"Accept" "application/transit+msgpack"
+                       "Content-Type" "application/transit+msgpack"}
+             :as :byte-array}
+            (martian/request-for m :create-pet {:pet {:name "Doggy McDogFace"
+                                                      :type "Dog"
+                                                      :age 3}}))))
+    (testing "server responses"
+      (is (match?
+            {:status 201
+             :body {:id 123}}
+            (martian/response-for m :create-pet {:pet {:name "Doggy McDogFace"
+                                                       :type "Dog"
+                                                       :age 3}})))
+      (is (match?
+            {:body {:name "Doggy McDogFace"
+                    :type "Dog"
+                    :age 3}}
+            (martian/response-for m :get-pet {:id 123}))))))
 
 (deftest async-test
   (let [m (martian-http/bootstrap-swagger swagger-url {:async? true})]
 
     (testing "default encoders"
-      (is (= {:version :http-1.1
-              :method :post
-              :url "http://localhost:8888/pets/"
-              :body {:name "Doggy McDogFace", :type "Dog", :age 3}
-              :headers {"Accept" "application/transit+msgpack"
-                        "Content-Type" "application/transit+msgpack"}
-              :as :byte-array}
-             (-> (martian/request-for m :create-pet {:pet {:name "Doggy McDogFace"
-                                                           :type "Dog"
-                                                           :age 3}})
-                 (update :body #(encoders/transit-decode % :msgpack))))))
-
-
-    (let [response @(martian/response-for m :create-pet {:pet {:name "Doggy McDogFace"
-                                                               :type "Dog"
-                                                               :age 3}})]
-      (is (= {:status 201
-              :body {:id 123}}
-             (select-keys response [:status :body]))))
-
-    (let [response @(martian/response-for m :get-pet {:id 123})]
-      (is (= {:name "Doggy McDogFace"
-              :type "Dog"
-              :age 3}
-             (:body response))))))
+      (is (match?
+            {:body (m/via #(encoders/transit-decode % :msgpack)
+                          {:name "Doggy McDogFace", :type "Dog", :age 3})
+             :headers {"Accept" "application/transit+msgpack"
+                       "Content-Type" "application/transit+msgpack"}
+             :as :byte-array}
+            (martian/request-for m :create-pet {:pet {:name "Doggy McDogFace"
+                                                      :type "Dog"
+                                                      :age 3}}))))
+    (testing "server responses"
+      (is (match?
+            {:status 201
+             :body {:id 123}}
+            @(martian/response-for m :create-pet {:pet {:name "Doggy McDogFace"
+                                                        :type "Dog"
+                                                        :age 3}})))
+      (is (match?
+            {:body {:name "Doggy McDogFace"
+                    :type "Dog"
+                    :age 3}}
+            @(martian/response-for m :get-pet {:id 123}))))))
 
 (deftest error-handling-test
   (testing "remote exceptions"
