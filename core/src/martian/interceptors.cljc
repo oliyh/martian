@@ -7,8 +7,7 @@
             [martian.encoding :as encoding]
             [martian.schema :as schema]
             [schema.core :as s]
-            [tripod.context :as tc])
-  #?(:clj (:import (java.io InputStream))))
+            [tripod.context :as tc]))
 
 (defn remove-stack [ctx]
   (-> ctx tc/terminate (dissoc ::tc/stack)))
@@ -152,18 +151,6 @@
    :missing-encoder-as missing-encoder-as
    :default-encoder-as default-encoder-as})
 
-(defn coerce-as
-  [encoder {:keys [missing-encoder-as default-encoder-as]}]
-  (if (= encoding/auto-encoder encoder)
-    [:missing missing-encoder-as]
-    (if-let [encoder-as (:as encoder)]
-      [:encoder encoder-as]
-      [:default default-encoder-as])))
-
-(def raw-type?
-  #?(:clj  #(or (string? %) (bytes? %) (instance? InputStream %))
-     :cljs string?))
-
 (defn coerce-response
   ([encoders]
    (coerce-response encoders nil))
@@ -175,8 +162,7 @@
                (let [response-media-type (when (not (get-in request [:headers "Accept"]))
                                            (encoding/choose-media-type encoders (:produces handler)))
                      [coerce-as-type
-                      coerce-as-value] (coerce-as (encoding/find-encoder encoders response-media-type)
-                                                  coerce-opts)]
+                      coerce-as-value] (encoding/coerce-as encoders response-media-type coerce-opts)]
                  (cond-> (assoc ctx :coerce-as-type coerce-as-type)
                    coerce-as-value (update :request assoc request-key coerce-as-value)
                    response-media-type (assoc-in [:request :headers "Accept"] response-media-type))))
@@ -197,7 +183,7 @@
                            ;;     with response auto-coercion being turned on e.g. due to a presence
                            ;;     of the "*/*" response content in the OpenAPI/Swagger definition.
                            (and (= :missing coerce-as-type)
-                                (not (raw-type? (:body response)))))
+                                (not (encoding/raw-type? (:body response)))))
                    (let [{:keys [decode]} (encoding/find-encoder encoders content-type)
                          decoded-response (update response :body decode)]
                      (assoc ctx :response decoded-response))
