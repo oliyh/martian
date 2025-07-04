@@ -84,58 +84,125 @@
 (deftest coerce-response-test
   (let [i i/default-coerce-response]
 
-    #?(:bb nil
-       :default
-       (testing "simple decoders"
-         (let [body {:the "wheels"
-                     :on "the"
-                     :bus ["go" "round" "and" "round"]}]
-           (testing "form"
-             (let [ctx (tc/enqueue* {} [i (stub-response "application/x-www-form-urlencoded"
-                                                         "the=wheels&on=the&bus=go&bus=round&bus=and&bus=round")])]
-               (is (= body
-                      (-> (tc/execute ctx) :response :body))))))))
+    (testing "missing circuit, no encoder found and auto-coercion happens:"
+      #?(:bb nil
+         :default
+         (testing "simple decoders"
+           (let [body {:the "wheels"
+                       :on "the"
+                       :bus ["go" "round" "and" "round"]}]
+             (testing "form"
+               (let [ctx (tc/enqueue* {} [i (stub-response "application/x-www-form-urlencoded"
+                                                           "the=wheels&on=the&bus=go&bus=round&bus=and&bus=round")])]
+                 (is (= body
+                        (-> (tc/execute ctx) :response :body))))))))
 
-    (testing "complex decoders"
-      (let [body {:the {:wheels ["on" "the" "bus"]}
-                  :go {:round {:and "round"}}}]
-        (testing "json"
-          (let [ctx (tc/enqueue* {} [i (stub-response "application/json" (encoders/json-encode body))])]
-            (is (= body
-                   (-> (tc/execute ctx) :response :body)))))
-
-        (testing "edn"
-          (let [ctx (tc/enqueue* {} [i (stub-response "application/edn" (encoders/edn-encode body))])]
-            (is (= body
-                   (-> (tc/execute ctx) :response :body)))))
-
-        (testing "transit"
-          (testing "+json"
-            (let [ctx (tc/enqueue* {} [i (stub-response "application/transit+json"
-                                                        (encoders/transit-encode body :json))])]
+      (testing "complex decoders"
+        (let [body {:the {:wheels ["on" "the" "bus"]}
+                    :go {:round {:and "round"}}}]
+          (testing "json"
+            (let [ctx (tc/enqueue* {} [i (stub-response "application/json" (encoders/json-encode body))])]
               (is (= body
                      (-> (tc/execute ctx) :response :body)))))
 
-          #?(:bb nil
-             :clj
-             (testing "+msgpack"
-               (let [ctx (tc/enqueue* {} [i (stub-response "application/transit+msgpack"
-                                                           (encoders/transit-encode body :msgpack))])]
+          (testing "edn"
+            (let [ctx (tc/enqueue* {} [i (stub-response "application/edn" (encoders/edn-encode body))])]
+              (is (= body
+                     (-> (tc/execute ctx) :response :body)))))
+
+          (testing "transit"
+            (testing "+json"
+              (let [ctx (tc/enqueue* {} [i (stub-response "application/transit+json"
+                                                          (encoders/transit-encode body :json))])]
+                (is (= body
+                       (-> (tc/execute ctx) :response :body)))))
+
+            #?(:bb nil
+               :clj
+               (testing "+msgpack"
+                 (let [ctx (tc/enqueue* {} [i (stub-response "application/transit+msgpack"
+                                                             (encoders/transit-encode body :msgpack))])]
+                   (is (= body
+                          (-> (tc/execute ctx) :response :body)))))))))
+
+      (testing "alternative content-type header"
+        (let [body {:the {:wheels ["on" "the" "bus"]}
+                    :go {:round {:and "round"}}}]
+          (testing "Content-Type"
+            (let [ctx (tc/enqueue* {} [i (stub-response "Content-Type" "application/json" (encoders/json-encode body))])]
+              (is (= body
+                     (-> (tc/execute ctx) :response :body)))))
+
+          (testing "content-type"
+            (let [ctx (tc/enqueue* {} [i (stub-response "content-type" "application/json" (encoders/json-encode body))])]
+              (is (= body
+                     (-> (tc/execute ctx) :response :body))))))))
+
+    (testing "default circuit, when encoder found but has no `:as` value:"
+      #?(:bb nil
+         :default
+         (testing "simple decoders"
+           (let [body {:the "wheels"
+                       :on "the"
+                       :bus ["go" "round" "and" "round"]}]
+             (testing "form"
+               (let [ctx (tc/enqueue* {:handler {:produces ["application/x-www-form-urlencoded"]}}
+                                      [i (stub-response "application/x-www-form-urlencoded"
+                                                        "the=wheels&on=the&bus=go&bus=round&bus=and&bus=round")])]
                  (is (= body
-                        (-> (tc/execute ctx) :response :body)))))))))
+                        (-> (tc/execute ctx) :response :body))))))))
 
-    (testing "alternative content-type header"
-      (let [body {:the {:wheels ["on" "the" "bus"]}
-                  :go {:round {:and "round"}}}]
-        (testing "Content-Type"
-          (let [ctx (tc/enqueue* {} [i (stub-response "Content-Type" "application/json" (encoders/json-encode body))])]
-            (is (= body
-                   (-> (tc/execute ctx) :response :body)))))
+      (testing "complex decoders"
+        (let [body {:the {:wheels ["on" "the" "bus"]}
+                    :go {:round {:and "round"}}}]
+          (testing "json"
+            (let [ctx (tc/enqueue* {:handler {:produces ["application/json"]}}
+                                   [i (stub-response "application/json" (encoders/json-encode body))])]
+              (is (= body
+                     (-> (tc/execute ctx) :response :body)))))
 
-        (testing "content-type"
-          (let [ctx (tc/enqueue* {} [i (stub-response "content-type" "application/json" (encoders/json-encode body))])]
-            (is (= body
-                   (-> (tc/execute ctx) :response :body)))))))))
+          (testing "edn"
+            (let [ctx (tc/enqueue* {:handler {:produces ["application/edn"]}}
+                                   [i (stub-response "application/edn" (encoders/edn-encode body))])]
+              (is (= body
+                     (-> (tc/execute ctx) :response :body)))))
+
+          (testing "transit"
+            (testing "+json"
+              (let [ctx (tc/enqueue* {:handler {:produces ["application/transit+json"]}}
+                                     [i (stub-response "application/transit+json"
+                                                       (encoders/transit-encode body :json))])]
+                (is (= body
+                       (-> (tc/execute ctx) :response :body))))))))
+
+      (testing "alternative content-type header"
+        (let [body {:the {:wheels ["on" "the" "bus"]}
+                    :go {:round {:and "round"}}}]
+          (testing "Content-Type"
+            (let [ctx (tc/enqueue* {:handler {:produces ["application/json"]}}
+                                   [i (stub-response "Content-Type" "application/json" (encoders/json-encode body))])]
+              (is (= body
+                     (-> (tc/execute ctx) :response :body)))))
+
+          (testing "content-type"
+            (let [ctx (tc/enqueue* {:handler {:produces ["application/json"]}}
+                                   [i (stub-response "content-type" "application/json" (encoders/json-encode body))])]
+              (is (= body
+                     (-> (tc/execute ctx) :response :body))))))))
+
+    (testing "encoder circuit, when encoder found and has an `:as` value:"
+      (testing "complex decoders"
+        (let [body {:the {:wheels ["on" "the" "bus"]}
+                    :go {:round {:and "round"}}}]
+          (testing "transit"
+            #?(:bb nil
+               :clj
+               (testing "+msgpack"
+                 (let [ctx (tc/enqueue* {:handler {:produces ["application/transit+msgpack"]}}
+                                        [i (stub-response "application/transit+msgpack"
+                                                          (encoders/transit-encode body :msgpack))])]
+                   (is (= body
+                          (-> (tc/execute ctx) :response :body))))))))))))
 
 (deftest custom-encoding-test
   (testing "a user can support an encoding that martian doesn't know about by default"
