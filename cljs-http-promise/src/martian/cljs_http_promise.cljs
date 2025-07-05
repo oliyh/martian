@@ -1,11 +1,12 @@
 (ns martian.cljs-http-promise
   (:require [cljs-http.client :as http]
+            [clojure.string :as str]
             [martian.core :as martian]
+            [martian.encoders :as encoders]
             [martian.interceptors :as i]
             [martian.openapi :as openapi]
-            [tripod.context :as tc]
-            [clojure.string :as string]
-            [promesa.core :as prom]))
+            [promesa.core :as prom]
+            [tripod.context :as tc]))
 
 (def ^:private go-async
   i/remove-stack)
@@ -20,8 +21,22 @@
                                   (fn [response]
                                     (:response (tc/execute (assoc ctx :response response))))))))})
 
+(def response-coerce-opts
+  {:skip-decoding-for #{"application/edn"
+                        "application/json"
+                        "application/transit+json"}
+   :request-key :response-type
+   :missing-encoder-as :default
+   ;; NB: This must not be `:text`, since this previous global default value
+   ;;     never actually affected `cljs-http` response coercion due to being
+   ;;     passed under the wrong request key, `:as`.
+   :default-encoder-as :default})
+
 (def default-interceptors
-  (concat martian/default-interceptors [i/default-encode-body i/default-coerce-response perform-request]))
+  (conj martian/default-interceptors
+        i/default-encode-body
+        (i/coerce-response (encoders/default-encoders) response-coerce-opts)
+        perform-request))
 
 (def default-opts {:interceptors default-interceptors})
 
@@ -29,12 +44,12 @@
   (martian/bootstrap api-root concise-handlers (merge default-opts opts)))
 
 (defn bootstrap-openapi [url & [{:keys [server-url trim-base-url?] :as opts} load-opts]]
-  (prom/then (http/get url (merge {:as :json} load-opts))
+  (prom/then (http/get url load-opts)
              (fn [response]
                (let [definition (:body response)
                      raw-base-url (openapi/base-url url server-url definition)
                      base-url (if trim-base-url?
-                                (string/replace raw-base-url #"/$" "")
+                                (str/replace raw-base-url #"/$" "")
                                 raw-base-url)]
                  (martian/bootstrap-openapi base-url definition (merge default-opts opts))))))
 

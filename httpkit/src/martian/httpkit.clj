@@ -30,10 +30,14 @@
   (assoc (encoders/default-encoders)
     "multipart/form-data" {:encode #(encoders/multipart-encode % custom-type?)}))
 
+;; NB: `http-kit` does not support the `:json` response coercion.
+(def response-coerce-opts
+  {:default-encoder-as :text})
+
 (def default-interceptors
   (conj martian/default-interceptors
         (interceptors/encode-request request-encoders)
-        interceptors/default-coerce-response
+        (interceptors/coerce-response (encoders/default-encoders) response-coerce-opts)
         perform-request))
 
 (def default-opts {:interceptors default-interceptors})
@@ -48,6 +52,7 @@
                  (fn [{:keys [body]}]
                    (if (yaml/yaml-url? url)
                      (yaml/yaml->edn body)
+                     ;; `http-kit` has no support for `:json` response coercion
                      (json/decode body keyword))))))
 
 (defn bootstrap-openapi [url & [{:keys [server-url] :as opts} load-opts]]

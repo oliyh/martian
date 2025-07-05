@@ -136,6 +136,7 @@
             (keyword param-name)
             %) parts)))
 
+;; TODO: Substitute with `update-vals` (built-in, cross-platform).
 (defn update-vals-future
   "An implementation of `update-vals` that is in Clojure 1.11.0+."
   [m f]

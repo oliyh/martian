@@ -1,18 +1,13 @@
 (ns martian.test-utils
   (:require [clojure.java.io :as io]
             [matcher-combinators.matchers :as m])
-  (:import [java.io ByteArrayOutputStream File InputStream]
+  (:import [java.io File InputStream]
            [java.nio.file Files Path]
            [java.nio.file.attribute FileAttribute]))
 
 (defmacro if-bb [then & [else]]
   (if (System/getProperty "babashka.version")
     then else))
-
-(defn input-stream->byte-array [input-stream]
-  (with-open [os (ByteArrayOutputStream.)]
-    (io/copy (io/input-stream input-stream) os)
-    (.toByteArray os)))
 
 (def input-stream? #(instance? InputStream %))
 

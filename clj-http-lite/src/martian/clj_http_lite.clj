@@ -19,8 +19,9 @@
 
 (def default-interceptors
   (conj martian/default-interceptors
-        ;; clj-http-lite does not support 'multipart/form-data' uploads
+        ;; `clj-http-lite` does not support 'multipart/form-data' uploads
         interceptors/default-encode-body
+        ;; `clj-http-lite` does not support the `:json` response coercion
         interceptors/default-coerce-response
         perform-request))
 
@@ -34,7 +35,7 @@
       (let [body (:body (http/get url (or load-opts {})))]
         (if (yaml/yaml-url? url)
           (yaml/yaml->edn body)
-          ;; clj-http-lite does not support {:as :json} body conversion (yet) so we do it right here
+          ;; `clj-http-lite` has no support for `:json` response coercion
           (json/parse-string body keyword)))))
 
 (defn bootstrap-openapi [url & [{:keys [server-url] :as opts} load-opts]]

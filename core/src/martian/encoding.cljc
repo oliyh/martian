@@ -1,25 +1,35 @@
 (ns martian.encoding
-  (:require [clojure.string :as string]))
+  (:require [clojure.string :as str])
+  #?(:clj (:import (java.io InputStream))))
 
-(defn choose-content-type [encoders options]
+(defn choose-media-type [encoders options]
   (some (set options) (keys encoders)))
 
 (def auto-encoder
   {:encode identity
-   :decode identity
-   :as :auto})
+   :decode identity})
 
-(defn find-encoder [encoders content-type]
-  (if (string/blank? content-type)
-    auto-encoder
-    (loop [encoders encoders]
-      (let [[ct encoder] (first encoders)]
-        (cond
-          (not content-type) auto-encoder
+(defn get-type-subtype [media-type]
+  (when (and (string? media-type) (not (str/blank? media-type)))
+    (str/trim
+      (if-some [params-sep-idx (str/index-of media-type \;)]
+        (subs media-type 0 params-sep-idx)
+        media-type))))
 
-          (not encoder) auto-encoder
+(defn find-encoder [encoders media-type]
+  (or (when-some [type-subtype (get-type-subtype media-type)]
+        (get encoders type-subtype auto-encoder))
+      auto-encoder))
 
-          (string/includes? content-type ct) encoder
+(defn coerce-as
+  [encoders media-type {:keys [missing-encoder-as default-encoder-as]}]
+  (let [encoder (find-encoder encoders media-type)]
+    (if (= auto-encoder encoder)
+      [:missing missing-encoder-as]
+      (if-let [encoder-as (:as encoder)]
+        [:encoder encoder-as]
+        [:default default-encoder-as]))))
 
-          :else
-          (recur (rest encoders)))))))
+(def raw-type?
+  #?(:clj  #(or (string? %) (bytes? %) (instance? InputStream %))
+     :cljs string?))

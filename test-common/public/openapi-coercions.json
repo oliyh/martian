@@ -1,0 +1,179 @@
+{
+    "openapi": "3.0.2",
+    "externalDocs": {
+        "description": "Find out more about Swagger",
+        "url": "http://swagger.io"
+    },
+    "servers": [{
+        "url": "http://localhost:8888"
+    }],
+    "paths": {
+        "/edn": {
+            "get": {
+                "operationId": "get-edn",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/edn": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [{
+                    "api_key": []
+                }]
+            }
+        },
+        "/json": {
+            "get": {
+                "operationId": "get-json",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [{
+                    "api_key": []
+                }]
+            }
+        },
+        "/transit+json": {
+            "get": {
+                "operationId": "get-transit+json",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/transit+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [{
+                    "api_key": []
+                }]
+            }
+        },
+        "/transit+msgpack": {
+            "get": {
+                "operationId": "get-transit+msgpack",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/transit+msgpack": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [{
+                    "api_key": []
+                }]
+            }
+        },
+        "/form-data": {
+            "get": {
+                "operationId": "get-form-data",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/x-www-form-urlencoded": {
+                                "schema": {
+                                    "message": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [{
+                    "api_key": []
+                }]
+            }
+        },
+        "/something": {
+            "get": {
+                "summary": "Multiple response content types",
+                "operationId": "get-something",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/edn": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            },
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            },
+                            "application/transit+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [{
+                    "api_key": []
+                }]
+            }
+        },
+        "/anything": {
+            "get": {
+                "summary": "Any response content type (issue #189)",
+                "description": "https://github.com/oliyh/martian/issues/189",
+                "operationId": "get-anything",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [{
+                    "api_key": []
+                }]
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "ApiResponse": {
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "securitySchemes": {
+            "api_key": {
+                "type": "apiKey",
+                "name": "api_key",
+                "in": "header"
+            }
+        }
+    }
+}
