@@ -73,7 +73,7 @@
                        (if async? perform-request-async perform-request))})
 
 (def hato-interceptors
-  (build-default-interceptors true))
+  (build-default-interceptors false))
 
 (def default-interceptors
   (conj hato-interceptors perform-request))

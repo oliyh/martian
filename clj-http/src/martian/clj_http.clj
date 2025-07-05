@@ -46,7 +46,7 @@
 (defn build-default-opts [use-client-output-coercion?]
   {:interceptors (build-default-interceptors use-client-output-coercion?)})
 
-(def default-interceptors (build-default-interceptors true))
+(def default-interceptors (build-default-interceptors false))
 
 (def default-opts {:interceptors default-interceptors})
 
