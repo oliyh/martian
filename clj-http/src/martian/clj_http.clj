@@ -26,15 +26,16 @@
 ;;     decoding for those media types.
 ;;     https://github.com/dakrone/clj-http#optional-dependencies
 (defn response-coerce-opts [use-client-output-coercion?]
-  (if use-client-output-coercion?
-    {:skip-decoding-for (cond-> #{"application/json"
-                                  "application/transit+json"
-                                  "application/transit+msgpack"
-                                  "application/x-www-form-urlencoded"}
-                                ;; NB: This one may not be available to the end user!
-                                http/edn-enabled? (conj "application/edn"))
-     :default-encoder-as :auto}
-    {:default-encoder-as :string}))
+  (conj {:auto-coercion-pred #{:auto}}
+        (if use-client-output-coercion?
+          {:skip-decoding-for (cond-> #{"application/json"
+                                        "application/transit+json"
+                                        "application/transit+msgpack"
+                                        "application/x-www-form-urlencoded"}
+                                      ;; NB: This one may not be available to the end user!
+                                      http/edn-enabled? (conj "application/edn"))
+           :default-encoder-as :auto}
+          {:default-encoder-as :string})))
 
 (defn build-default-interceptors [use-client-output-coercion?]
   (conj martian/default-interceptors

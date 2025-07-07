@@ -1,6 +1,5 @@
 (ns martian.encoding
-  (:require [clojure.string :as str])
-  #?(:clj (:import (java.io InputStream))))
+  (:require [clojure.string :as str]))
 
 (defn choose-media-type [encoders options]
   (some (set options) (keys encoders)))
@@ -29,7 +28,3 @@
       (if-let [encoder-as (:as encoder)]
         [:encoder encoder-as]
         [:default default-encoder-as]))))
-
-(def raw-type?
-  #?(:clj  #(or (string? %) (bytes? %) (instance? InputStream %))
-     :cljs string?))

@@ -133,19 +133,23 @@
    values, if necessary:
    - `:skip-decoding-for`    — a set of media types for which the decoding can
                                be skipped in favor of the client built-in one
+   - `:auto-coercion-pred`   — a pred of `coerce-as-value` that checks whether
+                               client response auto-coercion has been applied
    - `:request-key`          — usually `:as`, though some clients expect other
                                keys, e.g. `:response-type` for the `cljs-http`
    - `:missing-encoder-as`   — for the case where the media type is missing or
                                when there is no encoder for the specified type
    - `:default-encoder-as`   — for in case the found encoder for the specified
                                media type omits its own `:as` value"
-  [{:keys [skip-decoding-for request-key missing-encoder-as default-encoder-as]
+  [{:keys [skip-decoding-for auto-coercion-pred
+           request-key missing-encoder-as default-encoder-as]
     :or {missing-encoder-as :auto
          ;; NB: Better be `:auto` to leverage the built-in client coercions
          ;;     which are usually based on the Content-Type response header.
          ;;     Leaving `:string` (the same as `:text`) for backward compat.
          default-encoder-as :string}}]
   {:skip-decoding-for (or skip-decoding-for #{})
+   :auto-coercion-pred (or auto-coercion-pred (constantly false))
    :request-key (or request-key :as)
    ;; NB: Passing `nil` to any of these must be a valid option.
    :missing-encoder-as missing-encoder-as
@@ -155,7 +159,8 @@
   ([encoders]
    (coerce-response encoders nil))
   ([encoders coerce-opts]
-   (let [{:keys [request-key skip-decoding-for] :as coerce-opts} (set-default-coerce-opts coerce-opts)]
+   (let [{:keys [request-key skip-decoding-for auto-coercion-pred] :as coerce-opts}
+         (set-default-coerce-opts coerce-opts)]
      {:name ::coerce-response
       :decodes (keys encoders)
       :enter (fn [{:keys [request handler] :as ctx}]
@@ -183,7 +188,7 @@
                            ;;     with response auto-coercion being turned on e.g. due to a presence
                            ;;     of the "*/*" response content in the OpenAPI/Swagger definition.
                            (and (= :missing coerce-as-type)
-                                (not (encoding/raw-type? (:body response)))))
+                                (auto-coercion-pred (get-in ctx [:request request-key]))))
                    (let [{:keys [decode]} (encoding/find-encoder encoders content-type)
                          decoded-response (update response :body decode)]
                      (assoc ctx :response decoded-response))

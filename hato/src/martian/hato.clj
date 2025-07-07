@@ -52,13 +52,14 @@
 ;;     decoding for those media types.
 ;;     https://github.com/gnarroway/hato#request-options
 (defn response-coerce-opts [use-client-output-coercion?]
-  (if use-client-output-coercion?
-    {:skip-decoding-for #{"application/edn"
-                          "application/json"
-                          "application/transit+json"
-                          "application/transit+msgpack"}
-     :default-encoder-as :auto}
-    {:default-encoder-as :string}))
+  (conj {:auto-coercion-pred #{:auto}}
+        (if use-client-output-coercion?
+          {:skip-decoding-for #{"application/edn"
+                                "application/json"
+                                "application/transit+json"
+                                "application/transit+msgpack"}
+           :default-encoder-as :auto}
+          {:default-encoder-as :string})))
 
 (defn build-default-interceptors [use-client-output-coercion?]
   (conj martian/default-interceptors
