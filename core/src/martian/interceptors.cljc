@@ -128,67 +128,27 @@
 ;; todo left for the backward compatibility - drop later, upon a major version release
 (def default-encode-body default-encode-request)
 
-(defn set-default-coerce-opts
-  "Returns an HTTP client-specific response coercion options, applying default
-   values, if necessary:
-   - `:skip-decoding-for`    — a set of media types for which the decoding can
-                               be skipped in favor of the client built-in one
-   - `:auto-coercion-pred`   — a pred of `coerce-as-value` that checks whether
-                               client response auto-coercion has been applied
-   - `:request-key`          — usually `:as`, though some clients expect other
-                               keys, e.g. `:response-type` for the `cljs-http`
-   - `:missing-encoder-as`   — for the case where the media type is missing or
-                               when there is no encoder for the specified type
-   - `:default-encoder-as`   — for in case the found encoder for the specified
-                               media type omits its own `:as` value"
-  [{:keys [skip-decoding-for auto-coercion-pred
-           request-key missing-encoder-as default-encoder-as]
-    :or {missing-encoder-as :auto
-         ;; NB: Better be `:auto` to leverage the built-in client coercions
-         ;;     which are usually based on the Content-Type response header.
-         ;;     Leaving `:string` (the same as `:text`) for backward compat.
-         default-encoder-as :string}}]
-  {:skip-decoding-for (or skip-decoding-for #{})
-   :auto-coercion-pred (or auto-coercion-pred (constantly false))
-   :request-key (or request-key :as)
-   ;; NB: Passing `nil` to any of these must be a valid option.
-   :missing-encoder-as missing-encoder-as
-   :default-encoder-as default-encoder-as})
-
 (defn coerce-response
   ([encoders]
    (coerce-response encoders nil))
   ([encoders coerce-opts]
-   (let [{:keys [request-key skip-decoding-for auto-coercion-pred] :as coerce-opts}
-         (set-default-coerce-opts coerce-opts)]
+   (let [{:keys [request-key] :as coerce-opts} (encoding/set-default-coerce-opts coerce-opts)]
      {:name ::coerce-response
       :decodes (keys encoders)
       :enter (fn [{:keys [request handler] :as ctx}]
                (let [response-media-type (when (not (get-in request [:headers "Accept"]))
                                            (encoding/choose-media-type encoders (:produces handler)))
-                     [coerce-as-type
-                      coerce-as-value] (encoding/coerce-as encoders response-media-type coerce-opts)]
-                 (cond-> (assoc ctx :coerce-as-type coerce-as-type)
-                   coerce-as-value (update :request assoc request-key coerce-as-value)
+                     {response-as :value
+                      :as coerce-as} (encoding/get-coerce-as encoders response-media-type coerce-opts)]
+                 (cond-> (assoc ctx :coerce-as coerce-as)
+                   response-as (update :request assoc request-key response-as)
                    response-media-type (assoc-in [:request :headers "Accept"] response-media-type))))
-      :leave (fn [{:keys [response coerce-as-type] :as ctx}]
+      :leave (fn [{:keys [response coerce-as] :as ctx}]
                ;; TODO: In some cases (`http-kit`) it may be necessary to decode an `:error :body`.
                (let [content-type (when (:body response)
-                                    (get-content-type (:headers response)))
-                     type-subtype (encoding/get-type-subtype content-type)]
-                 (if-not (or
-                           ;; NB: Skip only when the client did coerce a response to the final type,
-                           ;;     which may not be the case if the "Accept" encoder had some custom
-                           ;;     (non-default) `:as` value, meaning it still expects to decode the
-                           ;;     response from this (intermediary) type to the final one.
-                           (and (contains? skip-decoding-for type-subtype)
-                                (not= :encoder coerce-as-type))
-                           ;; NB: Avoid double coercion of the same sort by client and then Martian.
-                           ;;     A workaround needed specifically for `clj-http` and `hato` clients
-                           ;;     with response auto-coercion being turned on e.g. due to a presence
-                           ;;     of the "*/*" response content in the OpenAPI/Swagger definition.
-                           (and (= :missing coerce-as-type)
-                                (auto-coercion-pred (get-in ctx [:request request-key]))))
+                                    (get-content-type (:headers response)))]
+                 (if-not (or (encoding/skip-decoding? coerce-as content-type coerce-opts)
+                             (encoding/auto-coercion-by-client? coerce-as coerce-opts))
                    (let [{:keys [decode]} (encoding/find-encoder encoders content-type)
                          decoded-response (update response :body decode)]
                      (assoc ctx :response decoded-response))
