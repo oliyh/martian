@@ -6,20 +6,23 @@
   :plugins [[lein-parent "0.3.9"]]
   :parent-project {:path "../project.clj"
                    :inherit [:managed-dependencies]}
-  :dependencies [[frankiesardo/tripod "0.2.0"]
+  :dependencies [[camel-snake-kebab "0.4.3"]
+                 [clj-commons/clj-yaml "1.0.29"]
+                 [frankiesardo/tripod "0.2.0"]
+                 [lambdaisland/uri "1.19.155"]
+                 [org.flatland/ordered "1.15.12"]
+
+                 ;; schema and specs
+                 [org.clojure/spec.alpha "0.5.238"]
                  [prismatic/schema "1.4.1"]
                  [metosin/schema-tools "0.13.1"]
                  [metosin/spec-tools "0.10.7"
                   :exclusions [com.fasterxml.jackson.core/jackson-databind]]
-                 [org.clojure/spec.alpha "0.5.238"]
-                 [camel-snake-kebab "0.4.3"]
-                 [cheshire]
-                 [clj-commons/clj-yaml "1.0.29"]
-                 [lambdaisland/uri "1.19.155"]
 
+                 ;; encoding/decoding
+                 [cheshire]
                  [com.cognitect/transit-clj "1.0.333"]
                  [com.cognitect/transit-cljs "0.8.280"]
-                 [org.flatland/ordered "1.15.12"]
                  [ring/ring-codec "1.3.0"]]
   :java-source-paths ["src"]
   :profiles {:provided {:dependencies [[org.clojure/clojure]
@@ -34,7 +37,7 @@
                                   [nrepl/nrepl "1.3.1"]
                                   [cider/piggieback "0.6.0"]
 
-                                  [nubank/matcher-combinators "3.8.5"]]
+                                  [nubank/matcher-combinators "3.9.1"]]
                    :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}}}
   :aliases {"fig"       ["trampoline" "run" "-m" "figwheel.main"]
             "fig:build" ["trampoline" "run" "-m" "figwheel.main" "-b" "dev" "-r"]

@@ -7,6 +7,7 @@
             [martian.file :as file]
             [martian.interceptors :as interceptors]
             [martian.openapi :as openapi]
+            [martian.utils :as utils]
             [martian.yaml :as yaml]
             [tripod.context :as tc])
   (:import [java.util.function Function]))
@@ -16,9 +17,13 @@
     (not (:uri request))
     (assoc :uri (:url request))
 
+    ;; NB: This value is no longer passed by the library itself.
+    ;;     Leaving this clause intact for better compatibility.
     (= :byte-array (:as request))
     (assoc :as :bytes)
 
+    ;; NB: This value is no longer passed by the library itself.
+    ;;     Leaving this clause intact for better compatibility.
     (= :text (:as request))
     (dissoc :as)
 
@@ -71,10 +76,19 @@
   (assoc (encoders/default-encoders)
     "multipart/form-data" {:encode encoders/multipart-encode}))
 
+(def response-encoders
+  (utils/update* (encoders/default-encoders)
+                 "application/transit+msgpack" assoc :as :bytes))
+
+;; NB: `babashka-http-client` does not support the `:json` response coercion.
+(def response-coerce-opts
+  {:missing-encoder-as nil
+   :default-encoder-as nil})
+
 (def babashka-http-client-interceptors
   (conj martian/default-interceptors
         (interceptors/encode-request request-encoders)
-        interceptors/default-coerce-response
+        (interceptors/coerce-response response-encoders response-coerce-opts)
         keywordize-headers
         default-to-http-1))
 
@@ -86,19 +100,26 @@
 
 (def default-opts {:interceptors default-interceptors})
 
+(defn prepare-opts [{:keys [async?] :as opts}]
+  (merge (if async?
+           {:interceptors default-interceptors-async}
+           default-opts)
+         (dissoc opts :async? :use-client-output-coercion?)))
+
 (defn bootstrap [api-root concise-handlers & [opts]]
-  (martian/bootstrap api-root concise-handlers (merge default-opts opts)))
+  (martian/bootstrap api-root concise-handlers (prepare-opts opts)))
 
 (defn- load-definition [url load-opts]
   (or (file/local-resource url)
       (let [body (:body (http/get url (normalize-request load-opts)))]
         (if (yaml/yaml-url? url)
           (yaml/yaml->edn body)
+          ;; `babashka-http-client` has no support for `:json` response coercion
           (json/read-str body)))))
 
 (defn bootstrap-openapi [url & [{:keys [server-url] :as opts} load-opts]]
   (let [definition (load-definition url load-opts)
         base-url (openapi/base-url url server-url definition)]
-    (martian/bootstrap-openapi base-url definition (merge default-opts opts))))
+    (martian/bootstrap-openapi base-url definition (prepare-opts opts))))
 
 (def bootstrap-swagger bootstrap-openapi)

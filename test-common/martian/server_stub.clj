@@ -5,6 +5,7 @@
             [pedestal-api
              [core :as api]
              [helpers :refer [before defbefore defhandler handler]]]
+            [ring.util.codec :as codec]
             [schema.core :as s])
   (:import (java.io File)
            (java.nio.file Path)))
@@ -67,6 +68,25 @@
    :body {:content-type (get-content-type-header request)
           :content-map (get-prepared-content-map request)}})
 
+(def something
+  {:status 200
+   :body   {:message "Here's some text content"}})
+
+(defhandler get-something
+  {:summary   "Get something to test response coercion"
+   :responses {200 {:body {:message s/Str}}}}
+  [request]
+  something)
+
+;; Pedestal doesn't cater for form-urlencoded data
+(defhandler get-something-as-form-data
+  {:summary   "Same as `get-something`, but returns form-urlencoded data"
+   :responses {200 {:body s/Str}}}
+  [request]
+  (-> something
+      (assoc :headers {"Content-Type" "application/x-www-form-urlencoded"})
+      (update :body codec/form-encode)))
+
 (s/with-fn-validation
   (api/defroutes routes
     {}
@@ -82,6 +102,15 @@
 
        ;; endpoint for multipart request tests
        ["/upload" {:post upload-data}]
+
+       ;; endpoints for response coercions tests
+       ["/edn" {:get [:get-edn get-something]}]
+       ["/json" {:get [:get-json get-something]}]
+       ["/transit+json" {:get [:get-transit+json get-something]}]
+       ["/transit+msgpack" {:get [:get-transit+msgpack get-something]}]
+       ["/form-data" {:get [:get-form-data get-something-as-form-data]}]
+       ["/something" {:get [:get-something get-something]}]
+       ["/anything" {:get [:get-anything get-something]}]
 
        ["/swagger.json" {:get api/swagger-json}]]]]))
 
@@ -105,6 +134,7 @@
 (def openapi-test-yaml-url (format "http://localhost:%s/openapi-test.yaml" (::bootstrap/port service)))
 (def openapi-multipart-url (format "http://localhost:%s/openapi-multipart.json" (::bootstrap/port service)))
 (def test-multipart-file-url (format "http://localhost:%s/test-multipart.txt" (::bootstrap/port service)))
+(def openapi-coercions-url (format "http://localhost:%s/openapi-coercions.json" (::bootstrap/port service)))
 
 (defn add-interceptors
   [service-map]

@@ -89,6 +89,9 @@
 
 (def memo:content-type? (memoize content-type?))
 
+(defn get-content-type [headers]
+  (some #(when (memo:content-type? %) (headers %)) (keys headers)))
+
 (defn drop-content-type [headers]
   (if-let [header-key (some #(when (memo:content-type? %) %) (keys headers))]
     (dissoc headers header-key)
@@ -101,7 +104,7 @@
             (let [has-body? (:body request)
                   content-type (when (and has-body?
                                           (not (get-in request [:headers "Content-Type"])))
-                                 (encoding/choose-content-type encoders (:consumes handler)))
+                                 (encoding/choose-media-type encoders (:consumes handler)))
                   ;; NB: There are many possible subtypes of multipart requests.
                   multipart? (when content-type (str/starts-with? content-type "multipart/"))
                   {:keys [encode]} (encoding/find-encoder encoders content-type)
@@ -125,23 +128,31 @@
 ;; todo left for the backward compatibility - drop later, upon a major version release
 (def default-encode-body default-encode-request)
 
-(defn coerce-response [encoders]
-  {:name ::coerce-response
-   :decodes (keys encoders)
-   :enter (fn [{:keys [request handler] :as ctx}]
-            (let [content-type (and (not (get-in request [:headers "Accept"]))
-                                    (encoding/choose-content-type encoders (:produces handler)))
-                  {:keys [as] :or {as :text}} (encoding/find-encoder encoders content-type)]
-
-              (cond-> (assoc-in ctx [:request :as] as)
-                content-type (assoc-in [:request :headers "Accept"] content-type))))
-
-   :leave (fn [{:keys [response] :as ctx}]
-            (assoc ctx :response
-                   (let [content-type (and (:body response)
-                                           (not-empty (get-in response [:headers :content-type])))
-                         {:keys [decode]} (encoding/find-encoder encoders content-type)]
-                     (update response :body decode))))})
+(defn coerce-response
+  ([encoders]
+   (coerce-response encoders nil))
+  ([encoders coerce-opts]
+   (let [{:keys [request-key] :as coerce-opts} (encoding/set-default-coerce-opts coerce-opts)]
+     {:name ::coerce-response
+      :decodes (keys encoders)
+      :enter (fn [{:keys [request handler] :as ctx}]
+               (let [response-media-type (when (not (get-in request [:headers "Accept"]))
+                                           (encoding/choose-media-type encoders (:produces handler)))
+                     {response-as :value
+                      :as coerce-as} (encoding/get-coerce-as encoders response-media-type coerce-opts)]
+                 (cond-> (assoc ctx :coerce-as coerce-as)
+                   response-as (update :request assoc request-key response-as)
+                   response-media-type (assoc-in [:request :headers "Accept"] response-media-type))))
+      :leave (fn [{:keys [response coerce-as] :as ctx}]
+               ;; TODO: In some cases (`http-kit`) it may be necessary to decode an `:error :body`.
+               (let [content-type (when (:body response)
+                                    (get-content-type (:headers response)))]
+                 (if-not (or (encoding/skip-decoding? coerce-as content-type coerce-opts)
+                             (encoding/auto-coercion-by-client? coerce-as coerce-opts))
+                   (let [{:keys [decode]} (encoding/find-encoder encoders content-type)
+                         decoded-response (update response :body decode)]
+                     (assoc ctx :response decoded-response))
+                   ctx)))})))
 
 (def default-coerce-response (coerce-response (encoders/default-encoders)))
 
@@ -164,13 +175,16 @@
              ctx)}))
 
 (defn supported-content-types
-  "Return the full set of supported content-types as declared by any encoding/decoding interceptors"
+  "Return the full set of supported content-types as declared by any encoding/decoding interceptors,
+   preserving their original declaration order."
   [interceptors]
-  (reduce (fn [acc interceptor]
-            (merge-with into acc (select-keys interceptor [:encodes :decodes])))
-          {:encodes #{}
-           :decodes #{}}
-          interceptors))
+  (-> (reduce (fn [acc interceptor]
+                (merge-with into acc (select-keys interceptor [:encodes :decodes])))
+              {:encodes []
+               :decodes []}
+              interceptors)
+      (update :encodes distinct)
+      (update :decodes distinct)))
 
 ;; borrowed from https://github.com/walmartlabs/lacinia-pedestal/blob/master/src/com/walmartlabs/lacinia/pedestal.clj#L40
 (defn inject

@@ -24,6 +24,8 @@
                                   [nrepl/nrepl "1.3.1"]
                                   [cider/piggieback "0.6.0"]
 
+                                  [nubank/matcher-combinators "3.9.1"]
+
                                   [org.eclipse.jetty.websocket/websocket-server "9.4.35.v20201120" :upgrade false]
                                   [org.eclipse.jetty.websocket/websocket-servlet "9.4.35.v20201120" :upgrade false]
                                   [pedestal-api "0.3.5"]
