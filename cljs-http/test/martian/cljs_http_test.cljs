@@ -4,7 +4,6 @@
             [martian.cljs-http :as martian-http]
             [martian.core :as martian]
             [martian.interceptors :as i]
-            [matcher-combinators.matchers :as m]
             [matcher-combinators.test])
   (:require-macros [cljs.core.async.macros :refer [go]]
                    [martian.file :refer [load-local-resource]]))
