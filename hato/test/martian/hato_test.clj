@@ -347,7 +347,7 @@
     (testing "application/magical+json"
       (let [magical-encoder {:encode (comp str/reverse encoders/json-encode)
                              :decode (comp encoders/json-decode str/reverse)
-                             :as :magic}
+                             :as :string}
 
             request-encoders (assoc martian-http/default-request-encoders
                                "application/magical+json" magical-encoder)
@@ -358,7 +358,7 @@
                                        :response-encoders response-encoders})]
         (is (match?
               {:headers {"Accept" "application/magical+json"}
-               :as :magic}
+               :as :string}
               (martian/request-for m :get-magical)))
         (is (match?
               {:status 200

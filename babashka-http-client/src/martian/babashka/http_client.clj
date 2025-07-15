@@ -13,25 +13,26 @@
             [tripod.context :as tc])
   (:import [java.util.function Function]))
 
-(defn normalize-request [request]
+(defn normalize-request
+  [{:keys [version uri url as throw-exceptions?] :as request}]
   (cond-> request
-    (not (:uri request))
-    (assoc :uri (:url request))
+    (not uri)
+    (assoc :uri url)
 
     ;; NB: This value is no longer passed by the library itself.
     ;;     Leaving this clause intact for better compatibility.
-    (= :byte-array (:as request))
+    (= :byte-array as)
     (assoc :as :bytes)
 
     ;; NB: This value is no longer passed by the library itself.
     ;;     Leaving this clause intact for better compatibility.
-    (= :text (:as request))
+    (= :text as)
     (dissoc :as)
 
-    (:throw-exceptions? request)
+    throw-exceptions?
     (assoc :throw false)
 
-    (= :http-1.1 (:version request))
+    (= :http-1.1 version)
     (assoc :version :http1.1)))
 
 (def perform-request

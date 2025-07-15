@@ -572,19 +572,25 @@ Martian allows you to add support for custom media types in addition to [the def
 can be added independently for request and response encoders. Here's how it can be achieved in practice:
 
 ```clojure
-(require '[martian.core :as martian]
+(require '[clojure.string :refer :all]
+         '[martian.core :as martian]
          '[martian.encoders :as encoders]
          '[martian.httpkit :as martian-http]
          '[martian.interceptors :as i])
 
-(def magical-media-type "application/magical")
+(def magical-encoder
+  {;; a unary fn of request `:body`, Str -> Str
+   :encode upper-case
+   ;; a unary fn of response `:body`, Str -> Str
+   :decode lower-case
+   ;; tells HTTP client what raw type to provide
+   ;; one of `:string`, `:stream`, `:byte-array`
+   :as :string})
 
-(def magic-encoder {:encode clojure.string/upper-case
-                    :decode clojure.string/lower-case
-                    :as :magic})
-
-(let [request-encoders (assoc martian-http/default-request-encoders magical-media-type magic-encoder)
-      response-encoders (assoc martian-http/default-response-encoders magical-media-type magic-encoder)]
+(let [request-encoders (assoc martian-http/default-request-encoders
+                         "application/magical" magical-encoder)
+      response-encoders (assoc martian-http/default-response-encoders
+                          "application/magical" magical-encoder)]
   
   ;; provide via `:request-encoders`/`:response-encoders` opts
   (martian-http/bootstrap-openapi

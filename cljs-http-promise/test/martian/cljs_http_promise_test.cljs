@@ -214,13 +214,12 @@
           (prom/finally (fn []
                           (done)))))))
 
-;; FIXME: No matching clause: :magic.
 (deftest response-coercion-custom-encoding-test
   (async done
     (testing "custom encoding (application/magical+json)"
       (let [magical-encoder {:encode (comp str/reverse encoders/json-encode)
                              :decode (comp encoders/json-decode str/reverse)
-                             :as :magic}
+                             :as :string}
             request-encoders (assoc (encoders/default-encoders)
                                "application/magical+json" magical-encoder)
             response-encoders (assoc martian-http/default-response-encoders
@@ -230,7 +229,7 @@
                                                   :response-encoders response-encoders})]
               (is (match?
                     {:headers {"Accept" "application/magical+json"}
-                     :response-type :magic}
+                     :response-type :string}
                     (martian/request-for m :get-magical)))
               (-> (martian/response-for m :get-magical)
                   (prom/then (fn [response]

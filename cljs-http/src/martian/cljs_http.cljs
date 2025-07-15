@@ -10,13 +10,22 @@
             [tripod.context :as tc])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
+(defn normalize-request
+  [{:keys [response-type] :as request}]
+  (cond-> request
+
+    ;; NB: Both `:stream` and `:byte-array` don't make sense in CLJS,
+    ;;     so we simply ignore these vals and let it fail downstream.
+    (= :string response-type)
+    (assoc :response-type :text)))
+
 (def perform-request
   {:name ::perform-request
    :leave (fn [{:keys [request] :as ctx}]
             (-> ctx
                 hc/go-async
                 (assoc :response
-                       (go (let [response (<! (http/request request))]
+                       (go (let [response (<! (http/request (normalize-request request)))]
                              (:response (tc/execute (assoc ctx :response response))))))))})
 
 (def default-response-encoders

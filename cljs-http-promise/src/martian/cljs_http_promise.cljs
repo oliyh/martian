@@ -9,13 +9,22 @@
             [promesa.core :as prom]
             [tripod.context :as tc]))
 
+(defn normalize-request
+  [{:keys [response-type] :as request}]
+  (cond-> request
+
+    ;; NB: Both `:stream` and `:byte-array` don't make sense in CLJS,
+    ;;     so we simply ignore these vals and let it fail downstream.
+    (= :string response-type)
+    (assoc :response-type :text)))
+
 (def perform-request
   {:name ::perform-request
    :leave (fn [{:keys [request] :as ctx}]
             (-> ctx
                 hc/go-async
                 (assoc :response
-                       (prom/then (http/request request)
+                       (prom/then (http/request (normalize-request request))
                                   (fn [response]
                                     (:response (tc/execute (assoc ctx :response response))))))))})
 

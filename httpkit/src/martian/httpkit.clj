@@ -11,13 +11,20 @@
             [tripod.context :as tc])
   (:import (java.nio ByteBuffer)))
 
+(defn normalize-request
+  [{:keys [as] :as request}]
+  (cond-> request
+
+    (= :string as)
+    (assoc :as :text)))
+
 (def perform-request
   {:name ::perform-request
    :leave (fn [{:keys [request] :as ctx}]
             (-> ctx
                 hc/go-async
                 (assoc :response
-                       (http/request request
+                       (http/request (normalize-request request)
                                      (fn [response]
                                        (:response (tc/execute (assoc ctx :response response))))))))})
 
