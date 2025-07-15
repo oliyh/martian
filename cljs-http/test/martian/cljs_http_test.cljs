@@ -1,8 +1,10 @@
 (ns martian.cljs-http-test
   (:require [cljs.core.async :refer [<!]]
             [cljs.test :refer-macros [async deftest is testing]]
+            [clojure.string :as str]
             [martian.cljs-http :as martian-http]
             [martian.core :as martian]
+            [martian.encoders :as encoders]
             [martian.interceptors :as i]
             [matcher-combinators.test])
   (:require-macros [cljs.core.async.macros :refer [go]]
@@ -168,4 +170,32 @@
                    :headers {"content-type" "application/json;charset=utf-8"}
                    :body {:message "Here's some text content"}}
                   (<! (martian/response-for m :get-anything))))))
+        (done))))
+
+;; FIXME: (mismatch
+;;          (expected "{:headers {:content-type \"application/magical+json\"}, :status 200, :body {:message \"Here's some text content\"}}")
+;;          (actual   ""))
+;; FIXME: Should be 'No matching clause: :magic'!
+(deftest response-coercion-custom-encoding-test
+  (async done
+    (go (testing "custom encoding (application/magical+json)"
+          (let [magical-encoder {:encode (comp str/reverse encoders/json-encode)
+                                 :decode (comp encoders/json-decode str/reverse)
+                                 :as :magic}
+                request-encoders (assoc (encoders/default-encoders)
+                                   "application/magical+json" magical-encoder)
+                response-encoders (assoc martian-http/default-response-encoders
+                                    "application/magical+json" magical-encoder)
+                m (<! (martian-http/bootstrap-openapi
+                        openapi-coercions-url {:request-encoders request-encoders
+                                               :response-encoders response-encoders}))]
+            (is (match?
+                  {:headers {"Accept" "application/magical+json"}
+                   :response-type :magic}
+                  (martian/request-for m :get-magical)))
+            (is (match?
+                  {:status 200
+                   :headers {"content-type" "application/magical+json"}
+                   :body {:message "Here's some text content"}}
+                  (<! (martian/response-for m :get-magical))))))
         (done))))
