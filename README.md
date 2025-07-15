@@ -46,17 +46,19 @@ ensuring that your response handling code is also correct. Examples are below.
 6. [Recording and playback with `martian-vcr`](#recording-and-playback-with-martian-vcr)
 7. [Idiomatic parameters](#idiomatic-parameters)
 8. [Custom behaviour](#custom-behaviour)
-   - [Global behaviour](#global-behaviour)
-   - [Per route behaviour](#per-route-behaviour)
-9. [Custom content-types](#custom-content-types)
-10. [Response validation](#response-validation)
-11. [Defaults](#defaults)
-12. [Development mode](#development-mode)
-13. [Java](#java)
-14. [Caveats](#caveats)
-15. [Development](#development)
-16. [Issues and features](#issues-and-features)
-17. [Acknowledgements](#acknowledgements)
+   - [Custom interceptors](#custom-interceptors)
+     - [Global behaviour](#global-behaviour)
+     - [Per route behaviour](#per-route-behaviour)
+   - [Custom coercion matcher](#custom-coercion-matcher)
+   - [Custom content-types](#custom-content-types)
+9. [Response validation](#response-validation)
+10. [Defaults](#defaults)
+11. [Development mode](#development-mode)
+12. [Java](#java)
+13. [Caveats](#caveats)
+14. [Development](#development)
+15. [Issues and features](#issues-and-features)
+16. [Acknowledgements](#acknowledgements)
 
 ---
 
@@ -276,6 +278,7 @@ data quickly and easily.
 
 ```clj
 (require '[martian.vcr :as vcr])
+(require '[martian.interceptors :refer [inject]])
 
 (def m (http/bootstrap "https://foo.com/api"
                        {:interceptors (inject http/default-interceptors
@@ -324,10 +327,12 @@ Body parameters may be supplied in three ways: with an alias, destructured or as
 
 ## Custom behaviour
 
+### Custom interceptors
+
 You may wish to provide additional behaviour to requests. This can be done by providing Martian with interceptors
 which behave in the same way as pedestal interceptors.
 
-### Global behaviour
+#### Global behaviour
 
 You can add interceptors to the stack that get executed on every request when bootstrapping martian.
 For example, if you wish to add an authentication header and a timer to all requests:
@@ -354,6 +359,7 @@ For example, if you wish to add an authentication header and a timer to all requ
 
 (let [m (martian-http/bootstrap-openapi
                "https://pedestal-api.oliy.co.uk/swagger.json"
+               ;; or leverage the `martian.interceptors/inject` function
                {:interceptors (concat
                                 [add-authentication-header request-timer]
                                 martian-http/default-interceptors)})]
@@ -363,30 +369,10 @@ For example, if you wish to add an authentication header and a timer to all requ
         ;; => {:status 200 :body {:pets []}}
 ```
 
-There is also a way to augment/override the default coercion matcher that is used by a Martian instance for params coercion:
+There is also the `martian.interceptors/inject` function that you can leverage to be more specific and descriptive when
+adding a custom interceptor or replacing/removing an existing (default) one.
 
-```clojure
-;; adding an extra coercion instead/after the default one
-(martian-http/bootstrap-openapi
-  "https://pedestal-api.oliy.co.uk/swagger.json"
-  {:coercion-matcher (fn [schema]
-                       (or (martian/default-coercion-matcher schema)
-                           (my-extra-coercion-matcher schema)))})
-
-;; switching to some coercion matcher from 'schema-tools'
-(require '[schema-tools.coerce :as stc])
-(martian/bootstrap
-  "https://api.org"
-  [{:route-name  :create-pet
-    :path-parts  ["/pets/"]
-    :method      :post
-    :body-schema {:pet {:PetId     s/Int
-                        :FirstName s/Str
-                        :LastName  s/Str}}}]
-  {:coercion-matcher stc/json-coercion-matcher})
-```
-
-### Per route behaviour
+#### Per route behaviour
 
 Sometimes individual routes require custom behaviour. This can be achieved by writing a
 global interceptor which inspects the route-name and decides what to do, but a more specific
@@ -430,31 +416,55 @@ Interceptors provided at a per-route level are inserted into the interceptor cha
 This means your route interceptors have available to them the unserialised request on enter and the deserialised response on leave.
 You may move or provide your own version of `enqueue-route-specific-interceptors` to change this behaviour.
 
-## Custom content-types
+### Custom coercion matcher
+
+There is also a way to augment/override the default coercion matcher that is used by a Martian instance for params coercion:
+
+```clojure
+;; adding an extra coercion instead/after the default one
+(martian-http/bootstrap-openapi
+  "https://pedestal-api.oliy.co.uk/swagger.json"
+  {:coercion-matcher (fn [schema]
+                       (or (martian/default-coercion-matcher schema)
+                           (my-extra-coercion-matcher schema)))})
+
+;; switching to some coercion matcher from 'schema-tools'
+(require '[schema-tools.coerce :as stc])
+(martian/bootstrap
+  "https://api.org"
+  [{:route-name  :create-pet
+    :path-parts  ["/pets/"]
+    :method      :post
+    :body-schema {:pet {:PetId     s/Int
+                        :FirstName s/Str
+                        :LastName  s/Str}}}]
+  {:coercion-matcher stc/json-coercion-matcher})
+```
+
+### Custom content-types
 
 Martian allows you to add support for content-types in addition to those supported out of the box — `transit`, `edn`, `json`, and `multipart` (supported in all JVM/Babashka HTTP clients except for `clj-http-lite`).
 
 ```clojure
 (require '[martian.core :as m])
-(require '[martian.httpkit :as http])
 (require '[martian.encoders :as encoders])
+(require '[martian.httpkit :as http])
 (require '[martian.interceptors :as i])
-(require '[clojure.string :as str])
 
-(def magic-encoder str/upper-case)
-(def magic-decoder str/lower-caser)
+(def magical-content-type "application/magical")
 
-(let [encoders (assoc (encoders/default-encoders)
-                      "application/magical" {:encode magic-encoder
-                                             :decode magic-decoder
-                                             :as :magic})]
+(def magic-encoder {:encode clojure.string/upper-case
+                    :decode clojure.string/lower-case
+                    :as :magic})
+
+(let [request-encoders (assoc http/request-encoders magical-content-type magic-encoder)
+      response-encoders (assoc http/response-encoders magical-content-type magic-encoder)]
   (http/bootstrap-openapi
    "https://example-api.com"
-   {:interceptors (concat m/default-interceptors
-                          [(i/encode-request encoders)
-                           (i/coerce-response encoders)
-                           http/perform-request])}))
-
+   {:interceptors (conj m/default-interceptors
+                        (i/encode-request request-encoders)
+                        (i/coerce-response response-encoders http/response-coerce-opts)
+                        http/perform-request)}))
 ```
 
 ## Response validation

@@ -46,6 +46,9 @@
   (assoc (encoders/default-encoders)
     "multipart/form-data" {:encode encoders/multipart-encode}))
 
+(def response-encoders
+  (encoders/default-encoders))
+
 ;; NB: In accordance with the `hato`'s Optional Dependencies, which all happen
 ;;     to be on the classpath already as the Martian core module dependencies,
 ;;     we could (or, at the very least, should allow to) skip Martian response
@@ -64,7 +67,7 @@
 (defn build-default-interceptors [use-client-output-coercion?]
   (conj martian/default-interceptors
         (interceptors/encode-request request-encoders)
-        (interceptors/coerce-response (encoders/default-encoders)
+        (interceptors/coerce-response response-encoders
                                       (response-coerce-opts use-client-output-coercion?))
         keywordize-headers
         default-to-http-1))

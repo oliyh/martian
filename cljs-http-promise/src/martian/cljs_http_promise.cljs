@@ -21,6 +21,9 @@
                                   (fn [response]
                                     (:response (tc/execute (assoc ctx :response response))))))))})
 
+(def response-encoders
+  (encoders/default-encoders))
+
 (def response-coerce-opts
   {:skip-decoding-for #{"application/edn"
                         "application/json"
@@ -35,7 +38,7 @@
 (def default-interceptors
   (conj martian/default-interceptors
         i/default-encode-body
-        (i/coerce-response (encoders/default-encoders) response-coerce-opts)
+        (i/coerce-response response-encoders response-coerce-opts)
         perform-request))
 
 (def default-opts {:interceptors default-interceptors})
