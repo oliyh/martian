@@ -20,47 +20,84 @@ You can bootstrap it in one line and start calling the server:
   ;; => {:status 200 :body {:name "Doggy McDogFace" :type "Dog" :age 3}}
 ```
 
-Implementations for many popular HTTP client libraries are supplied as modules (see below),
+Implementations for many popular HTTP client libraries are supplied as modules (see [below](#supported-http-clients)),
 but any other HTTP library can be used due to the extensibility of Martian's interceptor chain.
 It also allows custom behaviour to be injected in a uniform and powerful way.
 
 The `martian-test` library allows you to assert that your code constructs valid requests to remote servers without ever
-actually calling them, using the OpenApi spec to validate the parameters. It can also generate responses in the same way,
+actually calling them, using the OpenAPI spec to validate the parameters. It can also generate responses in the same way,
 ensuring that your response handling code is also correct. Examples are below.
 
 `martian-re-frame` integrates martian event handlers into `re-frame`, simplifying connecting your UI to data sources.
 
+---
+
+## Table of Contents
+
+1. [Latest versions & API docs](#latest-versions--api-docs)
+   - [Supported HTTP clients](#supported-http-clients)
+   - [Testing and interop libraries](#testing-and-interop-libraries)
+2. [Features](#features)
+3. [Clojure / ClojureScript](#clojure--clojurescript)
+4. [No Swagger, no problem](#no-swagger-no-problem)
+5. [Testing with `martian-test`](#testing-with-martian-test)
+   - [Generative testing](#generative-testing)
+   - [Non-generative testing](#non-generative-testing)
+6. [Recording and playback with `martian-vcr`](#recording-and-playback-with-martian-vcr)
+7. [Idiomatic parameters](#idiomatic-parameters)
+8. [Custom behaviour](#custom-behaviour)
+   - [Global behaviour](#global-behaviour)
+   - [Per route behaviour](#per-route-behaviour)
+9. [Custom content-types](#custom-content-types)
+10. [Response validation](#response-validation)
+11. [Defaults](#defaults)
+12. [Development mode](#development-mode)
+13. [Java](#java)
+14. [Caveats](#caveats)
+15. [Development](#development)
+16. [Issues and features](#issues-and-features)
+17. [Acknowledgements](#acknowledgements)
+
+---
+
 ## Latest versions & API docs
 
-The core library (required):
+### Core module
+
+Add dependency to the core library (required):
 
 [![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian.svg)](https://clojars.org/com.github.oliyh/martian) [![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian)](https://cljdoc.org/d/com.github.oliyh/martian/CURRENT)
 
-Support for various HTTP client libraries:
-|HTTP client|JVM|Javascript|Babashka|Docs|
-| --------- | --- | ------ | ------ | --- |
-|[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-hato.svg)](https://clojars.org/com.github.oliyh/martian-hato)|✔|||[![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-hato)](https://cljdoc.org/d/com.github.oliyh/martian-hato/CURRENT)|
-|[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-clj-http.svg)](https://clojars.org/com.github.oliyh/martian-clj-http)|✔|||[![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-clj-http)](https://cljdoc.org/d/com.github.oliyh/martian-clj-http/CURRENT)|
-|[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-clj-http-lite.svg)](https://clojars.org/com.github.oliyh/martian-clj-http-lite)|✔||✔|[![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-clj-http-lite)](https://cljdoc.org/d/com.github.oliyh/martian-clj-http-lite/CURRENT)|
-|[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-httpkit.svg)](https://clojars.org/com.github.oliyh/martian-httpkit)|✔||✔|[![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-httpkit)](https://cljdoc.org/d/com.github.oliyh/martian-httpkit/CURRENT)|
-|[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-cljs-http.svg)](https://clojars.org/com.github.oliyh/martian-cljs-http)||✔||[![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-cljs-http)](https://cljdoc.org/d/com.github.oliyh/martian-cljs-http/CURRENT)|
-|[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-cljs-http-promise.svg)](https://clojars.org/com.github.oliyh/martian-cljs-http-promise)||✔||[![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-cljs-http-promise)](https://cljdoc.org/d/com.github.oliyh/martian-cljs-http-promise/CURRENT)|
-|[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-babashka-http-client.svg)](https://clojars.org/com.github.oliyh/martian-babashka-http-client)|✔||✔|[![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-babashka-http-client)](https://cljdoc.org/d/com.github.oliyh/martian-babashka-http-client/CURRENT)|
+### Supported HTTP clients
 
-Testing and other interop libraries:
+Add one more dependency to the module for the target HTTP client library:
 
-[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-test.svg)](https://clojars.org/com.github.oliyh/martian-test) [README](https://github.com/oliyh/martian/tree/master/test)
+| HTTP client / Module | JVM | BB | JS | API Docs |
+| -------------------- | --- | -- | -- | -------- |
+|[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-hato.svg)](https://clojars.org/com.github.oliyh/martian-hato)| ✔   |    |    |[![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-hato)](https://cljdoc.org/d/com.github.oliyh/martian-hato/CURRENT/api/martian.hato)|
+|[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-clj-http.svg)](https://clojars.org/com.github.oliyh/martian-clj-http)| ✔   |    |    |[![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-clj-http)](https://cljdoc.org/d/com.github.oliyh/martian-clj-http/CURRENT/api/martian.clj-http)|
+|[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-clj-http-lite.svg)](https://clojars.org/com.github.oliyh/martian-clj-http-lite)| ✔   | ✔  |    |[![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-clj-http-lite)](https://cljdoc.org/d/com.github.oliyh/martian-clj-http-lite/CURRENT/api/martian.clj-http-lite)|
+|[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-httpkit.svg)](https://clojars.org/com.github.oliyh/martian-httpkit)| ✔   | ✔  |    |[![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-httpkit)](https://cljdoc.org/d/com.github.oliyh/martian-httpkit/CURRENT/api/martian.httpkit)|
+|[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-babashka-http-client.svg)](https://clojars.org/com.github.oliyh/martian-babashka-http-client)| ✔   | ✔  |    |[![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-babashka-http-client)](https://cljdoc.org/d/com.github.oliyh/martian-babashka-http-client/CURRENT/api/martian.babashka.http-client)|
+|[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-cljs-http.svg)](https://clojars.org/com.github.oliyh/martian-cljs-http)|     |    | ✔  |[![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-cljs-http)](https://cljdoc.org/d/com.github.oliyh/martian-cljs-http/CURRENT/api/martian.cljs-http)|
+|[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-cljs-http-promise.svg)](https://clojars.org/com.github.oliyh/martian-cljs-http-promise)|     |    | ✔  |[![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-cljs-http-promise)](https://cljdoc.org/d/com.github.oliyh/martian-cljs-http-promise/CURRENT/api/martian.cljs-http-promise)|
 
-[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-vcr.svg)](https://clojars.org/com.github.oliyh/martian-vcr) [![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-vcr)](https://cljdoc.org/d/com.github.oliyh/martian-vcr/CURRENT) [README](https://github.com/oliyh/martian/tree/master/vcr)
+### Testing and interop libraries
 
-[![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-re-frame.svg)](https://clojars.org/com.github.oliyh/martian-re-frame) [![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-re-frame)](https://cljdoc.org/d/com.github.oliyh/martian-re-frame/CURRENT) [README](https://github.com/oliyh/martian/tree/master/re-frame)
+Optionally add dependencies on modules for testing and interop:
+
+| Library / Module | Docs | API Docs |
+| ---------------- | ---- | -------- |
+| [![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-test.svg)](https://clojars.org/com.github.oliyh/martian-test) | [README](https://github.com/oliyh/martian/tree/master/test) | [![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-test)](https://cljdoc.org/d/com.github.oliyh/martian-test/CURRENT/api/martian.test) |
+| [![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-vcr.svg)](https://clojars.org/com.github.oliyh/martian-vcr) | [README](https://github.com/oliyh/martian/tree/master/vcr) | [![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-vcr)](https://cljdoc.org/d/com.github.oliyh/martian-vcr/CURRENT/api/martian.vcr) |
+| [![Clojars Project](https://img.shields.io/clojars/v/com.github.oliyh/martian-re-frame.svg)](https://clojars.org/com.github.oliyh/martian-re-frame) | [README](https://github.com/oliyh/martian/tree/master/re-frame) |  [![cljdoc badge](https://cljdoc.org/badge/com.github.oliyh/martian-re-frame)](https://cljdoc.org/d/com.github.oliyh/martian-re-frame/CURRENT/api/martian.re-frame) |
 
 
 ## Features
 
-- Bootstrap an instance from just a OpenAPI/Swagger url, a local definition file or provide your own API mapping
-- Modular with support for many HTTP client libraries (see table above)
-- Build urls and request maps from code or generate and perform the request, returning the response
+- Bootstrap an instance from just a OpenAPI/Swagger URL, a local definition file or provide your own API mapping
+- Modular with support for all popular HTTP client libraries (see [the table above](#supported-http-clients))
+- Build URLs and request maps from code or generate and perform the request, returning the response
 - Validate requests and responses to ensure they are correct before the data leaves/enters your system
 - Explore an API from your REPL
 - Extensible via interceptor pattern - inject your own interceptors anywhere in the chain
@@ -86,7 +123,7 @@ like that provided by [pedestal-api](https://github.com/oliyh/pedestal-api):
 (require '[martian.core :as martian]
          '[martian.clj-http :as martian-http])
 
-;; bootstrap the Martian instance by simply providing the url serving the openapi/swagger description
+;; bootstrap the Martian instance by simply providing the URL serving the OpenAPI/Swagger description
 (let [m (martian-http/bootstrap-openapi "https://pedestal-api.oliy.co.uk/swagger.json")]
 
   ;; explore the endpoints
@@ -99,7 +136,7 @@ like that provided by [pedestal-api](https://github.com/oliyh/pedestal-api):
   ;; => {:summary "Loads a pet by id"
   ;;     :parameters {:id s/Int}}
 
-  ;; build the url for a request
+  ;; build the URL for a request
   (martian/url-for m :get-pet {:id 123})
   ;; => https://pedestal-api.oliy.co.uk/pets/123
 
@@ -131,7 +168,7 @@ like that provided by [pedestal-api](https://github.com/oliyh/pedestal-api):
                    (get-in [:body :id]))]))
 ```
 
-Note that when calling `bootstrap-openapi` you can also provide a url to a local resource, e.g. `(martian-http/bootstrap-openapi "public/openapi.json")`.
+Note that when calling `bootstrap-openapi` you can also provide a URL to a local resource, e.g. `(martian-http/bootstrap-openapi "public/openapi.json")`.
 For ClojureScript the file can only be read at compile time, so a slightly different form is required using the `martian.file/load-local-resource` macro:
 ```clj
 (martian/bootstrap-openapi "https://sandbox.example.com" (load-local-resource "openapi-test.json") martian-http/default-opts)
@@ -139,7 +176,7 @@ For ClojureScript the file can only be read at compile time, so a slightly diffe
 
 ## No Swagger, no problem
 
-Although bootstrapping against a remote OpenAPI or Swagger API using `bootstrap-openapi` is simplest
+Although bootstrapping against a remote OpenAPI/Swagger spec using `bootstrap-openapi` is simplest
 and allows you to use the golden source to define the API, you may likely find yourself
 needing to integrate with an API beyond your control which does not use OpenAPI or Swagger.
 
@@ -163,7 +200,7 @@ Here's an example:
 
 ```
 
-## Testing with martian-test
+## Testing with `martian-test`
 
 Testing code that calls external systems can be tricky — you either build often elaborate stubs which start to become
 as complex as the system you are calling, or else you ignore it all together with `(constantly true)`.
@@ -232,7 +269,7 @@ The following example shows how mock responses can be created using the `martian
 
 More documentation is available at [martian-test](https://github.com/oliyh/martian/tree/master/test).
 
-## Recording and playback with martian-vcr
+## Recording and playback with `martian-vcr`
 
 martian-vcr allows you to record responses from real HTTP requests and play them back later, allowing you to build realistic test
 data quickly and easily.
@@ -497,7 +534,7 @@ Use `cider-jack-in-clj` or `cider-jack-in-clj&cljs` to start Clojure (and Clojur
 You may need to `lein install` first if you're working in a module that depends on another.
 
 ## Issues and features
-Please feel free to raise issues on Github or send pull requests.
+Please feel free to raise issues on GitHub or send pull requests.
 
 ## Acknowledgements
 Martian uses [tripod](https://github.com/frankiesardo/tripod) for routing, inspired by [pedestal](https://github.com/pedestal/pedestal).
