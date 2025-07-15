@@ -39,6 +39,9 @@
         (i/coerce-response default-response-encoders response-coerce-opts)
         perform-request))
 
+(def supported-custom-opts
+  [:request-encoders :response-encoders])
+
 (defn build-custom-opts [opts]
   {:interceptors (hc/update-basic-interceptors
                    default-interceptors
@@ -46,11 +49,8 @@
 
 (def default-opts {:interceptors default-interceptors})
 
-(def ^:private supported-opts
-  [:request-encoders :response-encoders])
-
 (defn prepare-opts [opts]
-  (hc/prepare-opts build-custom-opts supported-opts default-opts opts))
+  (hc/prepare-opts build-custom-opts supported-custom-opts default-opts opts))
 
 (defn bootstrap [api-root concise-handlers & [opts]]
   (martian/bootstrap api-root concise-handlers (prepare-opts opts)))

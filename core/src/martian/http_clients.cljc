@@ -4,12 +4,12 @@
 (def go-async i/remove-stack)
 
 (defn prepare-opts
-  [build-custom-opts-fn supported-opts default-opts opts]
-  (if (and (seq opts)
-           (some (set (keys opts)) supported-opts))
-    (merge (build-custom-opts-fn opts)
-           (apply dissoc opts supported-opts))
-    default-opts))
+  [build-custom-opts-fn supported-custom-opts default-opts opts]
+  (merge default-opts
+         (let [custom-opts (select-keys opts supported-custom-opts)]
+           (when (seq custom-opts)
+             (build-custom-opts-fn custom-opts)))
+         (apply dissoc opts supported-custom-opts)))
 
 (defn update-basic-interceptors
   [basic-interceptors

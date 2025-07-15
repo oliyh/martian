@@ -61,6 +61,7 @@ same way, ensuring that your response handling code is also correct. Examples ar
       - [Per route behaviour](#per-route-behaviour)
     - [Custom coercion matcher](#custom-coercion-matcher)
     - [Custom media types](#custom-media-types)
+    - [HTTP client-specific options](#http-client-specific-options)
 13. [Development mode](#development-mode)
 14. [Java](#java)
 15. [Caveats](#caveats)
@@ -445,7 +446,7 @@ More documentation is available at [martian-vcr](https://github.com/oliyh/martia
 You may wish to provide additional behaviour to requests. This can be done by providing Martian with interceptors
 which behave in the same way as pedestal interceptors.
 
-#### Global behaviour
+#### Global interceptors
 
 You can add interceptors to the stack that get executed on every request when bootstrapping Martian.
 For example, if you wish to add an authentication header and a timer to all requests:
@@ -484,7 +485,7 @@ For example, if you wish to add an authentication header and a timer to all requ
 There is also the `martian.interceptors/inject` function that you can leverage to be more specific and descriptive when
 adding a custom interceptor or replacing/removing an existing (default) one.
 
-#### Per route behaviour
+#### Per route interceptors
 
 Sometimes individual routes require custom behaviour. This can be achieved by writing a
 global interceptor which inspects the route-name and decides what to do, but a more specific
@@ -608,6 +609,20 @@ can be added independently for request and response encoders. Here's how it can 
                        (i/inject my-encode-request :replace ::martian/encode-request)
                        (i/inject my-coerce-response :replace ::martian/coerce-response))}))
 ```
+
+### HTTP client-specific options
+
+Similar to what was described for request/response encoders in the [Custom media types](#custom-media-types) section,
+there may be other Martian bootstrap options that customize HTTP client-specific behavior.
+
+Async-compatible HTTP clients, such as `hato` and `babashka/http-client`, support the `async?` option (false by default)
+which switches from using the `::martian-http/perform-request` interceptor to `::martian-http/perform-request-async`.
+
+HTTP clients with rich "Content-Type"-based response auto-coercion capabilities, such as `clj-http` and `hato`, support
+the `use-client-output-coercion?` (false by default) which allows to skip Martian response decoding for some media types
+that the client is known to be able to auto-coerce itself.
+
+For a complete list of available options, check out the `supported-custom-opts` var in the HTTP client's module core ns.
 
 ## Development mode
 

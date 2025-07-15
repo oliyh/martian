@@ -93,6 +93,9 @@
         keywordize-headers
         default-to-http-1))
 
+(def supported-custom-opts
+  [:async? :request-encoders :response-encoders])
+
 (defn build-custom-opts [{:keys [async?] :as opts}]
   {:interceptors (-> babashka-http-client-interceptors
                      (hc/update-basic-interceptors
@@ -107,11 +110,8 @@
 
 (def default-opts {:interceptors default-interceptors})
 
-(def ^:private supported-opts
-  [:async? :request-encoders :response-encoders])
-
 (defn prepare-opts [opts]
-  (hc/prepare-opts build-custom-opts supported-opts default-opts opts))
+  (hc/prepare-opts build-custom-opts supported-custom-opts default-opts opts))
 
 (defn bootstrap [api-root concise-handlers & [opts]]
   (martian/bootstrap api-root concise-handlers (prepare-opts opts)))
