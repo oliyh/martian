@@ -259,7 +259,7 @@
   (let [m (martian-http/bootstrap-openapi
             openapi-coercions-url {:use-client-output-coercion? use-client-output-coercion?})
         default-coerce-as (:default-encoder-as
-                            (martian-http/response-coerce-opts use-client-output-coercion?))]
+                            (martian-http/get-response-coerce-opts use-client-output-coercion?))]
     (is (= "http://localhost:8888" (:api-root m)))
 
     (testing "application/edn"

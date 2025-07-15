@@ -29,7 +29,7 @@
 ;;     we could (or, at the very least, should allow to) skip Martian response
 ;;     decoding for those media types.
 ;;     https://github.com/dakrone/clj-http#optional-dependencies
-(defn response-coerce-opts [use-client-output-coercion?]
+(defn get-response-coerce-opts [use-client-output-coercion?]
   (conj {:auto-coercion-pred #{:auto}}
         (if use-client-output-coercion?
           {:skip-decoding-for (cond-> #{"application/json"
@@ -44,17 +44,19 @@
 (def default-interceptors
   (conj martian/default-interceptors
         (i/encode-request default-request-encoders)
-        (i/coerce-response default-response-encoders (response-coerce-opts false))
+        (i/coerce-response default-response-encoders (get-response-coerce-opts false))
         perform-request))
 
 (def supported-custom-opts
   [:request-encoders :response-encoders :use-client-output-coercion?])
 
 (defn build-custom-opts [{:keys [use-client-output-coercion?] :as opts}]
-  (let [response-coerce-opts (response-coerce-opts use-client-output-coercion?)]
+  (let [response-coerce-opts (get-response-coerce-opts use-client-output-coercion?)]
     {:interceptors (hc/update-basic-interceptors
                      default-interceptors
-                     (conj {:response-coerce-opts response-coerce-opts} opts))}))
+                     (conj {:response-encoders default-response-encoders
+                            :response-coerce-opts response-coerce-opts}
+                           opts))}))
 
 (def default-opts {:interceptors default-interceptors})
 

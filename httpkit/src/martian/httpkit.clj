@@ -48,7 +48,9 @@
 (defn build-custom-opts [opts]
   {:interceptors (hc/update-basic-interceptors
                    default-interceptors
-                   (conj {:response-coerce-opts response-coerce-opts} opts))})
+                   (conj {:response-encoders default-response-encoders
+                          :response-coerce-opts response-coerce-opts}
+                         opts))})
 
 (def default-opts {:interceptors default-interceptors})
 

@@ -55,7 +55,7 @@
 ;;     we could (or, at the very least, should allow to) skip Martian response
 ;;     decoding for those media types.
 ;;     https://github.com/gnarroway/hato#request-options
-(defn response-coerce-opts [use-client-output-coercion?]
+(defn get-response-coerce-opts [use-client-output-coercion?]
   (conj {:auto-coercion-pred #{:auto}}
         (if use-client-output-coercion?
           {:skip-decoding-for #{"application/edn"
@@ -68,7 +68,7 @@
 (def hato-interceptors
   (conj martian/default-interceptors
         (i/encode-request default-request-encoders)
-        (i/coerce-response default-response-encoders (response-coerce-opts false))
+        (i/coerce-response default-response-encoders (get-response-coerce-opts false))
         keywordize-headers
         default-to-http-1))
 
@@ -76,10 +76,12 @@
   [:async? :request-encoders :response-encoders :use-client-output-coercion?])
 
 (defn build-custom-opts [{:keys [async? use-client-output-coercion?] :as opts}]
-  (let [response-coerce-opts (response-coerce-opts use-client-output-coercion?)]
+  (let [response-coerce-opts (get-response-coerce-opts use-client-output-coercion?)]
     {:interceptors (-> hato-interceptors
                        (hc/update-basic-interceptors
-                         (conj {:response-coerce-opts response-coerce-opts} opts))
+                         (conj {:response-encoders default-response-encoders
+                                :response-coerce-opts response-coerce-opts}
+                               opts))
                        (conj (if async? perform-request-async perform-request)))}))
 
 (def default-interceptors

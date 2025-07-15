@@ -99,7 +99,9 @@
 (defn build-custom-opts [{:keys [async?] :as opts}]
   {:interceptors (-> babashka-http-client-interceptors
                      (hc/update-basic-interceptors
-                       (conj {:response-coerce-opts response-coerce-opts} opts))
+                       (conj {:response-encoders default-response-encoders
+                              :response-coerce-opts response-coerce-opts}
+                             opts))
                      (conj (if async? perform-request-async perform-request)))})
 
 (def default-interceptors
