@@ -187,7 +187,7 @@
                                                :response-encoders response-encoders}))]
             (is (match?
                   {:headers {"Accept" "application/magical+json"}
-                   :response-type :string}
+                   :response-type :text}
                   (martian/request-for m :get-magical)))
             (is (match?
                   {:status 200

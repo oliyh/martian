@@ -36,6 +36,7 @@
                         "application/json"
                         "application/transit+json"}
    :request-key :response-type
+   :type-aliases {:string :text}
    :missing-encoder-as :default
    ;; NB: This must not be `:text`, since this previous global default value
    ;;     never actually affected `cljs-http` response coercion due to being

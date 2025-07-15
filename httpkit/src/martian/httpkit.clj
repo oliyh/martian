@@ -41,7 +41,8 @@
 
 ;; NB: `http-kit` does not support "Content-Type"-based coercion.
 (def response-coerce-opts
-  {:default-encoder-as :text})
+  {:type-aliases {:string :text}
+   :default-encoder-as :text})
 
 (def default-interceptors
   (conj martian/default-interceptors

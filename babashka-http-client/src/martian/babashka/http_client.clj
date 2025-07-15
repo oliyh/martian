@@ -84,7 +84,9 @@
 
 ;; NB: `babashka-http-client` does not support "Content-Type"-based coercion.
 (def response-coerce-opts
-  {:missing-encoder-as nil
+  {:type-aliases {:string :text
+                  :byte-array :bytes}
+   :missing-encoder-as nil
    :default-encoder-as nil})
 
 (def babashka-http-client-interceptors
