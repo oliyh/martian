@@ -114,8 +114,10 @@
                                     (update :body encode)
 
                                     multipart?
-                                    ;; NB: Luckily, all target HTTP clients — clj-http (but not lite), http-kit,
-                                    ;;     even hato and org.babashka/http-client — all support the same syntax.
+                                    ;; NB: Luckily, all target JVM/BB HTTP clients that support multipart requests,
+                                    ;;     i.e. `hato`, `clj-http`, `http-kit`, `bb/http-client`, all use the same
+                                    ;;     syntax — the `:multipart` key mapped to a value that's a vector of maps.
+                                    ;; TODO: Add multipart support for JS HTTP clients that use `:multipart-params`.
                                     (-> (set/rename-keys {:body :multipart})
                                         (update :headers drop-content-type))
 

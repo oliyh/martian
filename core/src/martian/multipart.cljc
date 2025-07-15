@@ -3,10 +3,12 @@
   (:require #?(:clj [clojure.java.io :as io]))
   #?(:clj (:import (java.io File InputStream))))
 
-;; http-kit = {String | File, InputStream, byte[] | ByteBuffer! | ~Number!~}
-;; clj-http = {String | File, InputStream, byte[] | o.a.h.e.m.c.ContentBody}
-;; hato     = {String | File, InputStream, byte[] | URL, URI, Socket, Path!}
-;; bb/http  = {String | File, InputStream, byte[] | URL, URI, Socket, Path?}
+;; http-kit       = {String | File, InputStream, byte[] | ByteBuffer! | ~Number!~}
+;; clj-http       = {String | File, InputStream, byte[] | o.a.h.e.m.c.ContentBody}
+;; hato           = {String | File, InputStream, byte[] | URL, URI, Socket, Path!}
+;; bb/http-client = {String | File, InputStream, byte[] | URL, URI, Socket, Path?}
+;; clj-http-lite  — no support for multipart content
+;; TODO: Add multipart support for JS HTTP clients.
 
 (defn common-binary? [obj]
   #?(:clj (or (instance? File obj)
