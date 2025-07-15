@@ -1,7 +1,7 @@
 (ns martian.multipart
   "An adaptor that prepares multipart content for all supported HTTP clients"
-  (:require [clojure.java.io :as io])
-  (:import (java.io File InputStream)))
+  (:require #?(:clj [clojure.java.io :as io]))
+  #?(:clj (:import (java.io File InputStream))))
 
 ;; http-kit = {String | File, InputStream, byte[] | ByteBuffer! | ~Number!~}
 ;; clj-http = {String | File, InputStream, byte[] | o.a.h.e.m.c.ContentBody}
@@ -9,9 +9,9 @@
 ;; bb/http  = {String | File, InputStream, byte[] | URL, URI, Socket, Path?}
 
 (defn common-binary? [obj]
-  (or (instance? File obj)
-      (instance? InputStream obj)
-      (bytes? obj)))
+  #?(:clj (or (instance? File obj)
+              (instance? InputStream obj)
+              (bytes? obj))))
 
 #?(:bb nil
    :clj
