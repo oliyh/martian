@@ -3,6 +3,7 @@
             [martian.core :as martian]
             [martian.encoders :as encoders]
             [martian.file :as file]
+            [martian.http-clients :as hc]
             [martian.interceptors :as i]
             [martian.openapi :as openapi]
             [martian.yaml :as yaml])
@@ -40,21 +41,17 @@
            :default-encoder-as :auto}
           {:default-encoder-as :string})))
 
-(defn build-basic-interceptors
-  [{:keys [request-encoders response-encoders use-client-output-coercion?]
-    :or {request-encoders request-encoders
-         response-encoders response-encoders}}]
-  (let [response-coerce-opts (response-coerce-opts use-client-output-coercion?)]
-    (conj martian/default-interceptors
-          (i/encode-request request-encoders)
-          (i/coerce-response response-encoders response-coerce-opts)
-          perform-request)))
-
-(defn build-custom-opts [opts]
-  {:interceptors (build-basic-interceptors opts)})
-
 (def default-interceptors
-  (build-basic-interceptors {:use-client-output-coercion? false}))
+  (conj martian/default-interceptors
+        (i/encode-request request-encoders)
+        (i/coerce-response response-encoders (response-coerce-opts false))
+        perform-request))
+
+(defn build-custom-opts [{:keys [use-client-output-coercion?] :as opts}]
+  (let [response-coerce-opts (response-coerce-opts use-client-output-coercion?)]
+    {:interceptors (hc/update-basic-interceptors
+                     default-interceptors
+                     (conj {:response-coerce-opts response-coerce-opts} opts))}))
 
 (def default-opts {:interceptors default-interceptors})
 
@@ -62,11 +59,7 @@
   [:request-encoders :response-encoders :use-client-output-coercion?])
 
 (defn prepare-opts [opts]
-  (if (and (seq opts)
-           (some (set (keys opts)) supported-opts))
-    (merge (build-custom-opts opts)
-           (apply dissoc opts supported-opts))
-    default-opts))
+  (hc/prepare-opts build-custom-opts supported-opts default-opts opts))
 
 (defn bootstrap [api-root concise-handlers & [opts]]
   (martian/bootstrap api-root concise-handlers (prepare-opts opts)))

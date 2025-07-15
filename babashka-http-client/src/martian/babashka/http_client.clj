@@ -5,6 +5,7 @@
             [martian.core :as martian]
             [martian.encoders :as encoders]
             [martian.file :as file]
+            [martian.http-clients :as hc]
             [martian.interceptors :as i]
             [martian.openapi :as openapi]
             [martian.utils :as utils]
@@ -38,8 +39,6 @@
    :leave (fn [{:keys [request] :as ctx}]
             (assoc ctx :response (http/request (normalize-request request))))})
 
-(def ^:private go-async i/remove-stack)
-
 (defn- process-async-response [ctx response]
   (:response (tc/execute (assoc ctx :response response))))
 
@@ -50,7 +49,7 @@
   {:name ::perform-request-async
    :leave (fn [{:keys [request] :as ctx}]
             (-> ctx
-                go-async
+                hc/go-async
                 (assoc :response
                        (-> (http/request (-> (normalize-request request) (assoc :async true)))
                            (.thenApply
@@ -87,10 +86,7 @@
   {:missing-encoder-as nil
    :default-encoder-as nil})
 
-(defn build-basic-interceptors
-  [{:keys [request-encoders response-encoders]
-    :or {request-encoders request-encoders
-         response-encoders response-encoders}}]
+(def babashka-http-client-interceptors
   (conj martian/default-interceptors
         (i/encode-request request-encoders)
         (i/coerce-response response-encoders response-coerce-opts)
@@ -98,11 +94,10 @@
         default-to-http-1))
 
 (defn build-custom-opts [{:keys [async?] :as opts}]
-  {:interceptors (conj (build-basic-interceptors opts)
-                       (if async? perform-request-async perform-request))})
-
-(def babashka-http-client-interceptors
-  (build-basic-interceptors nil))
+  {:interceptors (-> babashka-http-client-interceptors
+                     (hc/update-basic-interceptors
+                       (conj {:response-coerce-opts response-coerce-opts} opts))
+                     (conj (if async? perform-request-async perform-request)))})
 
 (def default-interceptors
   (conj babashka-http-client-interceptors perform-request))
@@ -116,11 +111,7 @@
   [:async? :request-encoders :response-encoders])
 
 (defn prepare-opts [opts]
-  (if (and (seq opts)
-           (some (set (keys opts)) supported-opts))
-    (merge (build-custom-opts opts)
-           (apply dissoc opts supported-opts))
-    default-opts))
+  (hc/prepare-opts build-custom-opts supported-opts default-opts opts))
 
 (defn bootstrap [api-root concise-handlers & [opts]]
   (martian/bootstrap api-root concise-handlers (prepare-opts opts)))

@@ -3,18 +3,17 @@
             [clojure.string :as str]
             [martian.core :as martian]
             [martian.encoders :as encoders]
+            [martian.http-clients :as hc]
             [martian.interceptors :as i]
             [martian.openapi :as openapi]
             [promesa.core :as prom]
             [tripod.context :as tc]))
 
-(def ^:private go-async i/remove-stack)
-
 (def perform-request
   {:name ::perform-request
    :leave (fn [{:keys [request] :as ctx}]
             (-> ctx
-                go-async
+                hc/go-async
                 (assoc :response
                        (prom/then (http/request request)
                                   (fn [response]
@@ -40,17 +39,10 @@
         (i/coerce-response response-encoders response-coerce-opts)
         perform-request))
 
-(defn build-custom-opts [{:keys [request-encoders response-encoders]}]
-  {:interceptors (cond-> default-interceptors
-
-                         request-encoders
-                         (i/inject (i/encode-request request-encoders)
-                                   :replace ::interceptors/encode-request)
-
-                         response-encoders
-                         (i/inject (i/coerce-response response-encoders
-                                                      response-coerce-opts)
-                                   :replace ::interceptors/coerce-response))})
+(defn build-custom-opts [opts]
+  {:interceptors (hc/update-basic-interceptors
+                   default-interceptors
+                   (conj {:response-coerce-opts response-coerce-opts} opts))})
 
 (def default-opts {:interceptors default-interceptors})
 
@@ -58,11 +50,7 @@
   [:request-encoders :response-encoders])
 
 (defn prepare-opts [opts]
-  (if (and (seq opts)
-           (some (set (keys opts)) supported-opts))
-    (merge (build-custom-opts opts)
-           (apply dissoc opts supported-opts))
-    default-opts))
+  (hc/prepare-opts build-custom-opts supported-opts default-opts opts))
 
 (defn bootstrap [api-root concise-handlers & [opts]]
   (martian/bootstrap api-root concise-handlers (prepare-opts opts)))

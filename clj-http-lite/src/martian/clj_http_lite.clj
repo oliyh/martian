@@ -3,6 +3,7 @@
             [clj-http.lite.client :as http]
             [martian.core :as martian]
             [martian.file :as file]
+            [martian.http-clients :as hc]
             [martian.interceptors :as i]
             [martian.openapi :as openapi]
             [martian.yaml :as yaml]))
@@ -25,16 +26,8 @@
         i/default-coerce-response
         perform-request))
 
-(defn build-custom-opts [{:keys [request-encoders response-encoders]}]
-  {:interceptors (cond-> default-interceptors
-
-                         request-encoders
-                         (i/inject (i/encode-request request-encoders)
-                                   :replace ::i/encode-request)
-
-                         response-encoders
-                         (i/inject (i/coerce-response response-encoders)
-                                   :replace ::i/coerce-response))})
+(defn build-custom-opts [opts]
+  {:interceptors (hc/update-basic-interceptors default-interceptors opts)})
 
 (def default-opts {:interceptors default-interceptors})
 
@@ -42,11 +35,7 @@
   [:request-encoders :response-encoders])
 
 (defn prepare-opts [opts]
-  (if (and (seq opts)
-           (some (set (keys opts)) supported-opts))
-    (merge (build-custom-opts opts)
-           (apply dissoc opts supported-opts))
-    default-opts))
+  (hc/prepare-opts build-custom-opts supported-opts default-opts opts))
 
 (defn bootstrap [api-root concise-handlers & [opts]]
   (martian/bootstrap api-root concise-handlers (prepare-opts opts)))
