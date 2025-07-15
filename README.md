@@ -1,5 +1,9 @@
 # Martian
 
+The HTTP abstraction library for Clojure/Script and Babashka, supporting OpenAPI/Swagger and many HTTP client libraries.
+
+---
+
 Calling HTTP endpoints can be complicated. You have to construct the right URL with the right route parameters, remember
 what the query parameters are, what method to use, how to encode a request body, coerce a response and many other things
 that leak into your codebase.
