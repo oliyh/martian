@@ -37,7 +37,7 @@
 
 (def default-interceptors
   (conj martian/default-interceptors
-        i/default-encode-body
+        i/default-encode-request
         (i/coerce-response response-encoders response-coerce-opts)
         perform-request))
 

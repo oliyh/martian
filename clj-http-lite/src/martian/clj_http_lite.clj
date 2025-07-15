@@ -20,7 +20,7 @@
 (def default-interceptors
   (conj martian/default-interceptors
         ;; `clj-http-lite` does not support 'multipart/form-data' uploads
-        interceptors/default-encode-body
+        interceptors/default-encode-request
         ;; `clj-http-lite` does not support the `:json` response coercion
         interceptors/default-coerce-response
         perform-request))

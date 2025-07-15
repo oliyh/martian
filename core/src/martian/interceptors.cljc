@@ -127,9 +127,6 @@
 
 (def default-encode-request (encode-request (encoders/default-encoders)))
 
-;; todo left for the backward compatibility - drop later, upon a major version release
-(def default-encode-body default-encode-request)
-
 (defn coerce-response
   ([encoders]
    (coerce-response encoders nil))
