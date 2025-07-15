@@ -5,7 +5,7 @@
             [martian.core :as martian]
             [martian.encoders :as encoders]
             [martian.file :as file]
-            [martian.interceptors :as interceptors]
+            [martian.interceptors :as i]
             [martian.openapi :as openapi]
             [martian.utils :as utils]
             [martian.yaml :as yaml]
@@ -38,6 +38,8 @@
    :leave (fn [{:keys [request] :as ctx}]
             (assoc ctx :response (http/request (normalize-request request))))})
 
+(def ^:private go-async i/remove-stack)
+
 (defn- process-async-response [ctx response]
   (:response (tc/execute (assoc ctx :response response))))
 
@@ -48,7 +50,7 @@
   {:name ::perform-request-async
    :leave (fn [{:keys [request] :as ctx}]
             (-> ctx
-                interceptors/remove-stack
+                go-async
                 (assoc :response
                        (-> (http/request (-> (normalize-request request) (assoc :async true)))
                            (.thenApply
@@ -80,17 +82,27 @@
   (utils/update* (encoders/default-encoders)
                  "application/transit+msgpack" assoc :as :bytes))
 
-;; NB: `babashka-http-client` does not support the `:json` response coercion.
+;; NB: `babashka-http-client` does not support "Content-Type"-based coercion.
 (def response-coerce-opts
   {:missing-encoder-as nil
    :default-encoder-as nil})
 
-(def babashka-http-client-interceptors
+(defn build-basic-interceptors
+  [{:keys [request-encoders response-encoders]
+    :or {request-encoders request-encoders
+         response-encoders response-encoders}}]
   (conj martian/default-interceptors
-        (interceptors/encode-request request-encoders)
-        (interceptors/coerce-response response-encoders response-coerce-opts)
+        (i/encode-request request-encoders)
+        (i/coerce-response response-encoders response-coerce-opts)
         keywordize-headers
         default-to-http-1))
+
+(defn build-custom-opts [{:keys [async?] :as opts}]
+  {:interceptors (conj (build-basic-interceptors opts)
+                       (if async? perform-request-async perform-request))})
+
+(def babashka-http-client-interceptors
+  (build-basic-interceptors nil))
 
 (def default-interceptors
   (conj babashka-http-client-interceptors perform-request))
@@ -100,11 +112,15 @@
 
 (def default-opts {:interceptors default-interceptors})
 
-(defn prepare-opts [{:keys [async?] :as opts}]
-  (merge (if async?
-           {:interceptors default-interceptors-async}
-           default-opts)
-         (dissoc opts :async? :use-client-output-coercion?)))
+(def ^:private supported-opts
+  [:async? :request-encoders :response-encoders])
+
+(defn prepare-opts [opts]
+  (if (and (seq opts)
+           (some (set (keys opts)) supported-opts))
+    (merge (build-custom-opts opts)
+           (apply dissoc opts supported-opts))
+    default-opts))
 
 (defn bootstrap [api-root concise-handlers & [opts]]
   (martian/bootstrap api-root concise-handlers (prepare-opts opts)))

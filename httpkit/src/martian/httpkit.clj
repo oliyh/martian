@@ -3,14 +3,14 @@
             [martian.core :as martian]
             [martian.encoders :as encoders]
             [martian.file :as file]
-            [martian.interceptors :as interceptors]
+            [martian.interceptors :as i]
             [martian.openapi :as openapi]
             [martian.yaml :as yaml]
             [org.httpkit.client :as http]
             [tripod.context :as tc])
   (:import (java.nio ByteBuffer)))
 
-(def go-async interceptors/remove-stack)
+(def ^:private go-async i/remove-stack)
 
 (def perform-request
   {:name ::perform-request
@@ -33,20 +33,42 @@
 (def response-encoders
   (encoders/default-encoders))
 
-;; NB: `http-kit` does not support the `:json` response coercion.
+;; NB: `http-kit` does not support "Content-Type"-based coercion.
 (def response-coerce-opts
   {:default-encoder-as :text})
 
 (def default-interceptors
   (conj martian/default-interceptors
-        (interceptors/encode-request request-encoders)
-        (interceptors/coerce-response response-encoders response-coerce-opts)
+        (i/encode-request request-encoders)
+        (i/coerce-response response-encoders response-coerce-opts)
         perform-request))
+
+(defn build-custom-opts [{:keys [request-encoders response-encoders]}]
+  {:interceptors (cond-> default-interceptors
+
+                         request-encoders
+                         (i/inject (i/encode-request request-encoders)
+                                   :replace ::i/encode-request)
+
+                         response-encoders
+                         (i/inject (i/coerce-response response-encoders
+                                                      response-coerce-opts)
+                                   :replace ::i/coerce-response))})
 
 (def default-opts {:interceptors default-interceptors})
 
+(def ^:private supported-opts
+  [:request-encoders :response-encoders])
+
+(defn prepare-opts [opts]
+  (if (and (seq opts)
+           (some (set (keys opts)) supported-opts))
+    (merge (build-custom-opts opts)
+           (apply dissoc opts supported-opts))
+    default-opts))
+
 (defn bootstrap [api-root concise-handlers & [opts]]
-  (martian/bootstrap api-root concise-handlers (merge default-opts opts)))
+  (martian/bootstrap api-root concise-handlers (prepare-opts opts)))
 
 (defn- load-definition [url load-opts]
   (or (file/local-resource url)
@@ -61,6 +83,6 @@
 (defn bootstrap-openapi [url & [{:keys [server-url] :as opts} load-opts]]
   (let [definition (load-definition url load-opts)
         base-url (openapi/base-url url server-url definition)]
-    (martian/bootstrap-openapi base-url definition (merge default-opts opts))))
+    (martian/bootstrap-openapi base-url definition (prepare-opts opts))))
 
 (def bootstrap-swagger bootstrap-openapi)

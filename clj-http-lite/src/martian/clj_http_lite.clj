@@ -3,7 +3,7 @@
             [clj-http.lite.client :as http]
             [martian.core :as martian]
             [martian.file :as file]
-            [martian.interceptors :as interceptors]
+            [martian.interceptors :as i]
             [martian.openapi :as openapi]
             [martian.yaml :as yaml]))
 
@@ -20,15 +20,36 @@
 (def default-interceptors
   (conj martian/default-interceptors
         ;; `clj-http-lite` does not support 'multipart/form-data' uploads
-        interceptors/default-encode-request
-        ;; `clj-http-lite` does not support the `:json` response coercion
-        interceptors/default-coerce-response
+        i/default-encode-request
+        ;; `clj-http-lite` does not support "Content-Type"-based coercion
+        i/default-coerce-response
         perform-request))
+
+(defn build-custom-opts [{:keys [request-encoders response-encoders]}]
+  {:interceptors (cond-> default-interceptors
+
+                         request-encoders
+                         (i/inject (i/encode-request request-encoders)
+                                   :replace ::i/encode-request)
+
+                         response-encoders
+                         (i/inject (i/coerce-response response-encoders)
+                                   :replace ::i/coerce-response))})
 
 (def default-opts {:interceptors default-interceptors})
 
+(def ^:private supported-opts
+  [:request-encoders :response-encoders])
+
+(defn prepare-opts [opts]
+  (if (and (seq opts)
+           (some (set (keys opts)) supported-opts))
+    (merge (build-custom-opts opts)
+           (apply dissoc opts supported-opts))
+    default-opts))
+
 (defn bootstrap [api-root concise-handlers & [opts]]
-  (martian/bootstrap api-root concise-handlers (merge default-opts opts)))
+  (martian/bootstrap api-root concise-handlers (prepare-opts opts)))
 
 (defn- load-definition [url load-opts]
   (or (file/local-resource url)
@@ -41,6 +62,6 @@
 (defn bootstrap-openapi [url & [{:keys [server-url] :as opts} load-opts]]
   (let [definition (load-definition url load-opts)
         base-url (openapi/base-url url server-url definition)]
-    (martian/bootstrap-openapi base-url definition (merge default-opts opts))))
+    (martian/bootstrap-openapi base-url definition (prepare-opts opts))))
 
 (def bootstrap-swagger bootstrap-openapi)

@@ -9,8 +9,7 @@
             [tripod.context :as tc])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
-(def ^:private go-async
-  i/remove-stack)
+(def ^:private go-async i/remove-stack)
 
 (def perform-request
   {:name ::perform-request
@@ -41,10 +40,32 @@
         (i/coerce-response response-encoders response-coerce-opts)
         perform-request))
 
+(defn build-custom-opts [{:keys [request-encoders response-encoders]}]
+  {:interceptors (cond-> default-interceptors
+
+                         request-encoders
+                         (i/inject (i/encode-request request-encoders)
+                                   :replace ::interceptors/encode-request)
+
+                         response-encoders
+                         (i/inject (i/coerce-response response-encoders
+                                                      response-coerce-opts)
+                                   :replace ::interceptors/coerce-response))})
+
 (def default-opts {:interceptors default-interceptors})
 
+(def ^:private supported-opts
+  [:request-encoders :response-encoders])
+
+(defn prepare-opts [opts]
+  (if (and (seq opts)
+           (some (set (keys opts)) supported-opts))
+    (merge (build-custom-opts opts)
+           (apply dissoc opts supported-opts))
+    default-opts))
+
 (defn bootstrap [api-root concise-handlers & [opts]]
-  (martian/bootstrap api-root concise-handlers (merge default-opts opts)))
+  (martian/bootstrap api-root concise-handlers (prepare-opts opts)))
 
 (defn bootstrap-openapi [url & [{:keys [server-url trim-base-url?] :as opts} load-opts]]
   (go (let [definition (:body (<! (http/get url load-opts)))
@@ -52,6 +73,6 @@
             base-url (if trim-base-url?
                        (str/replace raw-base-url #"/$" "")
                        raw-base-url)]
-        (martian/bootstrap-openapi base-url definition (merge default-opts opts)))))
+        (martian/bootstrap-openapi base-url definition (prepare-opts opts)))))
 
 (def bootstrap-swagger bootstrap-openapi)

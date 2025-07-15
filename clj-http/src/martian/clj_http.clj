@@ -3,7 +3,7 @@
             [martian.core :as martian]
             [martian.encoders :as encoders]
             [martian.file :as file]
-            [martian.interceptors :as interceptors]
+            [martian.interceptors :as i]
             [martian.openapi :as openapi]
             [martian.yaml :as yaml])
   (:import (org.apache.http.entity.mime.content ContentBody)))
@@ -40,25 +40,33 @@
            :default-encoder-as :auto}
           {:default-encoder-as :string})))
 
-(defn build-default-interceptors [use-client-output-coercion?]
-  (conj martian/default-interceptors
-        (interceptors/encode-request request-encoders)
-        (interceptors/coerce-response response-encoders
-                                      (response-coerce-opts use-client-output-coercion?))
-        perform-request))
+(defn build-basic-interceptors
+  [{:keys [request-encoders response-encoders use-client-output-coercion?]
+    :or {request-encoders request-encoders
+         response-encoders response-encoders}}]
+  (let [response-coerce-opts (response-coerce-opts use-client-output-coercion?)]
+    (conj martian/default-interceptors
+          (i/encode-request request-encoders)
+          (i/coerce-response response-encoders response-coerce-opts)
+          perform-request)))
 
-(defn build-default-opts [use-client-output-coercion?]
-  {:interceptors (build-default-interceptors use-client-output-coercion?)})
+(defn build-custom-opts [opts]
+  {:interceptors (build-basic-interceptors opts)})
 
-(def default-interceptors (build-default-interceptors false))
+(def default-interceptors
+  (build-basic-interceptors {:use-client-output-coercion? false}))
 
 (def default-opts {:interceptors default-interceptors})
 
-(defn prepare-opts [{:keys [use-client-output-coercion?] :as opts}]
-  (merge (if (some? use-client-output-coercion?)
-           (build-default-opts use-client-output-coercion?)
-           default-opts)
-         (dissoc opts :use-client-output-coercion?)))
+(def ^:private supported-opts
+  [:request-encoders :response-encoders :use-client-output-coercion?])
+
+(defn prepare-opts [opts]
+  (if (and (seq opts)
+           (some (set (keys opts)) supported-opts))
+    (merge (build-custom-opts opts)
+           (apply dissoc opts supported-opts))
+    default-opts))
 
 (defn bootstrap [api-root concise-handlers & [opts]]
   (martian/bootstrap api-root concise-handlers (prepare-opts opts)))

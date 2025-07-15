@@ -585,7 +585,13 @@ can be added independently for request and response encoders. Here's how it can 
 (let [request-encoders (assoc martian-http/request-encoders magical-media-type magic-encoder)
       response-encoders (assoc martian-http/response-encoders magical-media-type magic-encoder)]
   
-  ;; rebuilding a complete interceptor chain from scratch
+  ;; provide via `:request-encoders`/`:response-encoders` opts
+  (martian-http/bootstrap-openapi
+    "https://example-api.com"
+    {:request-encoders request-encoders
+     :response-encoders response-encoders})
+  
+  ;; or by rebuilding a complete interceptor chain from scratch
   (martian-http/bootstrap-openapi
    "https://example-api.com"
    {:interceptors (conj martian/default-interceptors
@@ -593,7 +599,7 @@ can be added independently for request and response encoders. Here's how it can 
                         (i/coerce-response response-encoders martian-http/response-coerce-opts)
                         martian-http/perform-request)})
   
-  ;; or leveraging the `martian.interceptors/inject` fn
+  ;; or by leveraging the `martian.interceptors/inject` fn
   (def my-encode-request (i/encode-request request-encoders))
   (def my-coerce-response (i/coerce-response response-encoders martian-http/response-coerce-opts))
   (martian-http/bootstrap-openapi

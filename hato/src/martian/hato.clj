@@ -4,7 +4,7 @@
             [martian.core :as martian]
             [martian.encoders :as encoders]
             [martian.file :as file]
-            [martian.interceptors :as interceptors]
+            [martian.interceptors :as i]
             [martian.openapi :as openapi]
             [martian.yaml :as yaml]
             [tripod.context :as tc]))
@@ -13,6 +13,8 @@
   {:name ::perform-request
    :leave (fn [{:keys [request] :as ctx}]
             (assoc ctx :response (http/request request)))})
+
+(def ^:private go-async i/remove-stack)
 
 (defn- process-async-response [ctx response]
   (:response (tc/execute (assoc ctx :response response))))
@@ -24,7 +26,7 @@
   {:name ::perform-request-async
    :leave (fn [{:keys [request] :as ctx}]
             (-> ctx
-                interceptors/remove-stack
+                go-async
                 (assoc :response
                        (http/request (assoc request :async? true)
                                      (partial process-async-response ctx)
@@ -64,20 +66,23 @@
            :default-encoder-as :auto}
           {:default-encoder-as :string})))
 
-(defn build-default-interceptors [use-client-output-coercion?]
-  (conj martian/default-interceptors
-        (interceptors/encode-request request-encoders)
-        (interceptors/coerce-response response-encoders
-                                      (response-coerce-opts use-client-output-coercion?))
-        keywordize-headers
-        default-to-http-1))
+(defn build-basic-interceptors
+  [{:keys [request-encoders response-encoders use-client-output-coercion?]
+    :or {request-encoders request-encoders
+         response-encoders response-encoders}}]
+  (let [response-coerce-opts (response-coerce-opts use-client-output-coercion?)]
+    (conj martian/default-interceptors
+          (i/encode-request request-encoders)
+          (i/coerce-response response-encoders response-coerce-opts)
+          keywordize-headers
+          default-to-http-1)))
 
-(defn build-default-opts [async? use-client-output-coercion?]
-  {:interceptors (conj (build-default-interceptors use-client-output-coercion?)
+(defn build-custom-opts [{:keys [async?] :as opts}]
+  {:interceptors (conj (build-basic-interceptors opts)
                        (if async? perform-request-async perform-request))})
 
 (def hato-interceptors
-  (build-default-interceptors false))
+  (build-basic-interceptors {:use-client-output-coercion? false}))
 
 (def default-interceptors
   (conj hato-interceptors perform-request))
@@ -87,12 +92,15 @@
 
 (def default-opts {:interceptors default-interceptors})
 
-(defn prepare-opts [{:keys [async? use-client-output-coercion?] :as opts}]
-  (merge (if (or (some? async?)
-                 (some? use-client-output-coercion?))
-           (build-default-opts async? use-client-output-coercion?)
-           default-opts)
-         (dissoc opts :async? :use-client-output-coercion?)))
+(def ^:private supported-opts
+  [:async? :request-encoders :response-encoders :use-client-output-coercion?])
+
+(defn prepare-opts [opts]
+  (if (and (seq opts)
+           (some (set (keys opts)) supported-opts))
+    (merge (build-custom-opts opts)
+           (apply dissoc opts supported-opts))
+    default-opts))
 
 (defn bootstrap [api-root concise-handlers & [opts]]
   (martian/bootstrap api-root concise-handlers (prepare-opts opts)))
