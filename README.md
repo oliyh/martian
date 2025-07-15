@@ -45,23 +45,24 @@ same way, ensuring that your response handling code is also correct. Examples ar
 5. [No Swagger, no problem](#no-swagger-no-problem)
 6. [Idiomatic parameters](#idiomatic-parameters)
 7. [Parameter defaults](#parameter-defaults)
-8. [Response validation](#response-validation)
-9. [Testing with `martian-test`](#testing-with-martian-test)
-   - [Generative testing](#generative-testing)
-   - [Non-generative testing](#non-generative-testing)
-10. [Recording and playback with `martian-vcr`](#recording-and-playback-with-martian-vcr)
-11. [Custom behaviour](#custom-behaviour)
+8. [Built-in media types](#built-in-media-types)
+9. [Response validation](#response-validation)
+10. [Testing with `martian-test`](#testing-with-martian-test)
+    - [Generative testing](#generative-testing)
+    - [Non-generative testing](#non-generative-testing)
+11. [Recording and playback with `martian-vcr`](#recording-and-playback-with-martian-vcr)
+12. [Custom behaviour](#custom-behaviour)
     - [Custom interceptors](#custom-interceptors)
       - [Global behaviour](#global-behaviour)
       - [Per route behaviour](#per-route-behaviour)
     - [Custom coercion matcher](#custom-coercion-matcher)
-    - [Custom content-types](#custom-content-types)
-12. [Development mode](#development-mode)
-13. [Java](#java)
-14. [Caveats](#caveats)
-15. [Development](#development)
-16. [Issues and features](#issues-and-features)
-17. [Acknowledgements](#acknowledgements)
+    - [Custom media types](#custom-media-types)
+13. [Development mode](#development-mode)
+14. [Java](#java)
+15. [Caveats](#caveats)
+16. [Development](#development)
+17. [Issues and features](#issues-and-features)
+18. [Acknowledgements](#acknowledgements)
 
 ---
 
@@ -112,9 +113,9 @@ connecting your UI to data sources.
 - Validate requests and responses to ensure they are correct before the data leaves/enters your system
 - Explore an API from your REPL
 - Extensible via interceptor pattern — inject your own interceptors anywhere in the chain
-- Negotiates [the most efficient content-type](#built-in-content-types) — including `transit`, `edn`, `json` and more —
+- Negotiates [the most efficient media type](#built-in-media-types) — including `transit`, `edn`, `json` and more —
   and handles both request encoding (serialisation) and response coercion (deserialisation)
-- Easy to [add support for any other content-type](#custom-content-types)
+- Easy to [add support for any other media type](#custom-media-types) or reconfigure encoders for the built-in ones
 - Support for integration testing without requiring external HTTP stubs
 - Routes are named as idiomatic kebab-case keywords of the endpoint's `operationId` in the OpenAPI/Swagger definition
 - Parameters are aliased to kebab-case keywords so that your code remains [idiomatic](#idiomatic-parameters) and neat
@@ -296,21 +297,24 @@ They can be seen using `explore` and merged with your params if you set the opti
   ;; => {:method :post, :url "https://api.org/pets/", :body {:id 123, :name "Bryson"}}
 ```
 
-## Built-in content-types
+## Built-in media types
 
-The following content-types are available out of the box and are negotiated/used by Martian in the following order:
+These [media types](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/MIME_types) are available out of the box
+and are used by Martian, e.g. for the "Content-Type" negotiation, when parsing the OpenAPI/Swagger definition, etc.,
+in the following order:
 
-1. `transit`
-   - `transit+msgpack` — supported for JVM HTTP clients, takes precedence
-   - `transit+json` — supported for _all_ target HTTP clients
-2. `edn`
+1. `application/transit`
+   - `application/transit+msgpack` — supported for JVM HTTP clients only!
+   - `application/transit+json` — supported for _all_ target HTTP clients
+   - the first one, if present, takes precedence
+2. `application/edn`
    - supported for _all_ target HTTP clients
-3. `json`
+3. `application/json`
    - supported for _all_ target HTTP clients
-4. `x-www-form-urlencoded`
+4. `application/x-www-form-urlencoded`
    - supported for all target JVM and JS HTTP clients
    - not supported for BB-compatible HTTP clients when run with Babashka
-5. `multipart`
+5. `multipart/form-data`
    - only available for request encoding, but not for response coercion!
    - supported for all target JVM/BB HTTP clients except `clj-http-lite`
    - (as of now) not supported for JS HTTP clients
@@ -557,10 +561,10 @@ coercion:
   {:coercion-matcher stc/json-coercion-matcher})
 ```
 
-### Custom content-types
+### Custom media types
 
-Martian allows you to add support for content-types in addition to [the default ones](#built-in-content-types). Here's
-how it can be done in practice:
+Martian allows you to add support for custom media types in addition to [the default ones](#built-in-media-types). They
+can be added independently for request and response encoders. Here's how it can be achieved in practice:
 
 ```clojure
 (require '[martian.core :as martian]
@@ -568,14 +572,14 @@ how it can be done in practice:
          '[martian.httpkit :as martian-http]
          '[martian.interceptors :as i])
 
-(def magical-content-type "application/magical")
+(def magical-media-type "application/magical")
 
 (def magic-encoder {:encode clojure.string/upper-case
                     :decode clojure.string/lower-case
                     :as :magic})
 
-(let [request-encoders (assoc martian-http/request-encoders magical-content-type magic-encoder)
-      response-encoders (assoc martian-http/response-encoders magical-content-type magic-encoder)]
+(let [request-encoders (assoc martian-http/request-encoders magical-media-type magic-encoder)
+      response-encoders (assoc martian-http/response-encoders magical-media-type magic-encoder)]
   
   ;; rebuilding a complete interceptor chain from scratch
   (martian-http/bootstrap-openapi
