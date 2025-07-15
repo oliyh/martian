@@ -582,8 +582,8 @@ can be added independently for request and response encoders. Here's how it can 
                     :decode clojure.string/lower-case
                     :as :magic})
 
-(let [request-encoders (assoc martian-http/request-encoders magical-media-type magic-encoder)
-      response-encoders (assoc martian-http/response-encoders magical-media-type magic-encoder)]
+(let [request-encoders (assoc martian-http/default-request-encoders magical-media-type magic-encoder)
+      response-encoders (assoc martian-http/default-response-encoders magical-media-type magic-encoder)]
   
   ;; provide via `:request-encoders`/`:response-encoders` opts
   (martian-http/bootstrap-openapi

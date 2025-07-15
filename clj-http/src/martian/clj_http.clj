@@ -17,11 +17,11 @@
 (defn custom-type? [obj]
   (instance? ContentBody obj))
 
-(def request-encoders
+(def default-request-encoders
   (assoc (encoders/default-encoders)
     "multipart/form-data" {:encode #(encoders/multipart-encode % custom-type?)}))
 
-(def response-encoders
+(def default-response-encoders
   (encoders/default-encoders))
 
 ;; NB: In accordance with the `clj-http`'s Optional Dependencies, which happen
@@ -43,8 +43,8 @@
 
 (def default-interceptors
   (conj martian/default-interceptors
-        (i/encode-request request-encoders)
-        (i/coerce-response response-encoders (response-coerce-opts false))
+        (i/encode-request default-request-encoders)
+        (i/coerce-response default-response-encoders (response-coerce-opts false))
         perform-request))
 
 (defn build-custom-opts [{:keys [use-client-output-coercion?] :as opts}]

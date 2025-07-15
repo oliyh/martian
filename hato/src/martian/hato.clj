@@ -43,11 +43,11 @@
    :leave (fn [ctx]
             (update-in ctx [:response :headers] keywordize-keys))})
 
-(def request-encoders
+(def default-request-encoders
   (assoc (encoders/default-encoders)
     "multipart/form-data" {:encode encoders/multipart-encode}))
 
-(def response-encoders
+(def default-response-encoders
   (encoders/default-encoders))
 
 ;; NB: In accordance with the `hato`'s Optional Dependencies, which all happen
@@ -67,8 +67,8 @@
 
 (def hato-interceptors
   (conj martian/default-interceptors
-        (i/encode-request request-encoders)
-        (i/coerce-response response-encoders (response-coerce-opts false))
+        (i/encode-request default-request-encoders)
+        (i/coerce-response default-response-encoders (response-coerce-opts false))
         keywordize-headers
         default-to-http-1))
 

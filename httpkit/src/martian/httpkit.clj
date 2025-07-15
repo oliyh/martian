@@ -25,11 +25,11 @@
 (defn custom-type? [obj]
   (instance? ByteBuffer obj))
 
-(def request-encoders
+(def default-request-encoders
   (assoc (encoders/default-encoders)
     "multipart/form-data" {:encode #(encoders/multipart-encode % custom-type?)}))
 
-(def response-encoders
+(def default-response-encoders
   (encoders/default-encoders))
 
 ;; NB: `http-kit` does not support "Content-Type"-based coercion.
@@ -38,8 +38,8 @@
 
 (def default-interceptors
   (conj martian/default-interceptors
-        (i/encode-request request-encoders)
-        (i/coerce-response response-encoders response-coerce-opts)
+        (i/encode-request default-request-encoders)
+        (i/coerce-response default-response-encoders response-coerce-opts)
         perform-request))
 
 (defn build-custom-opts [opts]

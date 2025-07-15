@@ -19,7 +19,7 @@
                                   (fn [response]
                                     (:response (tc/execute (assoc ctx :response response))))))))})
 
-(def response-encoders
+(def default-response-encoders
   (encoders/default-encoders))
 
 (def response-coerce-opts
@@ -36,7 +36,7 @@
 (def default-interceptors
   (conj martian/default-interceptors
         i/default-encode-request
-        (i/coerce-response response-encoders response-coerce-opts)
+        (i/coerce-response default-response-encoders response-coerce-opts)
         perform-request))
 
 (defn build-custom-opts [opts]
