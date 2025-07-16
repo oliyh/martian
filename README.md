@@ -57,9 +57,10 @@ same way, ensuring that your response handling code is also correct. Examples ar
 11. [Recording and playback with `martian-vcr`](#recording-and-playback-with-martian-vcr)
 12. [Custom behaviour](#custom-behaviour)
     - [Custom interceptors](#custom-interceptors)
-      - [Global behaviour](#global-behaviour)
-      - [Per route behaviour](#per-route-behaviour)
+      - [Global interceptors](#global-interceptors)
+      - [Per route interceptors](#per-route-interceptors)
     - [Custom coercion matcher](#custom-coercion-matcher)
+    - [Built-in encoders options](#built-in-encoders-options)
     - [Custom media types](#custom-media-types)
     - [HTTP client-specific options](#http-client-specific-options)
 13. [Development mode](#development-mode)
@@ -324,6 +325,9 @@ in the following order:
    - supported for all target JVM/BB HTTP clients except `clj-http-lite`
    - (as of now) not supported for JS HTTP clients
 
+This is what you get when a Martian instance is bootstrapped with default options, which come with `default-encoders`.
+If necessary, they can also be configured more finely [by passing options](#built-in-encoders-options).
+
 ## Response validation
 
 Martian provides a response validation interceptor which validates the response body against the response schemas.
@@ -440,6 +444,9 @@ allowing you to build realistic test data quickly and easily.
 More documentation is available at [martian-vcr](https://github.com/oliyh/martian/tree/master/vcr).
 
 ## Custom behaviour
+
+Martian supports a wide range of customisations — through interceptor chain, configurable encoders and media types,
+HTTP client options, and parameter schema coercion matcher.
 
 ### Custom interceptors
 
@@ -565,6 +572,49 @@ coercion:
                         :LastName  s/Str}}}]
   {:coercion-matcher stc/json-coercion-matcher})
 ```
+
+### Built-in encoders options
+
+By default, the `martian.encoders/default-encoders` is configured with `{:json {:decode {:key-fn keyword}}}` options,
+but you can provide custom options for the built-in media type encoders. The shape of the options map for this function
+looks like this:
+
+```clojure
+{:transit {:encode <transit-encode-opts>
+           :decode <transit-decode-opts>}
+ :json {:encode <json-encode-opts>
+        :decode <json-decode-opts>}
+ :edn {:encode <edn-encode-opts>
+       :decode <edn-decode-opts>}}
+```
+
+Check out the `martian.encoders` ns for all supported Transit, JSON, and EDN encoding/decoding options.
+
+Also, for your convenience, this namespace provides constructor functions for the encoders of all built-in media types:
+`transit-encoder`, `json-encoder`, `edn-encoder`, and `form-encoder`. You can use them directly to create a customized
+encoder instance for a specific media type. For example, you can pass an `:as` param with a different raw type, e.g.:
+
+```clojure
+;; Supported raw types: `:string` (default), `:stream`, `:byte-array`.
+;; The last 2 are JVM/BB specific and won't work with JS HTTP clients.
+
+(transit-encoder :json {:encode ..., :decode ...} :as :byte-array)
+
+(edn-encoder {:encode ..., :decode ...} :as :stream)
+
+(json-encoder {:encode ..., :decode ...} :as :stream)
+```
+
+Sometimes you might find it easier to patch a built-in Martian encoder in place, like this:
+
+```clojure
+(def my-encoders
+  (update (encoders/default-encoders)
+          "application/transit+json" assoc :as :stream))
+;; now the transit decoder will expect an InputStream from the HTTP client
+```
+
+Pass `my-encoders` to the function that bootstraps a Martian instance, as [shown below](#custom-media-types).
 
 ### Custom media types
 
