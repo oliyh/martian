@@ -1,5 +1,7 @@
 (ns martian.server-stub
-  (:require [clojure.walk :as w]
+  (:require [cheshire.core :as json]
+            [clojure.string :as str]
+            [clojure.walk :as w]
             [io.pedestal.http :as bootstrap]
             [io.pedestal.http.ring-middlewares :as ring-mw]
             [pedestal-api
@@ -87,6 +89,14 @@
       (assoc :headers {"Content-Type" "application/x-www-form-urlencoded"})
       (update :body codec/form-encode)))
 
+(defhandler get-something-magical
+  {:summary   "Same as `get-something`, but returns 'application/magical+json'"
+   :responses {200 {:body s/Str}}}
+  [request]
+  (-> something
+      (assoc :headers {"Content-Type" "application/magical+json"})
+      (update :body (comp str/reverse json/generate-string))))
+
 (s/with-fn-validation
   (api/defroutes routes
     {}
@@ -111,6 +121,7 @@
        ["/form-data" {:get [:get-form-data get-something-as-form-data]}]
        ["/something" {:get [:get-something get-something]}]
        ["/anything" {:get [:get-anything get-something]}]
+       ["/magical" {:get [:get-magical get-something-magical]}]
 
        ["/swagger.json" {:get api/swagger-json}]]]]))
 

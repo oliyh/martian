@@ -35,11 +35,12 @@
                                client response auto-coercion has been applied
    - `:request-key`          — usually `:as`, though some clients expect other
                                keys, e.g. `:response-type` for the `cljs-http`
+   - `:type-aliases`         — a mapping of client-specific (raw) type aliases
    - `:missing-encoder-as`   — for the case where the media type is missing or
                                when there is no encoder for the specified type
    - `:default-encoder-as`   — for in case the found encoder for the specified
                                media type omits its own `:as` value"
-  [{:keys [skip-decoding-for auto-coercion-pred
+  [{:keys [skip-decoding-for auto-coercion-pred type-aliases
            request-key missing-encoder-as default-encoder-as]
     :or {missing-encoder-as :auto
          ;; NB: Better be `:auto` to leverage the built-in client coercions
@@ -49,19 +50,20 @@
   {:skip-decoding-for (or skip-decoding-for #{})
    :auto-coercion-pred (or auto-coercion-pred (constantly false))
    :request-key (or request-key :as)
+   :type-aliases (or type-aliases {})
    ;; NB: Passing `nil` to any of these must be a valid option.
    :missing-encoder-as missing-encoder-as
    :default-encoder-as default-encoder-as})
 
 (defn get-coerce-as
-  [encoders media-type {:keys [missing-encoder-as default-encoder-as]}]
+  [encoders media-type {:keys [type-aliases missing-encoder-as default-encoder-as]}]
   (let [encoder (find-encoder encoders media-type)]
     (if (= auto-encoder encoder)
       {:type :missing
        :value missing-encoder-as}
       (if-let [encoder-as (:as encoder)]
         {:type :encoder
-         :value encoder-as}
+         :value (get type-aliases encoder-as encoder-as)}
         {:type :default
          :value default-encoder-as}))))
 

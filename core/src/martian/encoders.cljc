@@ -48,6 +48,9 @@
         (slurp obj :encoding charset)))))
 
 (defn transit-encode
+  {:arglists '([body type]
+               #?(:clj  [body type {:keys [handlers default-handler transform] :as opts}]
+                  :cljs [body type {:keys [handlers transform] :as opts}]))}
   ([body type]
    (transit-encode body type {}))
   ([body type opts]
@@ -58,6 +61,9 @@
       :cljs (transit/write (transit/writer type opts) body))))
 
 (defn transit-decode
+  {:arglists '([body type]
+               #?(:clj  [body type {:keys [handlers default-handler] :as opts}]
+                  :cljs [body type {:keys [handlers] :as opts}]))}
   ([body type]
    (transit-decode body type {}))
   ([body type opts]
@@ -65,6 +71,9 @@
       :cljs (transit/read (transit/reader type opts) body))))
 
 (defn json-encode
+  {:arglists '([body type]
+               #?(:clj  [body {:keys [key-fn date-format pretty ex escape-non-ascii] :as opts}]
+                  :cljs [body {:keys [key-fn] :as opts}]))}
   ([body]
    (json-encode body nil))
   ([body {:keys [key-fn] :as opts}]
@@ -74,6 +83,9 @@
                 (js/JSON.stringify)))))
 
 (defn json-decode
+  {:arglists '([body type]
+               #?(:clj  [body {:keys [key-fn array-coerce-fn] :as opts}]
+                  :cljs [body {:keys [key-fn] :as opts}]))}
   ([body]
    (json-decode body {:key-fn keyword}))
   ([body opts-or-fn]
@@ -102,12 +114,15 @@
             body))))
 
 (defn edn-encode
+  {:arglists '([body]
+               [body {:keys [trailing-newline] :as opts}])}
   ([body]
    (edn-encode body nil))
   ([body opts]
    ((if (:trailing-newline opts) prn-str pr-str) body)))
 
 (defn edn-decode
+  {:arglists '([body {:keys [readers default eof] :as opts}])}
   [body opts]
   (let [opts (merge {:eof nil} opts)]
     #?(:clj  (if (string? body)
@@ -136,18 +151,21 @@
                      (.keys params)))))
 
 (defn transit-encoder
+  {:arglists '([type {:keys [encode decode] :as transit-opts} & kvs])}
   [type transit-opts & kvs]
   (conj {:encode #(transit-encode % type (:encode transit-opts))
          :decode #(transit-decode % type (:decode transit-opts))}
         (apply hash-map kvs)))
 
 (defn json-encoder
+  {:arglists '([{:keys [encode decode] :as json-opts} & kvs])}
   [json-opts & kvs]
   (conj {:encode #(json-encode % (:encode json-opts))
          :decode #(json-decode % (:decode json-opts))}
         (apply hash-map kvs)))
 
 (defn edn-encoder
+  {:arglists '([{:keys [encode decode] :as edn-opts} & kvs])}
   [edn-opts & kvs]
   (conj {:encode #(edn-encode % (:encode edn-opts))
          :decode #(edn-decode % (:decode edn-opts))}
@@ -160,6 +178,8 @@
         (apply hash-map kvs)))
 
 (defn default-encoders
+  {:arglists '([]
+               [{:keys [transit json edn] :or {:json {:decode {:key-fn keyword}}}}])}
   ([] (default-encoders keyword))
   ([opts-or-fn]
    (let [opts (if (fn? opts-or-fn)

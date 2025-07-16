@@ -259,7 +259,7 @@
   (let [m (martian-http/bootstrap-openapi
             openapi-coercions-url {:use-client-output-coercion? use-client-output-coercion?})
         default-coerce-as (:default-encoder-as
-                            (martian-http/response-coerce-opts use-client-output-coercion?))]
+                            (martian-http/get-response-coerce-opts use-client-output-coercion?))]
     (is (= "http://localhost:8888" (:api-root m)))
 
     (testing "application/edn"
@@ -341,7 +341,30 @@
             {:status 200
              :headers {:content-type "application/json;charset=utf-8"}
              :body {:message "Here's some text content"}}
-            (martian/response-for m :get-anything))))))
+            (martian/response-for m :get-anything)))))
+
+  (testing "custom encoding"
+    (testing "application/magical+json"
+      (let [magical-encoder {:encode (comp str/reverse encoders/json-encode)
+                             :decode (comp encoders/json-decode str/reverse)
+                             :as :string}
+
+            request-encoders (assoc martian-http/default-request-encoders
+                               "application/magical+json" magical-encoder)
+            response-encoders (assoc martian-http/default-response-encoders
+                                "application/magical+json" magical-encoder)
+            m (martian-http/bootstrap-openapi
+                openapi-coercions-url {:request-encoders request-encoders
+                                       :response-encoders response-encoders})]
+        (is (match?
+              {:headers {"Accept" "application/magical+json"}
+               :as :string}
+              (martian/request-for m :get-magical)))
+        (is (match?
+              {:status 200
+               :headers {:content-type "application/magical+json"}
+               :body {:message "Here's some text content"}}
+              (martian/response-for m :get-magical)))))))
 
 (deftest response-coercion-test
   (testing "without client-specific output coercion"

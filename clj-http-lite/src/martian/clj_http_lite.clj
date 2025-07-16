@@ -3,7 +3,8 @@
             [clj-http.lite.client :as http]
             [martian.core :as martian]
             [martian.file :as file]
-            [martian.interceptors :as interceptors]
+            [martian.http-clients :as hc]
+            [martian.interceptors :as i]
             [martian.openapi :as openapi]
             [martian.yaml :as yaml]))
 
@@ -20,15 +21,24 @@
 (def default-interceptors
   (conj martian/default-interceptors
         ;; `clj-http-lite` does not support 'multipart/form-data' uploads
-        interceptors/default-encode-body
-        ;; `clj-http-lite` does not support the `:json` response coercion
-        interceptors/default-coerce-response
+        i/default-encode-request
+        ;; `clj-http-lite` does not support "Content-Type"-based coercion
+        i/default-coerce-response
         perform-request))
+
+(def supported-custom-opts
+  [:request-encoders :response-encoders])
+
+(defn build-custom-opts [opts]
+  {:interceptors (hc/update-basic-interceptors default-interceptors opts)})
 
 (def default-opts {:interceptors default-interceptors})
 
+(defn prepare-opts [opts]
+  (hc/prepare-opts build-custom-opts supported-custom-opts default-opts opts))
+
 (defn bootstrap [api-root concise-handlers & [opts]]
-  (martian/bootstrap api-root concise-handlers (merge default-opts opts)))
+  (martian/bootstrap api-root concise-handlers (prepare-opts opts)))
 
 (defn- load-definition [url load-opts]
   (or (file/local-resource url)
@@ -41,6 +51,6 @@
 (defn bootstrap-openapi [url & [{:keys [server-url] :as opts} load-opts]]
   (let [definition (load-definition url load-opts)
         base-url (openapi/base-url url server-url definition)]
-    (martian/bootstrap-openapi base-url definition (merge default-opts opts))))
+    (martian/bootstrap-openapi base-url definition (prepare-opts opts))))
 
 (def bootstrap-swagger bootstrap-openapi)

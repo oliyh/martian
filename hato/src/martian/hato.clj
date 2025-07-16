@@ -4,7 +4,8 @@
             [martian.core :as martian]
             [martian.encoders :as encoders]
             [martian.file :as file]
-            [martian.interceptors :as interceptors]
+            [martian.http-clients :as hc]
+            [martian.interceptors :as i]
             [martian.openapi :as openapi]
             [martian.yaml :as yaml]
             [tripod.context :as tc]))
@@ -24,7 +25,7 @@
   {:name ::perform-request-async
    :leave (fn [{:keys [request] :as ctx}]
             (-> ctx
-                interceptors/remove-stack
+                hc/go-async
                 (assoc :response
                        (http/request (assoc request :async? true)
                                      (partial process-async-response ctx)
@@ -42,16 +43,19 @@
    :leave (fn [ctx]
             (update-in ctx [:response :headers] keywordize-keys))})
 
-(def request-encoders
+(def default-request-encoders
   (assoc (encoders/default-encoders)
     "multipart/form-data" {:encode encoders/multipart-encode}))
+
+(def default-response-encoders
+  (encoders/default-encoders))
 
 ;; NB: In accordance with the `hato`'s Optional Dependencies, which all happen
 ;;     to be on the classpath already as the Martian core module dependencies,
 ;;     we could (or, at the very least, should allow to) skip Martian response
 ;;     decoding for those media types.
 ;;     https://github.com/gnarroway/hato#request-options
-(defn response-coerce-opts [use-client-output-coercion?]
+(defn get-response-coerce-opts [use-client-output-coercion?]
   (conj {:auto-coercion-pred #{:auto}}
         (if use-client-output-coercion?
           {:skip-decoding-for #{"application/edn"
@@ -61,20 +65,24 @@
            :default-encoder-as :auto}
           {:default-encoder-as :string})))
 
-(defn build-default-interceptors [use-client-output-coercion?]
+(def hato-interceptors
   (conj martian/default-interceptors
-        (interceptors/encode-request request-encoders)
-        (interceptors/coerce-response (encoders/default-encoders)
-                                      (response-coerce-opts use-client-output-coercion?))
+        (i/encode-request default-request-encoders)
+        (i/coerce-response default-response-encoders (get-response-coerce-opts false))
         keywordize-headers
         default-to-http-1))
 
-(defn build-default-opts [async? use-client-output-coercion?]
-  {:interceptors (conj (build-default-interceptors use-client-output-coercion?)
-                       (if async? perform-request-async perform-request))})
+(def supported-custom-opts
+  [:async? :request-encoders :response-encoders :use-client-output-coercion?])
 
-(def hato-interceptors
-  (build-default-interceptors false))
+(defn build-custom-opts [{:keys [async? use-client-output-coercion?] :as opts}]
+  (let [response-coerce-opts (get-response-coerce-opts use-client-output-coercion?)]
+    {:interceptors (-> hato-interceptors
+                       (hc/update-basic-interceptors
+                         (conj {:response-encoders default-response-encoders
+                                :response-coerce-opts response-coerce-opts}
+                               opts))
+                       (conj (if async? perform-request-async perform-request)))}))
 
 (def default-interceptors
   (conj hato-interceptors perform-request))
@@ -84,12 +92,8 @@
 
 (def default-opts {:interceptors default-interceptors})
 
-(defn prepare-opts [{:keys [async? use-client-output-coercion?] :as opts}]
-  (merge (if (or (some? async?)
-                 (some? use-client-output-coercion?))
-           (build-default-opts async? use-client-output-coercion?)
-           default-opts)
-         (dissoc opts :async? :use-client-output-coercion?)))
+(defn prepare-opts [opts]
+  (hc/prepare-opts build-custom-opts supported-custom-opts default-opts opts))
 
 (defn bootstrap [api-root concise-handlers & [opts]]
   (martian/bootstrap api-root concise-handlers (prepare-opts opts)))

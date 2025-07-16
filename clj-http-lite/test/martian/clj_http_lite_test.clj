@@ -1,5 +1,6 @@
 (ns martian.clj-http-lite-test
-  (:require [clojure.test :refer [deftest testing is use-fixtures]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer [deftest testing is use-fixtures]]
             [martian.clj-http-lite :as martian-http]
             [martian.core :as martian]
             [martian.encoders :as encoders]
@@ -161,4 +162,24 @@
             {:status 200
              :headers {:content-type "application/json;charset=utf-8"}
              :body {:message "Here's some text content"}}
-            (martian/response-for m :get-anything))))))
+            (martian/response-for m :get-anything)))))
+
+  (testing "custom encoding"
+    (testing "application/magical+json"
+      (let [magical-encoder {:encode (comp str/reverse encoders/json-encode)
+                             :decode (comp encoders/json-decode str/reverse)
+                             :as :string}
+            encoders (assoc (encoders/default-encoders)
+                       "application/magical+json" magical-encoder)
+            m (martian-http/bootstrap-openapi
+                openapi-coercions-url {:request-encoders encoders
+                                       :response-encoders encoders})]
+        (is (match?
+              {:headers {"Accept" "application/magical+json"}
+               :as :string}
+              (martian/request-for m :get-magical)))
+        (is (match?
+              {:status 200
+               :headers {:content-type "application/magical+json"}
+               :body {:message "Here's some text content"}}
+              (martian/response-for m :get-magical)))))))
