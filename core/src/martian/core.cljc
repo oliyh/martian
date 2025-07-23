@@ -161,7 +161,7 @@
                   :opts ::mspec/opts))
 
 (defn bootstrap-openapi
-  "Creates a martian instance from an openapi/swagger spec based on the schema provided"
+  "Creates a martian instance from an OpenAPI/Swagger spec based on the schema provided"
   [api-root json & [opts]]
   (let [{:keys [interceptors] :or {interceptors default-interceptors} :as opts} (keywordize-keys opts)]
     (build-instance api-root

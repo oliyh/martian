@@ -3,7 +3,8 @@
             [martian.core :as martian]
             [martian.encoders :as encoders]
             [martian.file :as file]
-            [martian.interceptors :as interceptors]
+            [martian.http-clients :as hc]
+            [martian.interceptors :as i]
             [martian.openapi :as openapi]
             [martian.yaml :as yaml])
   (:import (org.apache.http.entity.mime.content ContentBody)))
@@ -16,16 +17,19 @@
 (defn custom-type? [obj]
   (instance? ContentBody obj))
 
-(def request-encoders
+(def default-request-encoders
   (assoc (encoders/default-encoders)
     "multipart/form-data" {:encode #(encoders/multipart-encode % custom-type?)}))
+
+(def default-response-encoders
+  (encoders/default-encoders))
 
 ;; NB: In accordance with the `clj-http`'s Optional Dependencies, which happen
 ;;     to be on the classpath already as the Martian core module dependencies,
 ;;     we could (or, at the very least, should allow to) skip Martian response
 ;;     decoding for those media types.
 ;;     https://github.com/dakrone/clj-http#optional-dependencies
-(defn response-coerce-opts [use-client-output-coercion?]
+(defn get-response-coerce-opts [use-client-output-coercion?]
   (conj {:auto-coercion-pred #{:auto}}
         (if use-client-output-coercion?
           {:skip-decoding-for (cond-> #{"application/json"
@@ -37,25 +41,27 @@
            :default-encoder-as :auto}
           {:default-encoder-as :string})))
 
-(defn build-default-interceptors [use-client-output-coercion?]
+(def default-interceptors
   (conj martian/default-interceptors
-        (interceptors/encode-request request-encoders)
-        (interceptors/coerce-response (encoders/default-encoders)
-                                      (response-coerce-opts use-client-output-coercion?))
+        (i/encode-request default-request-encoders)
+        (i/coerce-response default-response-encoders (get-response-coerce-opts false))
         perform-request))
 
-(defn build-default-opts [use-client-output-coercion?]
-  {:interceptors (build-default-interceptors use-client-output-coercion?)})
+(def supported-custom-opts
+  [:request-encoders :response-encoders :use-client-output-coercion?])
 
-(def default-interceptors (build-default-interceptors false))
+(defn build-custom-opts [{:keys [use-client-output-coercion?] :as opts}]
+  (let [response-coerce-opts (get-response-coerce-opts use-client-output-coercion?)]
+    {:interceptors (hc/update-basic-interceptors
+                     default-interceptors
+                     (conj {:response-encoders default-response-encoders
+                            :response-coerce-opts response-coerce-opts}
+                           opts))}))
 
 (def default-opts {:interceptors default-interceptors})
 
-(defn prepare-opts [{:keys [use-client-output-coercion?] :as opts}]
-  (merge (if (some? use-client-output-coercion?)
-           (build-default-opts use-client-output-coercion?)
-           default-opts)
-         (dissoc opts :use-client-output-coercion?)))
+(defn prepare-opts [opts]
+  (hc/prepare-opts build-custom-opts supported-custom-opts default-opts opts))
 
 (defn bootstrap [api-root concise-handlers & [opts]]
   (martian/bootstrap api-root concise-handlers (prepare-opts opts)))

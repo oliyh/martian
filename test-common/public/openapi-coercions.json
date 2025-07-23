@@ -155,6 +155,27 @@
                     "api_key": []
                 }]
             }
+        },
+        "/magical": {
+            "get": {
+                "operationId": "get-magical",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/magical+json": {
+                                "schema": {
+                                    "message": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [{
+                    "api_key": []
+                }]
+            }
         }
     },
     "components": {

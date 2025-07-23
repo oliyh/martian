@@ -5,32 +5,34 @@
             [martian.core :as martian]
             [martian.encoders :as encoders]
             [martian.file :as file]
-            [martian.interceptors :as interceptors]
+            [martian.http-clients :as hc]
+            [martian.interceptors :as i]
             [martian.openapi :as openapi]
             [martian.utils :as utils]
             [martian.yaml :as yaml]
             [tripod.context :as tc])
   (:import [java.util.function Function]))
 
-(defn normalize-request [request]
+(defn normalize-request
+  [{:keys [version uri url as throw-exceptions?] :as request}]
   (cond-> request
-    (not (:uri request))
-    (assoc :uri (:url request))
+    (not uri)
+    (assoc :uri url)
 
     ;; NB: This value is no longer passed by the library itself.
     ;;     Leaving this clause intact for better compatibility.
-    (= :byte-array (:as request))
+    (= :byte-array as)
     (assoc :as :bytes)
 
     ;; NB: This value is no longer passed by the library itself.
     ;;     Leaving this clause intact for better compatibility.
-    (= :text (:as request))
+    (= :text as)
     (dissoc :as)
 
-    (:throw-exceptions? request)
+    throw-exceptions?
     (assoc :throw false)
 
-    (= :http-1.1 (:version request))
+    (= :http-1.1 version)
     (assoc :version :http1.1)))
 
 (def perform-request
@@ -48,7 +50,7 @@
   {:name ::perform-request-async
    :leave (fn [{:keys [request] :as ctx}]
             (-> ctx
-                interceptors/remove-stack
+                hc/go-async
                 (assoc :response
                        (-> (http/request (-> (normalize-request request) (assoc :async true)))
                            (.thenApply
@@ -72,25 +74,38 @@
    :leave (fn [ctx]
             (update-in ctx [:response :headers] keywordize-keys))})
 
-(def request-encoders
+(def default-request-encoders
   (assoc (encoders/default-encoders)
     "multipart/form-data" {:encode encoders/multipart-encode}))
 
-(def response-encoders
+(def default-response-encoders
   (utils/update* (encoders/default-encoders)
                  "application/transit+msgpack" assoc :as :bytes))
 
-;; NB: `babashka-http-client` does not support the `:json` response coercion.
+;; NB: `babashka-http-client` does not support "Content-Type"-based coercion.
 (def response-coerce-opts
-  {:missing-encoder-as nil
+  {:type-aliases {:string :text
+                  :byte-array :bytes}
+   :missing-encoder-as nil
    :default-encoder-as nil})
 
 (def babashka-http-client-interceptors
   (conj martian/default-interceptors
-        (interceptors/encode-request request-encoders)
-        (interceptors/coerce-response response-encoders response-coerce-opts)
+        (i/encode-request default-request-encoders)
+        (i/coerce-response default-response-encoders response-coerce-opts)
         keywordize-headers
         default-to-http-1))
+
+(def supported-custom-opts
+  [:async? :request-encoders :response-encoders])
+
+(defn build-custom-opts [{:keys [async?] :as opts}]
+  {:interceptors (-> babashka-http-client-interceptors
+                     (hc/update-basic-interceptors
+                       (conj {:response-encoders default-response-encoders
+                              :response-coerce-opts response-coerce-opts}
+                             opts))
+                     (conj (if async? perform-request-async perform-request)))})
 
 (def default-interceptors
   (conj babashka-http-client-interceptors perform-request))
@@ -100,11 +115,8 @@
 
 (def default-opts {:interceptors default-interceptors})
 
-(defn prepare-opts [{:keys [async?] :as opts}]
-  (merge (if async?
-           {:interceptors default-interceptors-async}
-           default-opts)
-         (dissoc opts :async? :use-client-output-coercion?)))
+(defn prepare-opts [opts]
+  (hc/prepare-opts build-custom-opts supported-custom-opts default-opts opts))
 
 (defn bootstrap [api-root concise-handlers & [opts]]
   (martian/bootstrap api-root concise-handlers (prepare-opts opts)))

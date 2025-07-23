@@ -4,10 +4,8 @@
             [clojure.edn :as edn]
             [martian.vcr :as vcr]
             [martian.core :as m]
-            [martian.interceptors :as mi]
             [schema.core :as s]
             #?(:clj [clojure.java.io :as io])))
-
 
 #?(:cljs (def Exception js/Error))
 
