@@ -1,4 +1,4 @@
-(defproject com.github.oliyh/martian-cljs-http-promise "0.1.34"
+(defproject com.github.oliyh/martian-cljs-http-promise "0.1.35-SNAPSHOT"
   :description "cljs-http-promise implementation for martian"
   :url "https://github.com/oliyh/martian"
   :license {:name "The MIT License"
