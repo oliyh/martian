@@ -40,23 +40,6 @@
 
 (def ^:private parameter-schemas [:path-schema :query-schema :body-schema :form-schema :headers-schema])
 
-(defn- enrich-handler [handler]
-  (-> handler
-      (assoc :parameter-aliases
-             (reduce (fn [aliases parameter-key]
-                       (assoc aliases parameter-key (parameter-aliases (get handler parameter-key))))
-                     {}
-                     parameter-schemas))))
-
-(defn- concise->handlers [concise-handlers global-produces global-consumes]
-  (map (comp
-        enrich-handler
-        (fn [handler]
-          (-> handler
-              (update :produces #(or % global-produces))
-              (update :consumes #(or % global-consumes)))))
-       concise-handlers))
-
 (defn- resolve-instance [m]
   (cond
     (map? m) m
@@ -68,10 +51,15 @@
   (= (keyword route-name) (:route-name handler)))
 
 (defn find-handler [handlers route-name]
-  (or (some #(when (matching-handler? route-name %) %) handlers)
-      (throw (ex-info (str "Could not find route " route-name)
-                      {:handlers   handlers
-                       :route-name route-name}))))
+  (let [handler (some #(when (matching-handler? route-name %) %) handlers)]
+    (when-some [ex (:exception handler)]
+      (throw (ex-info (format "Handler %s exception" route-name)
+                      {:handler handler}
+                      ex)))
+    (or handler
+        (throw (ex-info (str "Could not find route " route-name)
+                        {:handlers handlers
+                         :route-name route-name})))))
 
 (defn handler-for [m route-name]
   (find-handler (:handlers (resolve-instance m)) route-name))
@@ -155,8 +143,24 @@
                         (into {}))}
          (cond-> deprecated? (assoc :deprecated? true))))))
 
+(defn- enrich-handlers [handlers]
+  (mapv (fn [handler]
+          (try
+            (assoc handler
+              :parameter-aliases
+              (reduce (fn [aliases parameter-key]
+                        (assoc aliases parameter-key (parameter-aliases (get handler parameter-key))))
+                      {}
+                      parameter-schemas))
+            (catch #?(:clj Exception :cljs js/Error) ex
+              (assoc handler :exception ex))))
+        handlers))
+
 (defn- build-instance [api-root handlers {:keys [interceptors] :as opts}]
-  (->Martian api-root handlers (or interceptors default-interceptors) (dissoc opts :interceptors)))
+  (->Martian api-root
+             (enrich-handlers handlers)
+             (or interceptors default-interceptors)
+             (dissoc opts :interceptors)))
 
 (spec/fdef build-instance
   :args (spec/cat :api-root ::mspec/api-root
@@ -166,16 +170,20 @@
 (defn bootstrap-openapi
   "Creates a martian instance from an OpenAPI/Swagger spec based on the schema provided"
   [api-root json & [opts]]
-  (let [{:keys [interceptors] :or {interceptors default-interceptors} :as opts} (keywordize-keys opts)]
-    (build-instance api-root
-                    (map enrich-handler (if (openapi-schema? json)
-                                          (openapi->handlers json (interceptors/supported-content-types interceptors))
-                                          (swagger->handlers json)))
-                    opts)))
+  (let [{:keys [interceptors] :or {interceptors default-interceptors} :as opts} (keywordize-keys opts)
+        handlers (if (openapi-schema? json)
+                   (openapi->handlers json (interceptors/supported-content-types interceptors))
+                   (swagger->handlers json))]
+    (build-instance api-root handlers opts)))
 
 (def bootstrap-swagger bootstrap-openapi)
 
 (defn bootstrap
   "Creates a martian instance from a martian description"
   [api-root concise-handlers & [{:keys [produces consumes] :as opts}]]
-  (build-instance api-root (concise->handlers concise-handlers produces consumes) opts))
+  (let [handlers (map (fn [handler]
+                        (-> handler
+                            (update :produces #(or % produces))
+                            (update :consumes #(or % consumes))))
+                      concise-handlers)]
+    (build-instance api-root handlers opts)))
