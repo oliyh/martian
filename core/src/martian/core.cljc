@@ -64,8 +64,11 @@
     (fn? m) (m)
     :else m))
 
+(defn- matching-handler? [route-name handler]
+  (= (keyword route-name) (:route-name handler)))
+
 (defn find-handler [handlers route-name]
-  (or (first (filter #(= (keyword route-name) (:route-name %)) handlers))
+  (or (some #(when (matching-handler? route-name %) %) handlers)
       (throw (ex-info (str "Could not find route " route-name)
                       {:handlers   handlers
                        :route-name route-name}))))
@@ -80,7 +83,7 @@
   [m route-name update-fn & update-args]
   (update (resolve-instance m)
           :handlers #(mapv (fn [handler]
-                             (if (= (keyword route-name) (:route-name handler))
+                             (if (matching-handler? route-name handler)
                                (apply update-fn handler update-args)
                                handler))
                            %)))
