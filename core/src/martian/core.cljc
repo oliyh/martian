@@ -41,7 +41,7 @@
 
 (defn- validate-handler! [{:keys [exception route-name] :as handler}]
   (when (some? exception)
-    (throw (ex-info (str "Handler " route-name " exception")
+    (throw (ex-info (str "Invalid handler for route " route-name)
                     {:handler handler}
                     exception)))
   handler)
@@ -51,6 +51,7 @@
 
 (defn- find-handler [handlers route-name]
   (or (some-> (some #(when (matching-handler? route-name %) %) handlers)
+              ;; Validate the found handler before performing any actions.
               (validate-handler!))
       (throw (ex-info (str "Could not find route " route-name)
                       {:route-name route-name
@@ -165,6 +166,11 @@
                         (into {}))}
          (cond-> deprecated? (assoc :deprecated? true))))))
 
+(defn- validate-all-handlers! [handlers]
+  (when-let [invalid-handlers (not-empty (filter :exception handlers))]
+    (throw (ex-info "Invalid handlers" {:handlers invalid-handlers})))
+  handlers)
+
 (defn- enrich-handlers [handlers]
   (mapv (fn [handler]
           (try
@@ -180,10 +186,8 @@
 
 (defn- build-instance
   [api-root handlers {:keys [interceptors validate-handlers?] :as opts}]
-  (let [enriched-handlers (enrich-handlers handlers)]
-    (when validate-handlers?
-      (doseq [handler enrich-handlers]
-        (validate-handler! handler)))
+  (let [enriched-handlers (cond-> (enrich-handlers handlers)
+                                  validate-handlers? (validate-all-handlers!))]
     (->Martian api-root
                enriched-handlers
                (vec (or interceptors default-interceptors))
