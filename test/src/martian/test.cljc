@@ -56,8 +56,8 @@
    :leave (fn [ctx]
             (assoc ctx :response (response-fn ctx)))})
 
-(defn response-generator [{:keys [handlers]} route-name]
-  (let [{:keys [response-schemas]} (martian/find-handler handlers route-name)]
+(defn response-generator [martian route-name]
+  (let [{:keys [response-schemas]} (martian/handler-for martian route-name)]
     (make-generator :random response-schemas)))
 
 #?(:clj
