@@ -9,6 +9,20 @@
             [schema.core :as s]
             [tripod.context :as tc]))
 
+#?(:bb
+   ;; reflection issue in babashka -- TODO, submit patch upstream?
+   (do (defn- exception->ex-info [^Throwable exception execution-id interceptor stage]
+         (ex-info (str "Interceptor Exception: " #?(:clj  (.getMessage exception)
+                                                    :cljs (.-message exception)))
+                  (merge {:execution-id execution-id
+                          :stage        stage
+                          :interceptor  (:name interceptor)
+                          :type         (type exception)
+                          :exception    exception}
+                         (ex-data exception))
+                  exception))
+       (alter-var-root #'tc/exception->ex-info (constantly exception->ex-info))))
+
 (defn remove-stack [ctx]
   (-> ctx tc/terminate (dissoc ::tc/stack)))
 
