@@ -47,19 +47,22 @@
     (fn? m) (m)
     :else m))
 
+(defn- validate-handler! [{:keys [exception route-name] :as handler}]
+  (when (some? exception)
+    (throw (ex-info (str "Handler " route-name " exception")
+                    {:handler handler}
+                    exception)))
+  handler)
+
 (defn- matching-handler? [route-name handler]
   (= (keyword route-name) (:route-name handler)))
 
 (defn find-handler [handlers route-name]
-  (let [handler (some #(when (matching-handler? route-name %) %) handlers)]
-    (when-some [ex (:exception handler)]
-      (throw (ex-info (format "Handler %s exception" route-name)
-                      {:handler handler}
-                      ex)))
-    (or handler
-        (throw (ex-info (str "Could not find route " route-name)
-                        {:handlers handlers
-                         :route-name route-name})))))
+  (or (some-> (some #(when (matching-handler? route-name %) %) handlers)
+              (validate-handler!))
+      (throw (ex-info (str "Could not find route " route-name)
+                      {:route-name route-name
+                       :handlers handlers}))))
 
 (defn handler-for [m route-name]
   (find-handler (:handlers (resolve-instance m)) route-name))
@@ -156,11 +159,15 @@
               (assoc handler :exception ex))))
         handlers))
 
-(defn- build-instance [api-root handlers {:keys [interceptors] :as opts}]
-  (->Martian api-root
-             (enrich-handlers handlers)
-             (or interceptors default-interceptors)
-             (dissoc opts :interceptors)))
+(defn- build-instance [api-root handlers {:keys [interceptors validate-handlers?] :as opts}]
+  (let [enriched-handlers (enrich-handlers handlers)]
+    (when validate-handlers?
+      (doseq [handler enrich-handlers]
+        (validate-handler! handler)))
+    (->Martian api-root
+               enriched-handlers
+               (or interceptors default-interceptors)
+               (dissoc opts :interceptors))))
 
 (spec/fdef build-instance
   :args (spec/cat :api-root ::mspec/api-root
