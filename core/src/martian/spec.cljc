@@ -16,9 +16,9 @@
 (s/def ::form-schema ::input-schema)
 (s/def ::headers-schema ::input-schema)
 
-(s/def ::content-types (s/nilable (s/coll-of string?)))
-(s/def ::produces ::content-types)
-(s/def ::consumes ::content-types)
+(s/def ::media-types (s/nilable (s/coll-of string?)))
+(s/def ::produces ::media-types)
+(s/def ::consumes ::media-types)
 
 (s/def ::handler
   (s/keys
@@ -42,6 +42,13 @@
 
 (s/def ::interceptor (s/keys :opt-un [::name ::enter ::leave ::catch]))
 (s/def ::interceptors (s/nilable (s/coll-of ::interceptor)))
+(s/def ::coercion-matcher fn?)
 (s/def ::use-defaults? boolean?)
+(s/def ::validate-handlers? boolean?)
 
-(s/def ::opts (s/nilable (s/keys :opt-un [::interceptors ::use-defaults?])))
+(s/def ::opts (s/nilable (s/keys :opt-un [::interceptors
+                                          ::produces
+                                          ::consumes
+                                          ::coercion-matcher
+                                          ::use-defaults?
+                                          ::validate-handlers?])))
