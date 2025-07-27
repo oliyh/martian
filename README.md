@@ -47,15 +47,16 @@ same way, ensuring that your response handling code is also correct. Examples ar
 3. [Basic usage](#basic-usage)
 4. [Bootstrapping from local file](#bootstrapping-from-local-file)
 5. [No Swagger, no problem](#no-swagger-no-problem)
-6. [Idiomatic parameters](#idiomatic-parameters)
-7. [Parameter defaults](#parameter-defaults)
-8. [Built-in media types](#built-in-media-types)
-9. [Response validation](#response-validation)
-10. [Testing with `martian-test`](#testing-with-martian-test)
+6. [Handlers validation](#handlers-validation)
+7. [Idiomatic parameters](#idiomatic-parameters)
+8. [Parameter defaults](#parameter-defaults)
+9. [Built-in media types](#built-in-media-types)
+10. [Response validation](#response-validation)
+11. [Testing with `martian-test`](#testing-with-martian-test)
     - [Generative testing](#generative-testing)
     - [Non-generative testing](#non-generative-testing)
-11. [Recording and playback with `martian-vcr`](#recording-and-playback-with-martian-vcr)
-12. [Custom behaviour](#custom-behaviour)
+12. [Recording and playback with `martian-vcr`](#recording-and-playback-with-martian-vcr)
+13. [Custom behaviour](#custom-behaviour)
     - [Custom interceptors](#custom-interceptors)
       - [Global interceptors](#global-interceptors)
       - [Per route interceptors](#per-route-interceptors)
@@ -63,12 +64,12 @@ same way, ensuring that your response handling code is also correct. Examples ar
     - [Built-in encoders options](#built-in-encoders-options)
     - [Custom media types](#custom-media-types)
     - [HTTP client-specific options](#http-client-specific-options)
-13. [Development mode](#development-mode)
-14. [Java](#java)
-15. [Caveats](#caveats)
-16. [Development](#development)
-17. [Issues and features](#issues-and-features)
-18. [Acknowledgements](#acknowledgements)
+14. [Development mode](#development-mode)
+15. [Java](#java)
+16. [Caveats](#caveats)
+17. [Development](#development)
+18. [Issues and features](#issues-and-features)
+19. [Acknowledgements](#acknowledgements)
 
 ---
 
@@ -239,6 +240,26 @@ Martian offers a separate `bootstrap` function which you can provide with handle
                                          :name s/Str}}}])
 ```
 
+## Handlers validation
+
+Sometimes, especially when [bootstrapping from data](#no-swagger-no-problem), it is desirable to fail fast if invalid
+handlers are encountered. There is a `validate-handlers?` option that enables such early validation of handlers, which
+causes any bootstrapping function to throw:
+
+```clojure
+(require '[martian.core :as martian]
+         '[schema.core :as s])
+
+(martian/bootstrap "https://api.org"
+                   [{:route-name :create-pet
+                     :path-parts ["/pets/"]
+                     :method :post
+                     :body-schema {:pet {:id   s/Int
+                                         :name nil}}}] ; <~ Oops!
+                   {:validate-handlers? true})
+;; => ExceptionInfo: Invalid handlers {:handlers ({:route-name :create-pet, ... })}
+```
+
 ## Idiomatic parameters
 
 If an API has a parameter called `FooBar` it's difficult to stop that leaking into your own code — the Clojure idiom is
@@ -281,7 +302,7 @@ code looks neater but preserves the mapping so that the API is passed the correc
 Martian can read `default` directives from OpenAPI/Swagger spec, or you can supply them with `schema-tools.core/default`
 if [bootstrapping from data](#no-swagger-no-problem).
 
-They can be seen using `explore` and merged with your params if you set the optional `use-defaults?` option.
+If you set the `use-defaults?` option to `true`, they can be seen using `explore` and merged with your param:
 
 ```clojure
 (require '[martian.core :as martian]
@@ -372,10 +393,10 @@ The following example shows how exceptions will be thrown by bad code and how re
             (martian-test/respond-with-generated {:get-pet :random}))]
 
   (martian/response-for m :get-pet {})
-  ;; => ExceptionInfo Value cannot be coerced to match schema: {:id missing-required-key}
+  ;; => ExceptionInfo: Value cannot be coerced to match schema: {:id missing-required-key}
 
   (martian/response-for m :get-pet {:id "bad-id"})
-  ;; => ExceptionInfo Value cannot be coerced to match schema: {:id (not (integer? bad-id))}
+  ;; => ExceptionInfo: Value cannot be coerced to match schema: {:id (not (integer? bad-id))}
 
   (martian/response-for m :get-pet {:id 123}))
   ;; => {:status 200, :body {:id -3, :name "EcLR"}}
@@ -494,9 +515,9 @@ adding a custom interceptor or replacing/removing an existing (default) one.
 
 #### Per route interceptors
 
-Sometimes individual routes require custom behaviour. This can be achieved by writing a
-global interceptor which inspects the route-name and decides what to do, but a more specific
-option exists using `bootstrap` and providing `:interceptors` as follows:
+Sometimes individual routes require custom behaviour. This can be achieved by writing a global interceptor which
+inspects the handler's `:route-name` and decides what to do, but a more specific option exists using `bootstrap`
+and providing `:interceptors` as follows:
 
 ```clojure
 (require '[martian.core :as martian]

@@ -71,12 +71,8 @@
 
 (defn swagger->handlers [swagger-json]
   (let [swagger-spec (keywordize-keys swagger-json)]
-    (reduce-kv
-     (fn [handlers url-pattern swagger-handlers]
-       (into handlers (keep (partial ->handler
-                                     swagger-spec
-                                     (:parameters swagger-handlers)
-                                     url-pattern)
-                            swagger-handlers)))
-     []
-     (:paths swagger-spec))))
+    (->> (seq (:paths swagger-spec))
+         (map (fn [[url-pattern swagger-handlers]]
+                (keep #(->handler swagger-spec (:parameters swagger-handlers) url-pattern %)
+                      swagger-handlers)))
+         (flatten))))
