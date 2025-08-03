@@ -1,9 +1,8 @@
 (ns martian.swagger
-  (:require [clojure.string :as string]
+  (:require [clojure.string :as str]
             [clojure.walk :refer [keywordize-keys]]
             [martian.openapi :refer [produce-route-name tokenise-path]]
             [martian.schema :as schema]
-            [martian.utils :as utils]
             [schema.core :as s]))
 
 (defn resolve-swagger-params [ref-lookup swagger-params category]
@@ -36,7 +35,7 @@
   (for [[status response] swagger-responses
         :let [status-code (cond (number? status) status
                                 (= "default" (name status)) 'default
-                                :else (utils/string->int (name status)))]]
+                                :else (parse-long (name status)))]]
     {:status (s/eq status-code)
      :body (schema/make-schema ref-lookup (assoc (:schema response) :required true))}))
 
@@ -46,7 +45,7 @@
     (let [path-parts (tokenise-path url-pattern)
           ref-lookup (select-keys swagger-spec [:definitions :parameters])
           parameters (concat path-parameters (:parameters swagger-definition))]
-      {:path (string/join path-parts)
+      {:path (str/join path-parts)
        :path-parts path-parts
        :method method
        :path-schema (path-schema ref-lookup parameters)
