@@ -1,6 +1,6 @@
 (ns martian.openapi
   (:require [camel-snake-kebab.core :refer [->kebab-case-keyword]]
-            [clojure.string :as string]
+            [clojure.string :as str]
             [clojure.walk :refer [keywordize-keys]]
             [lambdaisland.uri :as uri]
             [martian.log :as log]
@@ -9,17 +9,17 @@
             [schema.core :as s]))
 
 (defn openapi-schema? [json]
-  (some #(get json %) [:openapi "openapi"]))
+  (boolean (some #(get json %) [:openapi "openapi"])))
 
 (defn base-url [url server-url json]
   (let [first-server (get-in json [:servers 0 :url] "")
         {:keys [scheme host port]} (uri/uri url)
         api-root (or server-url first-server)]
-    (if (and (openapi-schema? json) (not (string/starts-with? api-root "/")))
+    (if (and (openapi-schema? json) (not (str/starts-with? api-root "/")))
       api-root
       (str scheme "://"
            host
-           (when (not (string/blank? port)) (str ":" port))
+           (when (not (str/blank? port)) (str ":" port))
            (if (openapi-schema? json)
              api-root
              (get json :basePath ""))))))
@@ -117,38 +117,32 @@
                              [json-schema content-type] (get-matching-schema value content-types "Content-Type")]]
     {:status       (if (= status-code "default")
                      s/Any
-                     (s/eq (if (number? status-code) status-code (utils/string->int (name status-code)))))
+                     (s/eq (if (number? status-code) status-code (parse-long (name status-code)))))
      :body         (and json-schema (openapi->schema json-schema components))
      :content-type content-type}))
 
-(defn- sanitise [x]
-  (if (string? x)
-    x
-    ;; consistent across clj and cljs
-    (-> (str x)
-        (string/replace-first ":" ""))))
+(defn- sanitise-url [url-pattern]
+  (if (string? url-pattern)
+    url-pattern
+    ;; NB: This is consistent across CLJ and CLJS.
+    (str/replace-first (str url-pattern) ":" "")))
 
 (defn tokenise-path [url-pattern]
-  (let [url-pattern (sanitise url-pattern)
-        parts (map first (re-seq #"([^{}]+|\{.+?\})" url-pattern))]
+  (let [sanitised (sanitise-url url-pattern)
+        url-parts (map first (re-seq #"([^{}]+|\{.+?\})" sanitised))]
     (map #(if-let [param-name (second (re-matches #"^\{(.*)\}" %))]
             (keyword param-name)
-            %) parts)))
-
-;; TODO: Substitute with `update-vals` (built-in, cross-platform).
-(defn update-vals-future
-  "An implementation of `update-vals` that is in Clojure 1.11.0+."
-  [m f]
-  (zipmap (keys m) (map f (vals m))))
+            %)
+         url-parts)))
 
 (defn produce-route-name [url-pattern method definition]
   (->kebab-case-keyword
     (or (:operationId definition)
         (let [prepared-path (->> (tokenise-path url-pattern)
                                  (remove keyword?)
-                                 (map #(string/replace % "/" ""))
-                                 (map #(string/replace % #"[^a-zA-Z0-9\-]" "-"))
-                                 (string/join "-"))]
+                                 (map #(str/replace % "/" ""))
+                                 (map #(str/replace % #"[^a-zA-Z0-9\-]" "-"))
+                                 (str/join "-"))]
           (str (name method) "-" prepared-path)))))
 
 (defn openapi->handlers [openapi-json content-types]
@@ -160,12 +154,13 @@
           [method definition] (dissoc methods :parameters)
           ;; NB: We don't care about any associated HTTP OPTIONS calls.
           :when (not= :options method)
-          :let [parameters (group-by (comp keyword :in) (concat common-parameters
-                                                                (map resolve-ref (:parameters definition))))
+          :let [parameters (->> (map resolve-ref (:parameters definition))
+                                (concat common-parameters)
+                                (group-by (comp keyword :in)))
                 body       (process-body (:requestBody definition) components (:encodes content-types))
-                responses  (process-responses (update-vals-future (:responses definition)
-                                                                  resolve-ref)
-                                              components (:decodes content-types))]]
+                responses  (-> (:responses definition)
+                               (update-vals resolve-ref)
+                               (process-responses components (:decodes content-types)))]]
       (-> {:path-parts         (vec (tokenise-path url-pattern))
            :method             method
            :path-schema        (process-parameters (:path parameters) components)
