@@ -4,6 +4,7 @@
             [clojure.string :as string]
             [clojure.walk :refer [keywordize-keys]]
             [schema.core :as s]
+            [martian.log :as log]
             [martian.schema :refer [leaf-schema wrap-default]]
             [martian.utils :as utils]))
 
@@ -79,16 +80,10 @@
 (defn- warn-on-no-matching-content-type
   [supported=content-types content header-name]
   (let [available-content-types (mapv utils/stringify-named (keys content))]
-    #?(:clj
-       (println "No matching content-type available"
-                {:supported-content-types supported=content-types
-                 :available-content-types available-content-types
-                 :header header-name})
-       :cljs
-       (js/console.warn "No matching content-type available"
-                        {:supported-content-types supported=content-types
-                         :available-content-types available-content-types
-                         :header header-name}))))
+    (log/warn "No matching content-type available"
+              {:supported-content-types supported=content-types
+               :available-content-types available-content-types
+               :header header-name})))
 
 (defn- get-matching-schema [{:keys [content]} content-types header-name]
   (when (seq content)
