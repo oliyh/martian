@@ -78,12 +78,12 @@
              (leaf-schema schema))))))
 
 (defn- warn-on-no-matching-content-type
-  [supported=content-types content header-name]
+  [supported-content-types content header-name]
   (let [available-content-types (mapv utils/stringify-named (keys content))]
     (log/warn "No matching content-type available"
-              {:supported-content-types supported=content-types
-               :available-content-types available-content-types
-               :header header-name})))
+              {:header header-name
+               :supported supported-content-types
+               :available available-content-types})))
 
 (defn- get-matching-schema [{:keys [content]} content-types header-name]
   (when (seq content)
