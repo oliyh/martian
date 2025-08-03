@@ -4,6 +4,7 @@
             [clojure.walk :refer [keywordize-keys]]
             [lambdaisland.uri :as uri]
             [martian.schema :as schema]
+            [martian.utils :as utils]
             [schema.core :as s]))
 
 (defn openapi-schema? [json]
@@ -44,55 +45,59 @@
               components
               (conj seen-set reference)))
      (wrap schema
-           (condp = (if-let [typ (:type schema)]
-                      typ
-                      ;; If a schema has no :type key, and the only key it contains is a :properties key,
-                      ;; then the :type can reasonably be inferred as "object".
-                      ;;
-                      ;; See https://github.com/OAI/OpenAPI-Specification/issues/1657
-                      ;;
-                      ;; Excerpt:
-                      ;; A particularly common form of this is a schema that omits type, but specifies properties.
-                      ;; Strictly speaking, this does not mean that the value must be an object.
-                      ;; It means that if the value is an object, and it includes any of those properties,
-                      ;; the property values must conform to the corresponding property subschemas.
-                      ;;
-                      ;; In reality, this construct almost always means that the user intends type: object,
-                      ;; and I think it would be reasonable for a code generator to assume this,
-                      ;; maybe with a validation: strict|lax config option to control that behavior.
-                      (when (= #{:properties} (set (keys schema))) "object"))
-             "array"   [(openapi->schema (:items schema) components seen-set)]
-             "object"  (let [required? (set (:required schema))]
-                         (if (or (contains? schema :properties)
-                                 (contains? schema :additionalProperties))
-                           (into {}
-                                 (map (fn [[k v]]
-                                        {(if (required? (name k))
-                                           (keyword k)
-                                           (s/optional-key (keyword k)))
-                                         (openapi->schema v components seen-set)}))
-                                 (:properties schema))
-                           {s/Any s/Any}))
+           (case (or (:type schema)
+                     ;; If a schema has no :type key, and the only key it contains is a :properties key,
+                     ;; then the :type can reasonably be inferred as "object".
+                     ;;
+                     ;; See https://github.com/OAI/OpenAPI-Specification/issues/1657
+                     ;;
+                     ;; Excerpt:
+                     ;; A particularly common form of this is a schema that omits type, but specifies properties.
+                     ;; Strictly speaking, this does not mean that the value must be an object.
+                     ;; It means that if the value is an object, and it includes any of those properties,
+                     ;; the property values must conform to the corresponding property subschemas.
+                     ;;
+                     ;; In reality, this construct almost always means that the user intends type: object,
+                     ;; and I think it would be reasonable for a code generator to assume this,
+                     ;; maybe with a validation: strict|lax config option to control that behavior.
+                     (when (= #{:properties} (set (keys schema))) "object"))
+             "array"  [(openapi->schema (:items schema) components seen-set)]
+             "object" (let [required? (set (:required schema))]
+                        (if (or (contains? schema :properties)
+                                (contains? schema :additionalProperties))
+                          (into {}
+                                (map (fn [[k v]]
+                                       {(if (required? (name k))
+                                          (keyword k)
+                                          (s/optional-key (keyword k)))
+                                        (openapi->schema v components seen-set)}))
+                                (:properties schema))
+                          {s/Any s/Any}))
              (schema/leaf-schema schema))))))
 
-(defn- stringify-ns-keyword [k]
-  (if (keyword? k)
-    (if-let [ns (namespace k)]
-      (str ns "/" (name k))
-      (name k))
-    k))
+(defn- warn-on-no-matching-content-type
+  [supported=content-types content header-name]
+  (let [available-content-types (mapv utils/stringify-named (keys content))]
+    #?(:clj
+       (println "No matching content-type available"
+                {:supported-content-types supported=content-types
+                 :available-content-types available-content-types
+                 :header header-name})
+       :cljs
+       (js/console.warn "No matching content-type available"
+                        {:supported-content-types supported=content-types
+                         :available-content-types available-content-types
+                         :header header-name}))))
 
 (defn- get-matching-schema [{:keys [content]} content-types header-name]
-  (if-let [content-type (first (filter #(contains? content (keyword %)) content-types))]
-    [(get-in content [(keyword content-type) :schema])
-     content-type]
-    (when (seq content)
-      #?(:clj (println "No matching content-type available" {:supported-content-types content-types
-                                                             :available-content-types (map stringify-ns-keyword (keys content))
-                                                             :header header-name})
-         :cljs (js/console.warn "No matching content-type available" {:supported-content-types content-types
-                                                                      :available-content-types (map stringify-ns-keyword (keys content))
-                                                                      :header header-name})))))
+  (when (seq content)
+    ;; TODO: For "*/*" content simply return the schema and `nil` content-type?
+    (or #_(when-some [any-type (:*/* content)]
+          [(:schema any-type) nil])
+        (when-some [content-type (some #(when (contains? content (keyword %)) %)
+                                       content-types)]
+          [(get-in content [(keyword content-type) :schema]) content-type])
+        (warn-on-no-matching-content-type content-types content header-name))))
 
 (defn- process-body [body components content-types]
   (when-let [[json-schema content-type] (get-matching-schema body content-types "Accept")]
@@ -137,6 +142,7 @@
 
 (defn produce-route-name [url-pattern method definition]
   (->kebab-case-keyword
+    ;; TODO: These approaches may end up aliasing/conflicting with each other.
     (or (:operationId definition)
         (let [prepared-path (->> (tokenise-path url-pattern)
                                  (remove keyword?)
@@ -145,7 +151,8 @@
                                  (str/join "-"))]
           (str (name method) "-" prepared-path)))))
 
-(defn openapi->handlers [openapi-json content-types]
+(defn openapi->handlers
+  [openapi-json {:keys [encodes decodes] :as _content-types}]
   (let [openapi-spec (keywordize-keys openapi-json)
         resolve-ref (schema/resolve-ref-fn openapi-spec)
         components (:components openapi-spec)]
@@ -157,23 +164,24 @@
           :let [parameters (->> (map resolve-ref (:parameters definition))
                                 (concat common-parameters)
                                 (group-by (comp keyword :in)))
-                body       (process-body (:requestBody definition) components (:encodes content-types))
+                body       (process-body (:requestBody definition) components encodes)
                 responses  (-> (:responses definition)
                                (update-vals resolve-ref)
-                               (process-responses components (:decodes content-types)))]]
-      (-> {:path-parts         (vec (tokenise-path url-pattern))
-           :method             method
-           :path-schema        (process-parameters (:path parameters) components)
-           :query-schema       (process-parameters (:query parameters) components)
-           :body-schema        (:schema body)
-           :form-schema        (process-parameters (:form parameters) components)
-           :headers-schema     (process-parameters (:header parameters) components)
-           :response-schemas   (vec (keep #(dissoc % :content-type) responses))
-           :produces           (vec (keep :content-type responses))
-           :consumes           (when-let [content-type (:content-type body)]
-                                 [content-type])
-           :summary            (:summary definition)
-           :description        (:description definition)
-           :openapi-definition definition
-           :route-name         (produce-route-name url-pattern method definition)}
-          (cond-> (:deprecated definition) (assoc :deprecated? true))))))
+                               (process-responses components decodes))]]
+      (cond->
+        {:path-parts         (vec (tokenise-path url-pattern))
+         :method             method
+         :path-schema        (process-parameters (:path parameters) components)
+         :query-schema       (process-parameters (:query parameters) components)
+         :body-schema        (:schema body)
+         :form-schema        (process-parameters (:form parameters) components)
+         :headers-schema     (process-parameters (:header parameters) components)
+         :response-schemas   (vec (keep #(dissoc % :content-type) responses))
+         :produces           (vec (keep :content-type responses))
+         :consumes           (when-let [content-type (:content-type body)]
+                               [content-type])
+         :summary            (:summary definition)
+         :description        (:description definition)
+         :openapi-definition definition
+         :route-name         (produce-route-name url-pattern method definition)}
+        (:deprecated definition) (assoc :deprecated? true)))))
