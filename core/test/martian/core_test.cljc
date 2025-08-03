@@ -189,8 +189,7 @@
             [:pet-search nil]
             [:order nil]
             [:create-orders nil]
-            [:create-users nil]
-            #_[:get-users nil]]
+            [:create-users nil]]
            (martian/explore m)))
 
     (is (= {:summary nil
@@ -202,7 +201,22 @@
     (is (= {:summary nil
             :parameters {(s/optional-key :sort) (s/maybe (s/enum "desc" "asc"))}
             :returns {200 [{:id s/Int, :name s/Str}]}}
-           (martian/explore m :all-pets)))))
+           (martian/explore m :all-pets))))
+
+  (testing "enabling route names generation option"
+    (let [m (martian/bootstrap-swagger "https://api.org"
+                                       swagger-definition
+                                       {:gen-route-names? true})]
+      (is (= [[:load-pet "Loads a pet by id"]
+              [:all-pets nil]
+              [:create-pet nil]
+              [:update-pet nil]
+              [:pet-search nil]
+              [:order nil]
+              [:create-orders nil]
+              [:create-users nil]
+              [:get-users nil]]
+             (martian/explore m))))))
 
 (deftest request-for-test
   (let [m (martian/bootstrap-swagger "https://api.org" swagger-definition)
