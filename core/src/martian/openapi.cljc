@@ -92,8 +92,7 @@
 
 (defn- get-matching-schema [{:keys [content]} content-types header-name]
   (when (seq content)
-    ;; TODO: For "*/*" content simply return the schema and `nil` content-type?
-    (or #_(when-some [any-type (:*/* content)]
+    (or (when-some [any-type (:*/* content)]
           [(:schema any-type) nil])
         (when-some [content-type (some #(when (contains? content (keyword %)) %)
                                        content-types)]
