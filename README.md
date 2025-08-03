@@ -125,6 +125,7 @@ connecting your UI to data sources.
 - Easy to [add support for any other media type](#custom-media-types) or reconfigure encoders for the built-in ones
 - Support for integration testing without requiring external HTTP stubs
 - Routes are named as idiomatic kebab-case keywords of the endpoint's `operationId` in the OpenAPI/Swagger definition
+  or auto-generated from the method and URL path
 - Parameters are aliased to kebab-case keywords so that your code remains [idiomatic](#idiomatic-parameters) and neat
 - [Parameter defaults](#parameter-defaults) can be optionally applied
 - Simple, data driven behaviour with low coupling using libraries and patterns you already know
@@ -730,7 +731,8 @@ martian.urlFor("get-pet", new HashMap<String, Object> {{ put("id", 123); }});
 
 ## Caveats
 
-- You need `:operationId` in the OpenAPI/Swagger spec to name routes when using `bootstrap-openapi`
+- You need `operationId`s in the OpenAPI/Swagger spec to name routes when using `bootstrap-openapi`/`bootstrap-swagger`
+  - A `:gen-route-names? true` option can be used to generate route names for definitions that don't have "operationId"
   - [pedestal-api](https://github.com/oliyh/pedestal-api) automatically generates these from the route name
 - Martian does not yet cover every intricacy of JSON schema when parsing OpenAPI/Swagger specs, and as such it may not
   transmit data that it decides does not conform to the schema it has derived
