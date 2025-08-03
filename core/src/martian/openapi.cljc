@@ -1,11 +1,11 @@
 (ns martian.openapi
   (:require [camel-snake-kebab.core :refer [->kebab-case-keyword]]
-            [lambdaisland.uri :as uri]
             [clojure.string :as string]
             [clojure.walk :refer [keywordize-keys]]
-            [schema.core :as s]
-            [martian.schema :refer [leaf-schema wrap-default]]
-            [martian.utils :as utils]))
+            [lambdaisland.uri :as uri]
+            [martian.schema :as schema]
+            [martian.utils :as utils]
+            [schema.core :as s]))
 
 (defn openapi-schema? [json]
   (some #(get json %) [:openapi "openapi"]))
@@ -32,7 +32,7 @@
   (reduce (fn [schema f]
             (f property schema))
           schema
-          [wrap-default wrap-nullable]))
+          [schema/wrap-default wrap-nullable]))
 
 (defn- openapi->schema
   ([schema components] (openapi->schema schema components #{}))
@@ -41,7 +41,7 @@
      (if (contains? seen-set reference)
        s/Any ; If we've already seen this, then we're in a loop. Rather than
              ; trying to solve for the fixpoint, just return Any.
-       (recur (martian.schema/lookup-ref reference {:components components})
+       (recur (schema/lookup-ref reference {:components components})
               components
               (conj seen-set reference)))
      (wrap schema
@@ -74,7 +74,7 @@
                                          (openapi->schema v components seen-set)}))
                                  (:properties schema))
                            {s/Any s/Any}))
-             (leaf-schema schema))))))
+             (schema/leaf-schema schema))))))
 
 (defn- stringify-ns-keyword [k]
   (if (keyword? k)
@@ -142,24 +142,32 @@
   [m f]
   (zipmap (keys m) (map f (vals m))))
 
+(defn produce-route-name [url-pattern method definition]
+  (->kebab-case-keyword
+    (or (:operationId definition)
+        (let [prepared-path (->> (tokenise-path url-pattern)
+                                 (remove keyword?)
+                                 (map #(string/replace % "/" ""))
+                                 (map #(string/replace % #"[^a-zA-Z0-9\-]" "-"))
+                                 (string/join "-"))]
+          (str (name method) "-" prepared-path)))))
+
 (defn openapi->handlers [openapi-json content-types]
   (let [openapi-spec (keywordize-keys openapi-json)
-        resolve-ref (martian.schema/resolve-ref-fn openapi-spec)
+        resolve-ref (schema/resolve-ref-fn openapi-spec)
         components (:components openapi-spec)]
-    (for [[url methods] (:paths openapi-spec)
+    (for [[url-pattern methods] (:paths openapi-spec)
           :let [common-parameters (map resolve-ref (:parameters methods))]
           [method definition] (dissoc methods :parameters)
-          ;; We only care about things which have a defined operationId, and
-          ;; which aren't the associated OPTIONS call.
-          :when (and (:operationId definition)
-                     (not= :options method))
+          ;; NB: We don't care about any associated HTTP OPTIONS calls.
+          :when (not= :options method)
           :let [parameters (group-by (comp keyword :in) (concat common-parameters
                                                                 (map resolve-ref (:parameters definition))))
                 body       (process-body (:requestBody definition) components (:encodes content-types))
                 responses  (process-responses (update-vals-future (:responses definition)
                                                                   resolve-ref)
                                               components (:decodes content-types))]]
-      (-> {:path-parts         (vec (tokenise-path url))
+      (-> {:path-parts         (vec (tokenise-path url-pattern))
            :method             method
            :path-schema        (process-parameters (:path parameters) components)
            :query-schema       (process-parameters (:query parameters) components)
@@ -173,5 +181,5 @@
            :summary            (:summary definition)
            :description        (:description definition)
            :openapi-definition definition
-           :route-name         (->kebab-case-keyword (:operationId definition))}
+           :route-name         (produce-route-name url-pattern method definition)}
           (cond-> (:deprecated definition) (assoc :deprecated? true))))))
