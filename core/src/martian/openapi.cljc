@@ -24,6 +24,9 @@
              api-root
              (get json :basePath ""))))))
 
+(defn- map-schema-key [key required?]
+  (if required? key (s/optional-key key)))
+
 (defn- wrap-nullable [{:keys [nullable]} schema]
   (if nullable
     (s/maybe schema)
@@ -68,9 +71,7 @@
                                 (contains? schema :additionalProperties))
                           (into {}
                                 (map (fn [[k v]]
-                                       {(if (required? (name k))
-                                          (keyword k)
-                                          (s/optional-key (keyword k)))
+                                       {(map-schema-key (keyword k) (required? (name k)))
                                         (openapi->schema v components seen-set)}))
                                 (:properties schema))
                           {s/Any s/Any}))
@@ -95,29 +96,26 @@
 
 (defn- process-body [body components content-types]
   (when-let [[json-schema content-type] (get-matching-schema body content-types "Accept")]
-    (let [required (:required body)]
-      {:schema       {(if required :body (s/optional-key :body))
-                      (openapi->schema json-schema components)}
-       :content-type content-type})))
+    {:schema {(map-schema-key :body (:required body))
+              (openapi->schema json-schema components)}
+     :content-type content-type}))
 
 (defn- process-parameters [parameters components]
-  (not-empty
-   (into {}
-         (map (fn [param]
-                {(if (:required param)
-                   (keyword (:name param))
-                   (s/optional-key (keyword (:name param))))
-                 (openapi->schema (:schema param) components)}))
-         parameters)))
+  (->> parameters
+       (map (fn [param]
+              {(map-schema-key (keyword (:name param)) (:required param))
+               (openapi->schema (:schema param) components)}))
+       (into {})
+       (not-empty)))
 
 (defn- process-responses [responses components content-types]
-  (for [[status-code value] responses
-        :let                [status-code (name status-code)
-                             [json-schema content-type] (get-matching-schema value content-types "Content-Type")]]
-    {:status       (if (= status-code "default")
-                     s/Any
-                     (s/eq (if (number? status-code) status-code (parse-long (name status-code)))))
-     :body         (and json-schema (openapi->schema json-schema components))
+  (for [[status-code resp] responses
+        :let [status-code-str (name status-code)
+              [json-schema content-type] (get-matching-schema resp content-types "Content-Type")]]
+    {:status (if (= "default" status-code-str)
+               s/Any
+               (s/eq (if (number? status-code) status-code (parse-long status-code-str))))
+     :body (and json-schema (openapi->schema json-schema components))
      :content-type content-type}))
 
 (defn- sanitise-url [url-pattern]
