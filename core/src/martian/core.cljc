@@ -210,12 +210,17 @@
    - `:coercion-matcher`   — a unary fn of schema used for parameters coercion;
                              defaults to the `default-coercion-matcher`;
    - `:use-defaults?`      — if true, will read 'default' directives from the
-                             OpenAPI/Swagger spec; false by default."
+                             OpenAPI/Swagger spec; false by default;
+   - `:gen-route-names?`   — if true, will generate route names for definitions
+                             that do not have an \"operationId\"."
   [api-root json & [opts]]
-  (let [{:keys [interceptors] :or {interceptors default-interceptors} :as opts} (keywordize-keys opts)
+  (let [{:keys [interceptors gen-route-names?] :as opts} (keywordize-keys opts)
         handlers (if (openapi-schema? json)
-                   (openapi->handlers json (interceptors/supported-content-types interceptors))
-                   (swagger->handlers json))]
+                   (let [content-types (-> interceptors
+                                           (or default-interceptors)
+                                           (interceptors/supported-content-types))]
+                     (openapi->handlers json content-types gen-route-names?))
+                   (swagger->handlers json gen-route-names?))]
     (build-instance api-root handlers opts)))
 
 (def
@@ -231,7 +236,9 @@
    - `:coercion-matcher`   — a unary fn of schema used for parameters coercion;
                              defaults to the `default-coercion-matcher`;
    - `:use-defaults?`      — if true, will read 'default' directives from the
-                             OpenAPI/Swagger spec; false by default."
+                             OpenAPI/Swagger spec; false by default;
+   - `:gen-route-names?`   — if true, will generate route names for definitions
+                             that do not have an \"operationId\"."
     :arglists '([api-root json & [opts]])}
   bootstrap-swagger
   bootstrap-openapi)
