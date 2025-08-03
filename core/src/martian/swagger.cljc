@@ -1,11 +1,10 @@
 (ns martian.swagger
-  (:require [martian.openapi :refer [tokenise-path]]
-            [camel-snake-kebab.core :refer [->kebab-case-keyword]]
-            [clojure.string :as string]
+  (:require [clojure.string :as string]
             [clojure.walk :refer [keywordize-keys]]
+            [martian.openapi :refer [produce-route-name tokenise-path]]
             [martian.schema :as schema]
-            [schema.core :as s]
-            [martian.utils :as utils]))
+            [martian.utils :as utils]
+            [schema.core :as s]))
 
 (defn resolve-swagger-params [ref-lookup swagger-params category]
   (->> swagger-params
@@ -42,13 +41,12 @@
      :body (schema/make-schema ref-lookup (assoc (:schema response) :required true))}))
 
 (defn- ->handler
-  [swagger-map path-item-parameters url-pattern method swagger-definition]
-  (when-let [route-name (some-> (:operationId swagger-definition) ->kebab-case-keyword)]
-    (let [ref-lookup (select-keys swagger-map [:definitions :parameters])
-          path-parts (tokenise-path url-pattern)
-          uri (string/join (map str path-parts))
-          parameters (concat path-item-parameters (:parameters swagger-definition))]
-      {:path uri
+  [swagger-spec path-parameters url-pattern method swagger-definition]
+  (when-let [route-name (produce-route-name url-pattern method swagger-definition)]
+    (let [path-parts (tokenise-path url-pattern)
+          ref-lookup (select-keys swagger-spec [:definitions :parameters])
+          parameters (concat path-parameters (:parameters swagger-definition))]
+      {:path (string/join path-parts)
        :path-parts path-parts
        :method method
        :path-schema (path-schema ref-lookup parameters)
@@ -57,8 +55,8 @@
        :form-schema (form-schema ref-lookup parameters)
        :headers-schema (headers-schema ref-lookup parameters)
        :response-schemas (response-schemas ref-lookup (:responses swagger-definition))
-       :produces (some :produces [swagger-definition swagger-map])
-       :consumes (some :consumes [swagger-definition swagger-map])
+       :produces (some :produces [swagger-definition swagger-spec])
+       :consumes (some :consumes [swagger-definition swagger-spec])
        :summary (:summary swagger-definition)
        :swagger-definition swagger-definition
        ;; todo path constraints - required?
