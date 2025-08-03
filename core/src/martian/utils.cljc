@@ -30,3 +30,10 @@
        (update-in m ks f)
        (apply update-in m ks f args))
      m)))
+
+(defn stringify-named [obj]
+  (if (or (keyword? obj) (symbol? obj))
+    (if-some [ns (namespace obj)]
+      (str ns "/" (name obj))
+      (name obj))
+    obj))

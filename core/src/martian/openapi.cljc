@@ -76,24 +76,29 @@
                            {s/Any s/Any}))
              (leaf-schema schema))))))
 
-(defn- stringify-ns-keyword [k]
-  (if (keyword? k)
-    (if-let [ns (namespace k)]
-      (str ns "/" (name k))
-      (name k))
-    k))
+(defn- warn-on-no-matching-content-type
+  [supported=content-types content header-name]
+  (let [available-content-types (mapv utils/stringify-named (keys content))]
+    #?(:clj
+       (println "No matching content-type available"
+                {:supported-content-types supported=content-types
+                 :available-content-types available-content-types
+                 :header header-name})
+       :cljs
+       (js/console.warn "No matching content-type available"
+                        {:supported-content-types supported=content-types
+                         :available-content-types available-content-types
+                         :header header-name}))))
 
 (defn- get-matching-schema [{:keys [content]} content-types header-name]
-  (if-let [content-type (first (filter #(contains? content (keyword %)) content-types))]
-    [(get-in content [(keyword content-type) :schema])
-     content-type]
-    (when (seq content)
-      #?(:clj (println "No matching content-type available" {:supported-content-types content-types
-                                                             :available-content-types (map stringify-ns-keyword (keys content))
-                                                             :header header-name})
-         :cljs (js/console.warn "No matching content-type available" {:supported-content-types content-types
-                                                                      :available-content-types (map stringify-ns-keyword (keys content))
-                                                                      :header header-name})))))
+  (when (seq content)
+    ;; TODO: For "*/*" content simply return the schema and `nil` content-type?
+    (or #_(when-some [any-type (:*/* content)]
+          [(:schema any-type) nil])
+        (when-some [content-type (some #(when (contains? content (keyword %)) %)
+                                       content-types)]
+          [(get-in content [(keyword content-type) :schema]) content-type])
+        (warn-on-no-matching-content-type content-types content header-name))))
 
 (defn- process-body [body components content-types]
   (when-let [[json-schema content-type] (get-matching-schema body content-types "Accept")]
