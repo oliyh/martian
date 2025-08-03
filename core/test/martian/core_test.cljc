@@ -65,7 +65,7 @@
                                                                                 :required true
                                                                                 :schema {:type "array"
                                                                                          :items {:$ref "#/definitions/User"}}}]}
-                                                           ;; operationId is intentionally missing from the get method
+                                                           ;; An `:operationId` is intentionally missing from the GET method.
                                                            :get {}}}
 
    :definitions {:Pet {:type "object"
@@ -189,7 +189,8 @@
             [:pet-search nil]
             [:order nil]
             [:create-orders nil]
-            [:create-users nil]]
+            [:create-users nil]
+            [:get-users nil]]
            (martian/explore m)))
 
     (is (= {:summary nil
