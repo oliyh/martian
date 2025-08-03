@@ -190,7 +190,7 @@
             [:order nil]
             [:create-orders nil]
             [:create-users nil]
-            [:get-users nil]]
+            #_[:get-users nil]]
            (martian/explore m)))
 
     (is (= {:summary nil

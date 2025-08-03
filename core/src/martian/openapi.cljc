@@ -134,48 +134,54 @@
             %)
          url-parts)))
 
-(defn produce-route-name [url-pattern method definition]
-  (->kebab-case-keyword
-    ;; TODO: These approaches may end up aliasing/conflicting with each other.
-    (or (:operationId definition)
-        (let [prepared-path (->> (tokenise-path url-pattern)
-                                 (remove keyword?)
-                                 (map #(str/replace % "/" ""))
-                                 (map #(str/replace % #"[^a-zA-Z0-9\-]" "-"))
-                                 (str/join "-"))]
-          (str (name method) "-" prepared-path)))))
+(defn produce-route-name
+  [url-pattern method definition gen-route-names?]
+  (if-some [operation-id (:operationId definition)]
+    (->kebab-case-keyword operation-id)
+    (when gen-route-names?
+      (let [prepared-path (->> (tokenise-path url-pattern)
+                               (remove keyword?)
+                               (map #(str/replace % "/" ""))
+                               (map #(str/replace % #"[^a-zA-Z0-9\-]" "-"))
+                               (str/join "-"))]
+        (->kebab-case-keyword (str (name method) "-" prepared-path))))))
 
 (defn openapi->handlers
-  [openapi-json {:keys [encodes decodes] :as _content-types}]
-  (let [openapi-spec (keywordize-keys openapi-json)
-        resolve-ref (schema/resolve-ref-fn openapi-spec)
-        components (:components openapi-spec)]
-    (for [[url-pattern methods] (:paths openapi-spec)
-          :let [common-parameters (map resolve-ref (:parameters methods))]
-          [method definition] (dissoc methods :parameters)
-          ;; NB: We don't care about any associated HTTP OPTIONS calls.
-          :when (not= :options method)
-          :let [parameters (->> (map resolve-ref (:parameters definition))
-                                (concat common-parameters)
-                                (group-by (comp keyword :in)))
-                body       (process-body (:requestBody definition) components encodes)
-                responses  (-> (:responses definition)
-                               (update-vals resolve-ref)
-                               (process-responses components decodes))]]
-      (cond->
-        {:path-parts         (vec (tokenise-path url-pattern))
-         :method             method
-         :path-schema        (process-parameters (:path parameters) components)
-         :query-schema       (process-parameters (:query parameters) components)
-         :body-schema        (:schema body)
-         :form-schema        (process-parameters (:form parameters) components)
-         :headers-schema     (process-parameters (:header parameters) components)
-         :response-schemas   (vec (keep #(dissoc % :content-type) responses))
-         :produces           (vec (keep :content-type responses))
-         :consumes           (when-let [content-type (:content-type body)]
-                               [content-type])
-         :summary            (:summary definition)
-         :description        (:description definition)
-         :openapi-definition definition
-         :route-name         (produce-route-name url-pattern method definition)}
-        (:deprecated definition) (assoc :deprecated? true)))))
+  ([openapi-json content-types]
+   (openapi->handlers openapi-json content-types false))
+  ([openapi-json {:keys [encodes decodes] :as _content-types} gen-route-names?]
+   (let [openapi-spec (keywordize-keys openapi-json)
+         resolve-ref (schema/resolve-ref-fn openapi-spec)
+         components (:components openapi-spec)]
+     (for [[url-pattern methods] (:paths openapi-spec)
+           :let [common-parameters (map resolve-ref (:parameters methods))]
+           [method definition] (dissoc methods :parameters)
+           :let [route-name (produce-route-name url-pattern method definition gen-route-names?)]
+           ;; NB: We only care about things which have a route name
+           ;;     and which aren't the associated HTTP OPTIONS call.
+           :when (and (some? route-name)
+                      (not= :options method))
+           :let [parameters (->> (map resolve-ref (:parameters definition))
+                                 (concat common-parameters)
+                                 (group-by (comp keyword :in)))
+                 body       (process-body (:requestBody definition) components encodes)
+                 responses  (-> (:responses definition)
+                                (update-vals resolve-ref)
+                                (process-responses components decodes))]]
+       (cond->
+         {:path-parts         (vec (tokenise-path url-pattern))
+          :method             method
+          :path-schema        (process-parameters (:path parameters) components)
+          :query-schema       (process-parameters (:query parameters) components)
+          :body-schema        (:schema body)
+          :form-schema        (process-parameters (:form parameters) components)
+          :headers-schema     (process-parameters (:header parameters) components)
+          :response-schemas   (vec (keep #(dissoc % :content-type) responses))
+          :produces           (vec (keep :content-type responses))
+          :consumes           (when-let [content-type (:content-type body)]
+                                [content-type])
+          :summary            (:summary definition)
+          :description        (:description definition)
+          :openapi-definition definition
+          :route-name         route-name}
+         (:deprecated definition) (assoc :deprecated? true))))))
