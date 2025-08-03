@@ -1,10 +1,10 @@
 (ns martian.openapi-test
-  (:require [martian.test-helpers #?@(:clj [:refer [json-resource yaml-resource]]
+  (:require [clojure.test :refer [deftest is testing]]
+            [martian.openapi :refer [openapi->handlers]]
+            [martian.test-helpers #?@(:clj  [:refer [json-resource yaml-resource]]
                                       :cljs [:refer-macros [json-resource yaml-resource]])]
             [schema-tools.core :as st]
-            [clojure.test :refer [deftest is testing]]
-            [schema.core :as s]
-            [martian.openapi :refer [openapi->handlers]]))
+            [schema.core :as s]))
 
 (def openapi-json
   (json-resource "openapi.json"))
@@ -102,8 +102,8 @@
 (deftest jira-openapi-v3-test
   (is (= 410
          (-> jira-openapi-v3-json
-             (openapi->handlers {:encodes ["json"]
-                                 :decodes ["json"]})
+             (openapi->handlers {:encodes ["application/json"]
+                                 :decodes ["application/json"]})
              count))))
 
 (deftest reffed-params-test
