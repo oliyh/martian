@@ -39,34 +39,34 @@
     {:status (s/eq status-code)
      :body (schema/make-schema ref-lookup (assoc (:schema response) :required true))}))
 
-(defn- ->handler
-  [swagger-spec path-parameters url-pattern method swagger-definition]
-  (when-let [route-name (produce-route-name url-pattern method swagger-definition)]
-    (let [path-parts (tokenise-path url-pattern)
-          ref-lookup (select-keys swagger-spec [:definitions :parameters])
-          parameters (concat path-parameters (:parameters swagger-definition))]
-      {:path (str/join path-parts)
-       :path-parts path-parts
-       :method method
-       :path-schema (path-schema ref-lookup parameters)
-       :query-schema (query-schema ref-lookup parameters)
-       :body-schema (body-schema ref-lookup parameters)
-       :form-schema (form-schema ref-lookup parameters)
-       :headers-schema (headers-schema ref-lookup parameters)
-       :response-schemas (response-schemas ref-lookup (:responses swagger-definition))
-       :produces (some :produces [swagger-definition swagger-spec])
-       :consumes (some :consumes [swagger-definition swagger-spec])
-       :summary (:summary swagger-definition)
-       :swagger-definition swagger-definition
-       ;; todo path constraints - required?
-       ;; :path-constraints {:id "(\\d+)"},
-       ;; {:in "path", :name "id", :description "", :required true, :type "string", :format "uuid"
-       :route-name route-name})))
-
-(defn swagger->handlers [swagger-json]
-  (let [swagger-spec (keywordize-keys swagger-json)]
-    (for [[url-pattern swagger-handlers] (:paths swagger-spec)
-          [method swagger-definition] swagger-handlers
-          :let [handler (->handler swagger-spec (:parameters swagger-handlers) url-pattern method swagger-definition)]
-          :when (some? handler)]
-      handler)))
+(defn swagger->handlers
+  ([swagger-json]
+   (swagger->handlers swagger-json false))
+  ([swagger-json gen-route-names?]
+   (let [swagger-spec (keywordize-keys swagger-json)]
+     (for [[url-pattern swagger-handlers] (:paths swagger-spec)
+           :let [common-parameters (:parameters swagger-handlers)]
+           [method definition] (dissoc swagger-handlers :parameters)
+           :let [route-name (produce-route-name url-pattern method definition gen-route-names?)]
+           ;; NB: We only care about things which have a route name.
+           :when (some? route-name)
+           :let [path-parts (tokenise-path url-pattern)
+                 ref-lookup (select-keys swagger-spec [:definitions :parameters])
+                 parameters (concat common-parameters (:parameters definition))]]
+       {:path               (str/join path-parts)
+        :path-parts         path-parts
+        ;; TODO: Also parse all path constraints — required?
+        ;; :path-constraints {:id "(\\d+)"},
+        ;; {:in "path", :name "id", :description "", :required true, :type "string", :format "uuid" ...}
+        :method             method
+        :path-schema        (path-schema ref-lookup parameters)
+        :query-schema       (query-schema ref-lookup parameters)
+        :body-schema        (body-schema ref-lookup parameters)
+        :form-schema        (form-schema ref-lookup parameters)
+        :headers-schema     (headers-schema ref-lookup parameters)
+        :response-schemas   (response-schemas ref-lookup (:responses definition))
+        :produces           (some :produces [definition swagger-spec])
+        :consumes           (some :consumes [definition swagger-spec])
+        :summary            (:summary definition)
+        :swagger-definition definition
+        :route-name         route-name}))))
