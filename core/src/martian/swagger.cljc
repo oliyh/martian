@@ -41,13 +41,13 @@
 
 (defn swagger->handlers
   ([swagger-json]
-   (swagger->handlers swagger-json false))
-  ([swagger-json gen-route-names?]
+   (swagger->handlers swagger-json nil))
+  ([swagger-json route-name-sources]
    (let [swagger-spec (keywordize-keys swagger-json)]
      (for [[url-pattern swagger-handlers] (:paths swagger-spec)
            :let [common-parameters (:parameters swagger-handlers)]
            [method definition] (dissoc swagger-handlers :parameters)
-           :let [route-name (produce-route-name url-pattern method definition gen-route-names?)]
+           :let [route-name (produce-route-name route-name-sources url-pattern method definition)]
            ;; NB: We only care about things which have a route name.
            :when (some? route-name)
            :let [path-parts (tokenise-path url-pattern)

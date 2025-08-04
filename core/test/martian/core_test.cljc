@@ -203,10 +203,10 @@
             :returns {200 [{:id s/Int, :name s/Str}]}}
            (martian/explore m :all-pets))))
 
-  (testing "enabling route names generation option"
+  (testing "route names sources option"
     (let [m (martian/bootstrap-swagger "https://api.org"
                                        swagger-definition
-                                       {:gen-route-names? true})]
+                                       {:route-name-sources [:operationId :method+path]})]
       (is (= [[:load-pet "Loads a pet by id"]
               [:all-pets nil]
               [:create-pet nil]
@@ -215,6 +215,21 @@
               [:order nil]
               [:create-orders nil]
               [:create-users nil]
+              [:get-users nil]]
+             (martian/explore m))))
+
+    (let [m (martian/bootstrap-swagger "https://api.org"
+                                       swagger-definition
+                                       {:route-name-sources [:method+path]})]
+      ;; Beware of possible collisions!
+      (is (= [[:get-pet "Loads a pet by id"]
+              [:get-pets nil]
+              [:post-pets nil]
+              [:put-pets nil]
+              [:get-list nil]
+              [:get-user-order nil]
+              [:post-orders nil]
+              [:post-users nil]
               [:get-users nil]]
              (martian/explore m))))))
 
