@@ -53,11 +53,9 @@
            :let [path-parts (tokenise-path url-pattern)
                  ref-lookup (select-keys swagger-spec [:definitions :parameters])
                  parameters (concat common-parameters (:parameters definition))]]
-       {:path               (str/join path-parts)
+       {;; Common
+        :route-name         route-name
         :path-parts         path-parts
-        ;; TODO: Also parse all path constraints — required?
-        ;; :path-constraints {:id "(\\d+)"},
-        ;; {:in "path", :name "id", :description "", :required true, :type "string", :format "uuid" ...}
         :method             method
         :path-schema        (path-schema ref-lookup parameters)
         :query-schema       (query-schema ref-lookup parameters)
@@ -68,5 +66,10 @@
         :produces           (some :produces [definition swagger-spec])
         :consumes           (some :consumes [definition swagger-spec])
         :summary            (:summary definition)
-        :swagger-definition definition
-        :route-name         route-name}))))
+
+        ;; Swagger-specific
+        :path               (str/join path-parts)
+        ;; TODO: Also parse all path constraints — required?
+        ;; :path-constraints {:id "(\\d+)"},
+        ;; {:in "path", :name "id", :description "", :required true, :type "string", :format "uuid" ...}
+        :swagger-definition definition}))))

@@ -36,7 +36,12 @@
             ::consumes
             ::summary
 
-            ;; only for swagger, information only
+            ;; for OpenAPI, information only
+            ::openapi-definition
+            ::description
+            ::deprecated?
+
+            ;; for Swagger, information only
             ::swagger-definition
             ::path]))
 

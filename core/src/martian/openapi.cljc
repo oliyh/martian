@@ -127,10 +127,10 @@
 (defn tokenise-path [url-pattern]
   (let [sanitised (sanitise-url url-pattern)
         url-parts (map first (re-seq #"([^{}]+|\{.+?\})" sanitised))]
-    (map #(if-let [param-name (second (re-matches #"^\{(.*)\}" %))]
-            (keyword param-name)
-            %)
-         url-parts)))
+    (mapv #(if-let [param-name (second (re-matches #"^\{(.*)\}" %))]
+             (keyword param-name)
+             %)
+          url-parts)))
 
 (defn- generate-route-name
   [url-pattern method]
@@ -173,7 +173,9 @@
                                 (update-vals resolve-ref)
                                 (process-responses components decodes))]]
        (cond->
-         {:path-parts         (vec (tokenise-path url-pattern))
+         {;; Common
+          :route-name         route-name
+          :path-parts         (tokenise-path url-pattern)
           :method             method
           :path-schema        (process-parameters (:path parameters) components)
           :query-schema       (process-parameters (:query parameters) components)
@@ -185,7 +187,8 @@
           :consumes           (when-let [content-type (:content-type body)]
                                 [content-type])
           :summary            (:summary definition)
+
+          ;; OpenAPI-specific
           :description        (:description definition)
-          :openapi-definition definition
-          :route-name         route-name}
+          :openapi-definition definition}
          (:deprecated definition) (assoc :deprecated? true))))))
