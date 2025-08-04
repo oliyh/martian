@@ -132,35 +132,43 @@
              %)
           url-parts)))
 
-(defn- generate-route-name
+(defn generate-route-name
   [url-pattern method]
   (->> (tokenise-path url-pattern)
-       (remove keyword?)
-       (map #(str/replace % "/" ""))
-       (map #(str/replace % #"[^a-zA-Z0-9\-]" "-"))
+       (partition-all 2)
+       (map (fn [[part param]]
+              (cond-> (-> part
+                          (str/replace "/" "")
+                          (str/replace #"[^a-zA-Z0-9\-]" "-"))
+                      param (str/replace #"s$" ""))))
        (cons (name method))
        (str/join "-")))
 
 (defn produce-route-name
-  [url-pattern method definition gen-route-names?]
-  (some-> (or (:operationId definition)
-              (when gen-route-names?
-                (generate-route-name url-pattern method))
-              (log/warn "A definition without the \"operationId\""
-                        {:url-pattern url-pattern :method method}))
-          (->kebab-case-keyword)))
+  [route-name-sources url-pattern method definition]
+  (loop [sources (or route-name-sources [:operationId])]
+    (let [[source & rest] sources
+          route-name (cond
+                       (= :operationId source) (:operationId definition)
+                       (= :method+path source) (generate-route-name url-pattern method)
+                       (fn? source) (source url-pattern method definition))]
+      (if (some? route-name)
+        (->kebab-case-keyword route-name)
+        (if (empty? rest)
+          (log/warn "No route name, ignoring endpoint" {:url-pattern url-pattern :method method})
+          (recur rest))))))
 
 (defn openapi->handlers
   ([openapi-json content-types]
-   (openapi->handlers openapi-json content-types false))
-  ([openapi-json {:keys [encodes decodes] :as _content-types} gen-route-names?]
+   (openapi->handlers openapi-json content-types nil))
+  ([openapi-json {:keys [encodes decodes] :as _content-types} route-name-sources]
    (let [openapi-spec (keywordize-keys openapi-json)
          resolve-ref (schema/resolve-ref-fn openapi-spec)
          components (:components openapi-spec)]
      (for [[url-pattern methods] (:paths openapi-spec)
            :let [common-parameters (map resolve-ref (:parameters methods))]
            [method definition] (dissoc methods :parameters)
-           :let [route-name (produce-route-name url-pattern method definition gen-route-names?)]
+           :let [route-name (produce-route-name route-name-sources url-pattern method definition)]
            ;; NB: We only care about things which have a route name
            ;;     and which aren't the associated HTTP OPTIONS call.
            :when (and (some? route-name)
