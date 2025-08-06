@@ -105,9 +105,7 @@
   ([martian route-name params]
    (let [{:keys [handlers interceptors opts] :as martian} (resolve-instance martian)]
      (when-let [handler (find-handler handlers route-name)]
-       (let [ctx (tc/enqueue* {} (-> (or interceptors default-interceptors)
-                                     (vec)
-                                     (conj interceptors/request-only-handler)))]
+       (let [ctx (tc/enqueue* {} (conj interceptors interceptors/request-only-handler))]
          (:request (tc/execute
                     (assoc ctx
                            :url-for (partial url-for martian)
@@ -123,7 +121,7 @@
   ([martian route-name params]
    (let [{:keys [handlers interceptors opts] :as martian} (resolve-instance martian)]
      (when-let [handler (find-handler handlers route-name)]
-       (let [ctx (tc/enqueue* {} (or interceptors default-interceptors))]
+       (let [ctx (tc/enqueue* {} interceptors)]
          (:response (tc/execute
                      (assoc ctx
                             :url-for (partial url-for martian)
@@ -188,7 +186,7 @@
                                   validate-handlers? (validate-all-handlers!))]
     (->Martian api-root
                enriched-handlers
-               (or interceptors default-interceptors)
+               (vec (or interceptors default-interceptors))
                (dissoc opts :interceptors))))
 
 (spec/fdef build-instance
