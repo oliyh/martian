@@ -29,9 +29,6 @@
   "The default coercion matcher used by Martian for parameters coercion."
   schema/default-coercion-matcher)
 
-(def ^:private parameter-schemas
-  [:path-schema :query-schema :body-schema :form-schema :headers-schema])
-
 (defn- resolve-instance [m]
   (cond
     (map? m) m
@@ -130,6 +127,21 @@
                             :params params
                             :opts opts))))))))
 
+(def ^:private parameter-schemas
+  [:path-schema :query-schema :body-schema :form-schema :headers-schema])
+
+(defn- collect-parameter-aliases [handler]
+  (reduce (fn [aliases param-key]
+            (assoc aliases param-key (parameter-aliases (get handler param-key))))
+          {}
+          parameter-schemas))
+
+(defn- collect-parameters [{:keys [parameter-aliases] :as handler}]
+  (reduce (fn [params param-key]
+            (merge params (alias-schema (get parameter-aliases param-key) (get handler param-key))))
+          {}
+          parameter-schemas))
+
 (declare explore)
 
 (defn- navize-routes
@@ -151,14 +163,9 @@
                       (:handlers (resolve-instance martian)))]
      (navize-routes martian routes)))
   ([martian route-name]
-   (when-let [{:keys [parameter-aliases summary deprecated?] :as handler} (handler-for martian route-name)]
+   (when-let [{:keys [summary deprecated?] :as handler} (handler-for martian route-name)]
      (-> {:summary summary
-          :parameters (reduce (fn [params parameter-key]
-                                (merge
-                                  params
-                                  (alias-schema (get parameter-aliases parameter-key) (get handler parameter-key))))
-                              {}
-                              parameter-schemas)
+          :parameters (collect-parameters handler)
           :returns (->> (:response-schemas handler)
                         (map (juxt (comp :v :status) :body))
                         (into {}))}
@@ -171,12 +178,7 @@
 
 (defn- enrich-handler [handler]
   (try
-    (assoc handler
-      :parameter-aliases
-      (reduce (fn [aliases parameter-key]
-                (assoc aliases parameter-key (parameter-aliases (get handler parameter-key))))
-              {}
-              parameter-schemas))
+    (assoc handler :parameter-aliases (collect-parameter-aliases handler))
     (catch #?(:clj Exception :cljs js/Error) ex
       (assoc handler :exception ex))))
 
