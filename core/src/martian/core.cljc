@@ -12,21 +12,10 @@
             [martian.swagger :refer [swagger->handlers]]
             [tripod.context :as tc]))
 
-#?(:bb
-   ;; reflection issue in babashka -- TODO, submit patch upstream?
-   (do (defn- exception->ex-info [^Throwable exception execution-id interceptor stage]
-         (ex-info (str "Interceptor Exception: " #?(:clj  (.getMessage exception)
-                                                    :cljs (.-message exception)))
-                  (merge {:execution-id execution-id
-                          :stage        stage
-                          :interceptor  (:name interceptor)
-                          :type         (type exception)
-                          :exception    exception}
-                         (ex-data exception))
-                  exception))
-       (alter-var-root #'tc/exception->ex-info (constantly exception->ex-info))))
+(defrecord Martian [api-root handlers interceptors opts])
 
 (def default-interceptors
+  "The vector with default interceptors used to build a Martian instance."
   [interceptors/keywordize-params
    interceptors/set-method
    interceptors/set-url
@@ -36,26 +25,9 @@
    interceptors/set-header-params
    interceptors/enqueue-route-specific-interceptors])
 
-(def default-coercion-matcher schema/default-coercion-matcher)
-
-(def ^:private parameter-schemas [:path-schema :query-schema :body-schema :form-schema :headers-schema])
-
-(defn- enrich-handler [handler]
-  (-> handler
-      (assoc :parameter-aliases
-             (reduce (fn [aliases parameter-key]
-                       (assoc aliases parameter-key (parameter-aliases (get handler parameter-key))))
-                     {}
-                     parameter-schemas))))
-
-(defn- concise->handlers [concise-handlers global-produces global-consumes]
-  (map (comp
-        enrich-handler
-        (fn [handler]
-          (-> handler
-              (update :produces #(or % global-produces))
-              (update :consumes #(or % global-consumes)))))
-       concise-handlers))
+(def default-coercion-matcher
+  "The default coercion matcher used by Martian for parameters coercion."
+  schema/default-coercion-matcher)
 
 (defn- resolve-instance [m]
   (cond
@@ -64,96 +36,160 @@
     (fn? m) (m)
     :else m))
 
-(defn find-handler [handlers route-name]
-  (or (first (filter #(= (keyword route-name) (:route-name %)) handlers))
-      (throw (ex-info (str "Could not find route " route-name)
-                      {:handlers   handlers
-                       :route-name route-name}))))
+(defn- validate-handler! [{:keys [exception route-name] :as handler}]
+  (when (some? exception)
+    (throw (ex-info (str "Invalid handler for route " route-name)
+                    {:handler handler}
+                    exception)))
+  handler)
 
-(defn handler-for [m route-name]
-  (find-handler (:handlers (resolve-instance m)) route-name))
+(defn- matching-handler? [route-name handler]
+  (= (keyword route-name) (:route-name handler)))
+
+(defn- find-handler [handlers route-name]
+  (or (some-> (some #(when (matching-handler? route-name %) %) handlers)
+              ;; Validate the found handler before performing any actions.
+              (validate-handler!))
+      (throw (ex-info (str "Could not find route " route-name)
+                      {:route-name route-name
+                       :handlers handlers}))))
+
+(defn handler-for
+  "Given a Martian instance, returns a handler for the given `route-name`."
+  [martian route-name]
+  (find-handler (:handlers (resolve-instance martian)) route-name))
 
 (defn update-handler
-  "Update a handler in the martian record with the provided route-name
-   e.g. add route-specific interceptors:
-   (update-handler m :load-pet assoc :interceptors [an-interceptor])"
-  [m route-name update-fn & update-args]
-  (update (resolve-instance m)
+  "Given a Martian instance, updates a handler with the provided `route-name`
+   using the provided `update-fn` and `update-args`, if any.
+
+   For example, route-specific interceptors can be added like that:
+   ```
+   (update-handler m :load-pet assoc :interceptors [an-interceptor])
+   ```"
+  [martian route-name update-fn & update-args]
+  (update (resolve-instance martian)
           :handlers #(mapv (fn [handler]
-                             (if (= (keyword route-name) (:route-name handler))
+                             (if (matching-handler? route-name handler)
                                (apply update-fn handler update-args)
                                handler))
                            %)))
 
-(defrecord Martian [api-root handlers interceptors opts])
-
 (defn url-for
+  "Given a Martian instance, builds a request URL for the given `route-name`
+   using the provided `params` and options, if any.
+
+   Supported options:
+   - `:include-query?` — if true, will include params in the URL query string;
+                         false by default."
   ([martian route-name] (url-for martian route-name {}))
   ([martian route-name params] (url-for martian route-name params {}))
-  ([martian route-name params opts]
-   (let [{:keys [api-root handlers]} (resolve-instance martian)]
+  ([martian route-name params {:keys [include-query?] :as _options}]
+   (let [{:keys [api-root handlers opts]} (resolve-instance martian)]
      (when-let [handler (find-handler handlers route-name)]
-       (let [path-params (interceptors/coerce-data handler :path-schema (keywordize-keys params) (:opts martian))
-             query-params (when (:include-query? opts)
-                            (interceptors/coerce-data handler :query-schema (keywordize-keys params) (:opts martian)))]
+       (let [path-params (interceptors/coerce-data handler :path-schema (keywordize-keys params) opts)
+             query-params (when include-query?
+                            (interceptors/coerce-data handler :query-schema (keywordize-keys params) opts))]
          (str api-root (string/join (map #(get path-params % %) (:path-parts handler)))
               (if query-params
                 (str "?" (map->query-string query-params))
                 "")))))))
 
 (defn request-for
+  "Given a Martian instance, builds an HTTP request for the given `route-name`
+   using the provided `params`, if any."
   ([martian route-name] (request-for martian route-name {}))
   ([martian route-name params]
-   (let [{:keys [handlers interceptors] :as martian} (resolve-instance martian)]
+   (let [{:keys [handlers interceptors opts] :as martian} (resolve-instance martian)]
      (when-let [handler (find-handler handlers route-name)]
-       (let [ctx (tc/enqueue* {} (-> (or interceptors default-interceptors) vec (conj interceptors/request-only-handler)))]
+       (let [ctx (tc/enqueue* {} (conj interceptors interceptors/request-only-handler))]
          (:request (tc/execute
                     (assoc ctx
                            :url-for (partial url-for martian)
                            :request (or (::request params) {})
                            :handler handler
                            :params params
-                           :opts (:opts martian)))))))))
+                           :opts opts))))))))
 
 (defn response-for
+  "Given a Martian instance, makes an HTTP request for the given `route-name`
+   using the provided `params`, if any, and returns the HTTP response."
   ([martian route-name] (response-for martian route-name {}))
   ([martian route-name params]
-   (let [{:keys [handlers interceptors] :as martian} (resolve-instance martian)]
+   (let [{:keys [handlers interceptors opts] :as martian} (resolve-instance martian)]
      (when-let [handler (find-handler handlers route-name)]
-       (let [ctx (tc/enqueue* {} (or interceptors default-interceptors))]
+       (let [ctx (tc/enqueue* {} interceptors)]
          (:response (tc/execute
                      (assoc ctx
                             :url-for (partial url-for martian)
                             :request (or (::request params) {})
                             :handler handler
                             :params params
-                            :opts (:opts martian)))))))))
+                            :opts opts))))))))
+
+(def ^:private parameter-schemas
+  [:path-schema :query-schema :body-schema :form-schema :headers-schema])
+
+(defn- collect-parameter-aliases [handler]
+  (reduce (fn [aliases param-key]
+            (assoc aliases param-key (parameter-aliases (get handler param-key))))
+          {}
+          parameter-schemas))
+
+(defn- collect-parameters [{:keys [parameter-aliases] :as handler}]
+  (reduce (fn [params param-key]
+            (merge params (alias-schema (get parameter-aliases param-key) (get handler param-key))))
+          {}
+          parameter-schemas))
 
 (declare explore)
+
 (defn- navize-routes
   [martian routes]
   (with-meta
     routes
-    {`clojure.core.protocols/nav
-     (fn [_coll _k [route-name _route-description]]
-       (explore martian route-name))}))
+    {`clojure.core.protocols/nav (fn [_coll _k [route-name _summary]]
+                                   (explore martian route-name))}))
 
 (defn explore
-  ([martian] (navize-routes martian (mapv (juxt :route-name :summary) (:handlers (resolve-instance martian)))))
+  "Explores the given Martian instance or a particular handler with the given
+   `route-name`, if any.
+
+   Returns a map containing details such as:
+   - `:route-name` and `:summary` — for the Martian instance, or
+   - `:summary`, `:parameters`, and `:returns` — for the handler."
+  ([martian]
+   (let [routes (mapv (juxt :route-name :summary)
+                      (:handlers (resolve-instance martian)))]
+     (navize-routes martian routes)))
   ([martian route-name]
-   (when-let [{:keys [parameter-aliases summary deprecated?] :as handler} (find-handler (:handlers (resolve-instance martian)) route-name)]
+   (when-let [{:keys [summary deprecated?] :as handler} (handler-for martian route-name)]
      (-> {:summary summary
-          :parameters (reduce (fn [params parameter-key]
-                                (merge params (alias-schema (get parameter-aliases parameter-key) (get handler parameter-key))))
-                              {}
-                              parameter-schemas)
+          :parameters (collect-parameters handler)
           :returns (->> (:response-schemas handler)
                         (map (juxt (comp :v :status) :body))
                         (into {}))}
          (cond-> deprecated? (assoc :deprecated? true))))))
 
-(defn- build-instance [api-root handlers {:keys [interceptors] :as opts}]
-  (->Martian api-root handlers (or interceptors default-interceptors) (dissoc opts :interceptors)))
+(defn- validate-all-handlers! [handlers]
+  (when-let [invalid-handlers (not-empty (filter :exception handlers))]
+    (throw (ex-info "Invalid handlers" {:handlers invalid-handlers})))
+  handlers)
+
+(defn- enrich-handler [handler]
+  (try
+    (assoc handler :parameter-aliases (collect-parameter-aliases handler))
+    (catch #?(:clj Exception :cljs js/Error) ex
+      (assoc handler :exception ex))))
+
+(defn- build-instance
+  [api-root handlers {:keys [interceptors validate-handlers?] :as opts}]
+  (let [enriched-handlers (cond-> (mapv enrich-handler handlers)
+                                  validate-handlers? (validate-all-handlers!))]
+    (->Martian api-root
+               enriched-handlers
+               (vec (or interceptors default-interceptors))
+               (dissoc opts :interceptors))))
 
 (spec/fdef build-instance
   :args (spec/cat :api-root ::mspec/api-root
@@ -161,18 +197,63 @@
                   :opts ::mspec/opts))
 
 (defn bootstrap-openapi
-  "Creates a martian instance from an OpenAPI/Swagger spec based on the schema provided"
-  [api-root json & [opts]]
-  (let [{:keys [interceptors] :or {interceptors default-interceptors} :as opts} (keywordize-keys opts)]
-    (build-instance api-root
-                    (map enrich-handler (if (openapi-schema? json)
-                                          (openapi->handlers json (interceptors/supported-content-types interceptors))
-                                          (swagger->handlers json)))
-                    opts)))
+  "Creates a Martian instance from an OpenAPI/Swagger spec based on the `json`
+   schema provided.
 
-(def bootstrap-swagger bootstrap-openapi)
+   Supported options:
+   - `:interceptors`       — an ordered coll of Tripod interceptors to be used
+                             as a global interceptor chain by Martian instance;
+                             defaults to the `default-interceptors`;
+   - `:validate-handlers?` — if true, will enable early validation of handlers,
+                             failing fast in case of errors; false by default;
+   - `:coercion-matcher`   — a unary fn of schema used for parameters coercion;
+                             defaults to the `default-coercion-matcher`;
+   - `:use-defaults?`      — if true, will read 'default' directives from the
+                             OpenAPI/Swagger spec; false by default."
+  [api-root json & [opts]]
+  (let [{:keys [interceptors] :or {interceptors default-interceptors} :as opts} (keywordize-keys opts)
+        handlers (if (openapi-schema? json)
+                   (openapi->handlers json (interceptors/supported-content-types interceptors))
+                   (swagger->handlers json))]
+    (build-instance api-root handlers opts)))
+
+(def
+  ^{:doc "Creates a Martian instance from an OpenAPI/Swagger spec based on the `json`
+   schema provided.
+
+   Supported options:
+   - `:interceptors`       — an ordered coll of Tripod interceptors to be used
+                             as a global interceptor chain by Martian instance;
+                             defaults to the `default-interceptors`;
+   - `:validate-handlers?` — if true, will enable early validation of handlers,
+                             failing fast in case of errors; false by default;
+   - `:coercion-matcher`   — a unary fn of schema used for parameters coercion;
+                             defaults to the `default-coercion-matcher`;
+   - `:use-defaults?`      — if true, will read 'default' directives from the
+                             OpenAPI/Swagger spec; false by default."
+    :arglists '([api-root json & [opts]])}
+  bootstrap-swagger
+  bootstrap-openapi)
 
 (defn bootstrap
-  "Creates a martian instance from a martian description"
+  "Creates a Martian instance from the given `concise-handlers` description.
+
+   Supported options:
+   - `:interceptors`       — an ordered coll of Tripod interceptors to be used
+                             as a global interceptor chain by Martian instance;
+                             defaults to the `default-interceptors`;
+   - `:validate-handlers?` — if true, will enable early validation of handlers,
+                             failing fast in case of errors; false by default;
+   - `:coercion-matcher`   — a unary fn of schema used for parameters coercion;
+                             defaults to the `default-coercion-matcher`;
+   - `:produces`           — a coll of media (content) types used as a global
+                             default value for the handler's `:produces` key;
+   - `:consumes`           — a coll of media (content) types used as a global
+                             default value for the handler's `:consumes` key."
   [api-root concise-handlers & [{:keys [produces consumes] :as opts}]]
-  (build-instance api-root (concise->handlers concise-handlers produces consumes) opts))
+  (let [handlers (map (fn [handler]
+                        (-> handler
+                            (update :produces #(or % produces))
+                            (update :consumes #(or % consumes))))
+                      concise-handlers)]
+    (build-instance api-root handlers opts)))

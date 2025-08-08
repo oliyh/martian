@@ -42,10 +42,7 @@
      :body (schema/make-schema ref-lookup (assoc (:schema response) :required true))}))
 
 (defn- ->handler
-  [swagger-map
-   path-item-parameters
-   url-pattern
-   [method swagger-definition]]
+  [swagger-map path-item-parameters url-pattern method swagger-definition]
   (when-let [route-name (some-> (:operationId swagger-definition) ->kebab-case-keyword)]
     (let [ref-lookup (select-keys swagger-map [:definitions :parameters])
           path-parts (tokenise-path url-pattern)
@@ -71,12 +68,8 @@
 
 (defn swagger->handlers [swagger-json]
   (let [swagger-spec (keywordize-keys swagger-json)]
-    (reduce-kv
-     (fn [handlers url-pattern swagger-handlers]
-       (into handlers (keep (partial ->handler
-                                     swagger-spec
-                                     (:parameters swagger-handlers)
-                                     url-pattern)
-                            swagger-handlers)))
-     []
-     (:paths swagger-spec))))
+    (for [[url-pattern swagger-handlers] (:paths swagger-spec)
+          [method swagger-definition] swagger-handlers
+          :let [handler (->handler swagger-spec (:parameters swagger-handlers) url-pattern method swagger-definition)]
+          :when (some? handler)]
+      handler)))
