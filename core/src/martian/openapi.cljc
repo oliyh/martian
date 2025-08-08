@@ -2,6 +2,7 @@
   (:require [camel-snake-kebab.core :refer [->kebab-case-keyword]]
             [clojure.string :as str]
             [clojure.walk :refer [keywordize-keys]]
+            [inflections.core :refer [parameterize singular]]
             [lambdaisland.uri :as uri]
             [martian.log :as log]
             [martian.schema :as schema]
@@ -134,13 +135,14 @@
 
 (defn generate-route-name
   [url-pattern method]
+  ;; NB: This is a simple algo based on the naming conventions:
+  ;;     - GET "/users/{uid}/orders/{oid}" -> :get-user-order
+  ;;     - GET "/users/{uid}/orders/"      -> :get-user-orders
   (->> (tokenise-path url-pattern)
        (partition-all 2)
        (map (fn [[part param]]
-              (cond-> (-> part
-                          (str/replace "/" "")
-                          (str/replace #"[^a-zA-Z0-9\-]" "-"))
-                      param (str/replace #"s$" ""))))
+              (cond-> (parameterize (str/replace part "/" ""))
+                      param (singular))))
        (cons (name method))
        (str/join "-")))
 
