@@ -1,7 +1,7 @@
 (ns martian.swagger
   (:require [clojure.string :as str]
             [clojure.walk :refer [keywordize-keys]]
-            [martian.openapi :refer [produce-route-name tokenise-path]]
+            [martian.openapi :refer [produce-route-name tokenise-path unique-route-name?]]
             [martian.schema :as schema]
             [schema.core :as s]))
 
@@ -43,13 +43,15 @@
   ([swagger-json]
    (swagger->handlers swagger-json nil))
   ([swagger-json route-name-sources]
-   (let [swagger-spec (keywordize-keys swagger-json)]
+   (let [swagger-spec (keywordize-keys swagger-json)
+         route-names (atom #{})]
      (for [[url-pattern swagger-handlers] (:paths swagger-spec)
            :let [common-parameters (:parameters swagger-handlers)]
            [method definition] (dissoc swagger-handlers :parameters)
            :let [route-name (produce-route-name route-name-sources url-pattern method definition)]
-           ;; NB: We only care about things which have a route name.
-           :when (some? route-name)
+           ;; NB: We only care about routes that have a unique name.
+           :when (and (some? route-name)
+                      (unique-route-name? route-name route-names))
            :let [path-parts (tokenise-path url-pattern)
                  ref-lookup (select-keys swagger-spec [:definitions :parameters])
                  parameters (concat common-parameters (:parameters definition))]]

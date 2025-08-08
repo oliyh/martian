@@ -160,20 +160,28 @@
           (log/warn "No route name, ignoring endpoint" {:url-pattern url-pattern :method method})
           (recur rest))))))
 
+(defn unique-route-name?
+  [route-name route-names]
+  (if (contains? @route-names route-name)
+    (log/warn "Non-unique route name, ignoring endpoint" {:route-name route-name})
+    (do (swap! route-names conj route-name) true)))
+
 (defn openapi->handlers
   ([openapi-json content-types]
    (openapi->handlers openapi-json content-types nil))
   ([openapi-json {:keys [encodes decodes] :as _content-types} route-name-sources]
    (let [openapi-spec (keywordize-keys openapi-json)
          resolve-ref (schema/resolve-ref-fn openapi-spec)
-         components (:components openapi-spec)]
+         components (:components openapi-spec)
+         route-names (atom #{})]
      (for [[url-pattern methods] (:paths openapi-spec)
            :let [common-parameters (map resolve-ref (:parameters methods))]
            [method definition] (dissoc methods :parameters)
            :let [route-name (produce-route-name route-name-sources url-pattern method definition)]
-           ;; NB: We only care about things which have a route name
+           ;; NB: We only care about routes that have a unique name
            ;;     and which aren't the associated HTTP OPTIONS call.
            :when (and (some? route-name)
+                      (unique-route-name? route-name route-names)
                       (not= :options method))
            :let [parameters (->> (map resolve-ref (:parameters definition))
                                  (concat common-parameters)
