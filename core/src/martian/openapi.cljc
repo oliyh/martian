@@ -2,12 +2,30 @@
   (:require [camel-snake-kebab.core :refer [->kebab-case-keyword]]
             [clojure.string :as str]
             [clojure.walk :refer [keywordize-keys]]
-            [inflections.core :refer [parameterize singular]]
             [lambdaisland.uri :as uri]
             [martian.log :as log]
             [martian.schema :as schema]
             [martian.utils :as utils]
-            [schema.core :as s]))
+            [schema.core :as s]
+            #?@(:bb      []
+                :default [[inflections.core :refer [parameterize singular]]])))
+
+#?(:bb
+   (do
+     ;; NB: This is a temporary workaround for the bb incompatibility issue:
+     ;;     https://github.com/r0man/noencore/issues/9
+     (def ^:private sep "-")
+
+     (defn parameterize [s]
+       (some-> s
+               (str/replace #"(?i)[^a-z0-9]+" sep)
+               (str/replace #"\++" sep)
+               (str/replace (re-pattern (str sep "{2,}")) sep)
+               (str/replace (re-pattern (str "(?i)(^" sep ")|(" sep "$)")) "")
+               (str/lower-case)))
+
+     (defn singular [s]
+       (str/replace s #"s$" ""))))
 
 (defn openapi-schema? [json]
   (boolean (some #(get json %) [:openapi "openapi"])))
