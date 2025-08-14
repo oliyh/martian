@@ -9,7 +9,7 @@
   :dependencies [[camel-snake-kebab "0.4.3"]
                  [clj-commons/clj-yaml "1.0.29"]
                  [frankiesardo/tripod "0.2.0"]
-                 [inflections "0.14.2"]
+                 [inflections "0.15.0"]
                  [lambdaisland/uri "1.19.155"]
                  [org.clojure/tools.logging "1.3.0"]
                  [org.flatland/ordered "1.15.12"]
