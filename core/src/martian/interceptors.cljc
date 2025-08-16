@@ -89,7 +89,9 @@
 (def set-header-params
   {:name ::header-params
    :enter (fn [{:keys [params handler opts] :as ctx}]
-            (set-params ctx :headers (stringify-keys (coerce-data handler :headers-schema params opts))))})
+            (let [default-headers (some-> ctx :request :headers keywordize-keys)
+                  coerced-headers (coerce-data handler :headers-schema (merge default-headers params) opts)]
+              (set-params ctx :headers (stringify-keys coerced-headers))))})
 
 (def enqueue-route-specific-interceptors
   {:name ::enqueue-route-specific-interceptors
