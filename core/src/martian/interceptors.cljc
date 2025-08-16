@@ -187,17 +187,21 @@
                                   :response-schemas (:response-schemas handler)}))))
              ctx)}))
 
+(def prepare-content-types
+  (comp vec distinct #(into % ["text/plain" "application/octet-stream"])))
+
 (defn supported-content-types
-  "Return the full set of supported content-types as declared by any encoding/decoding interceptors,
-   preserving their original declaration order."
+  "Returns the full set of supported content-types used for parsing OpenAPI spec
+   as declared by any encoding/decoding interceptors, preserving their original
+   declaration order and appending the default ones."
   [interceptors]
   (-> (reduce (fn [acc interceptor]
                 (merge-with into acc (select-keys interceptor [:encodes :decodes])))
               {:encodes []
                :decodes []}
               interceptors)
-      (update :encodes distinct)
-      (update :decodes distinct)))
+      (update :encodes prepare-content-types)
+      (update :decodes prepare-content-types)))
 
 ;; borrowed from https://github.com/walmartlabs/lacinia-pedestal/blob/master/src/com/walmartlabs/lacinia/pedestal.clj#L40
 (defn inject
@@ -234,5 +238,4 @@
                        :new-interceptor new-interceptor
                        :relative-position relative-position
                        :interceptor-name interceptor-name})))
-
     final-result))
