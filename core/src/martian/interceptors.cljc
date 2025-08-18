@@ -6,6 +6,7 @@
             [martian.encoders :as encoders]
             [martian.encoding :as encoding]
             [martian.schema :as schema]
+            [martian.utils :as utils]
             [schema.core :as s]
             [tripod.context :as tc]))
 
@@ -89,7 +90,11 @@
 (def set-header-params
   {:name ::header-params
    :enter (fn [{:keys [params handler opts] :as ctx}]
-            (set-params ctx :headers (stringify-keys (coerce-data handler :headers-schema params opts))))})
+            (let [default-headers (some-> ctx :request :headers keywordize-keys)
+                  coerced-headers (coerce-data handler :headers-schema (merge default-headers params) opts)]
+              (-> ctx
+                  (set-params :headers coerced-headers)
+                  (utils/update-in* [:request :headers] stringify-keys))))})
 
 (def enqueue-route-specific-interceptors
   {:name ::enqueue-route-specific-interceptors

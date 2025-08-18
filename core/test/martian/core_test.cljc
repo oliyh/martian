@@ -290,13 +290,32 @@
                                   :enter (fn [ctx]
                                            (update-in ctx [:request :headers] merge {"auth-token" "1234-secret"}))}
         m (martian/bootstrap-swagger "https://api.org" swagger-definition
-                                     {:interceptors (concat [auth-headers-interceptor] martian/default-interceptors)})
-        request-for (partial martian/request-for m)]
+                                     {:interceptors (concat [auth-headers-interceptor] martian/default-interceptors)})]
 
     (is (= {:method :get
             :url "https://api.org/pets/123"
             :headers {"auth-token" "1234-secret"}}
-           (request-for :load-pet {:id 123})))))
+           (martian/request-for m :load-pet {:id 123})))))
+
+(deftest with-default-headers-test
+  (let [add-default-headers-interceptor {:name ::add-default-headers
+                                         :enter (fn [ctx]
+                                                  (update-in ctx [:request :headers]
+                                                             assoc :x-api-key "ABC123"))}
+        m (martian/bootstrap "https://defaultheaders.com"
+                             [{:route-name :get-item
+                               :produces ["application/json"]
+                               :consumes ["application/json"]
+                               :headers-schema {:x-api-key s/Str}
+                               :path-parts ["/api/" :id]
+                               :path-schema {:id s/Str}
+                               :method :get}]
+                             {:interceptors (concat [add-default-headers-interceptor] martian/default-interceptors)})]
+
+    (is (= {:method :get
+            :url "https://defaultheaders.com/api/123"
+            :headers {"x-api-key" "ABC123"}}
+           (martian/request-for m :get-item {:id "123"})))))
 
 (deftest any-body-test
   (let [m (martian/bootstrap "https://bodyblobs.com"
