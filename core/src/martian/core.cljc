@@ -102,7 +102,7 @@
   ([martian route-name params]
    (let [{:keys [handlers interceptors opts] :as martian} (resolve-instance martian)]
      (when-let [handler (find-handler handlers route-name)]
-       (let [ctx (tc/enqueue* {} (conj interceptors interceptors/request-only-handler))]
+       (let [ctx (tc/enqueue* {} (conj (vec interceptors) interceptors/request-only-handler))]
          (:request (tc/execute
                     (assoc ctx
                            :url-for (partial url-for martian)
