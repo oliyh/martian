@@ -268,31 +268,43 @@
 
       (is (= {:encodes #?(:bb   ["application/transit+json"
                                  "application/edn"
-                                 "application/json"]
+                                 "application/json"
+                                 "text/plain"
+                                 "application/octet-stream"]
                           :clj  ["application/transit+msgpack"
                                  "application/transit+json"
                                  "application/edn"
                                  "application/json"
-                                 "application/x-www-form-urlencoded"]
+                                 "application/x-www-form-urlencoded"
+                                 "text/plain"
+                                 "application/octet-stream"]
                           :cljs ["application/transit+json"
                                  "application/edn"
                                  "application/json"
-                                 "application/x-www-form-urlencoded"])
+                                 "application/x-www-form-urlencoded"
+                                 "text/plain"
+                                 "application/octet-stream"])
               :decodes #?(:bb   ["application/transit+json"
                                  "application/edn"
                                  "application/json"
-                                 "text/magical+json"]
+                                 "text/magical+json"
+                                 "text/plain"
+                                 "application/octet-stream"]
                           :clj  ["application/transit+msgpack"
                                  "application/transit+json"
                                  "application/edn"
                                  "application/json"
                                  "application/x-www-form-urlencoded"
-                                 "text/magical+json"]
+                                 "text/magical+json"
+                                 "text/plain"
+                                 "application/octet-stream"]
                           :cljs ["application/transit+json"
                                  "application/edn"
                                  "application/json"
                                  "application/x-www-form-urlencoded"
-                                 "text/magical+json"])}
+                                 "text/magical+json"
+                                 "text/plain"
+                                 "application/octet-stream"])}
              (i/supported-content-types [encode-request coerce-response]))))))
 
 (deftest validate-response-test

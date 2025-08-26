@@ -67,11 +67,15 @@
           (is (= {:encodes ["application/transit+json"
                             "application/edn"
                             "application/json"
-                            "application/x-www-form-urlencoded"]
+                            "application/x-www-form-urlencoded"
+                            "text/plain"
+                            "application/octet-stream"]
                   :decodes ["application/transit+json"
                             "application/edn"
                             "application/json"
-                            "application/x-www-form-urlencoded"]}
+                            "application/x-www-form-urlencoded"
+                            "text/plain"
+                            "application/octet-stream"]}
                  (i/supported-content-types (:interceptors m)))))
         (done))))
 

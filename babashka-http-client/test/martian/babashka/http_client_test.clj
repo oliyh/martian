@@ -306,22 +306,30 @@
       (is (= {:encodes ["application/transit+json"
                         "application/edn"
                         "application/json"
-                        "multipart/form-data"]
+                        "multipart/form-data"
+                        "text/plain"
+                        "application/octet-stream"]
               :decodes ["application/transit+json"
                         "application/edn"
-                        "application/json"]}
+                        "application/json"
+                        "text/plain"
+                        "application/octet-stream"]}
              (i/supported-content-types (:interceptors m))))
       (is (= {:encodes ["application/transit+msgpack"
                         "application/transit+json"
                         "application/edn"
                         "application/json"
                         "application/x-www-form-urlencoded"
-                        "multipart/form-data"]
+                        "multipart/form-data"
+                        "text/plain"
+                        "application/octet-stream"]
               :decodes ["application/transit+msgpack"
                         "application/transit+json"
                         "application/edn"
                         "application/json"
-                        "application/x-www-form-urlencoded"]}
+                        "application/x-www-form-urlencoded"
+                        "text/plain"
+                        "application/octet-stream"]}
              (i/supported-content-types (:interceptors m)))))))
 
 (deftest response-coercion-test
