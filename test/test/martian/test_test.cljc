@@ -192,3 +192,28 @@
 
        (let [test-martian (martian-test/respond-with-generated real-martian {:get-pet-by-id :error})]
          (is (contains? #{400 404 500} (:status @(martian/response-for test-martian :get-pet-by-id {:pet-id 123}))))))))
+
+(deftest interceptors-order-test
+  (let [int-chain (atom nil)
+        chain-spy {:name ::chain-spy
+                   :enter (fn [{:keys [tripod.context/queue] :as ctx}]
+                            (reset! int-chain (mapv :name queue))
+                            ctx)}
+        m (-> (martian/bootstrap-swagger "https://api.com" swagger-definition
+                                         {:interceptors (cons chain-spy martian/default-interceptors)})
+              (martian-test/respond-with-generated {:load-pet :success}))]
+    (is (= {:method :get
+            :url "https://api.com/pets/123"}
+           (martian/request-for m :load-pet {:id 123})))
+    (is (= [:martian.interceptors/keywordize-params
+            :martian.interceptors/method
+            :martian.interceptors/url
+            :martian.interceptors/query-params
+            :martian.interceptors/body-params
+            :martian.interceptors/form-params
+            :martian.interceptors/header-params
+            :martian.interceptors/enqueue-route-specific-interceptors
+            :martian.test/generate-responses
+            ;; this one is added by `request-for` and should go last!
+            :martian.interceptors/request-only-handler]
+           @int-chain))))
