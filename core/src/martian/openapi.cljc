@@ -137,6 +137,7 @@
 
 (defn produce-route-name [url-pattern method definition]
   (->kebab-case-keyword
+    ;; TODO: These approaches may end up aliasing/conflicting with each other.
     (or (:operationId definition)
         (let [prepared-path (->> (tokenise-path url-pattern)
                                  (remove keyword?)
@@ -145,7 +146,8 @@
                                  (str/join "-"))]
           (str (name method) "-" prepared-path)))))
 
-(defn openapi->handlers [openapi-json content-types]
+(defn openapi->handlers
+  [openapi-json {:keys [encodes decodes] :as _content-types}]
   (let [openapi-spec (keywordize-keys openapi-json)
         resolve-ref (schema/resolve-ref-fn openapi-spec)
         components (:components openapi-spec)]
@@ -157,10 +159,10 @@
           :let [parameters (->> (map resolve-ref (:parameters definition))
                                 (concat common-parameters)
                                 (group-by (comp keyword :in)))
-                body       (process-body (:requestBody definition) components (:encodes content-types))
+                body       (process-body (:requestBody definition) components encodes)
                 responses  (-> (:responses definition)
                                (update-vals resolve-ref)
-                               (process-responses components (:decodes content-types)))]]
+                               (process-responses components decodes))]]
       (-> {:path-parts         (vec (tokenise-path url-pattern))
            :method             method
            :path-schema        (process-parameters (:path parameters) components)
