@@ -50,13 +50,14 @@ same way, ensuring that your response handling code is also correct. Examples ar
 6. [Handlers validation](#handlers-validation)
 7. [Idiomatic parameters](#idiomatic-parameters)
 8. [Parameter defaults](#parameter-defaults)
-9. [Built-in media types](#built-in-media-types)
-10. [Response validation](#response-validation)
-11. [Testing with `martian-test`](#testing-with-martian-test)
+9. [Route name sources](#route-name-sources)
+10. [Built-in media types](#built-in-media-types)
+11. [Response validation](#response-validation)
+12. [Testing with `martian-test`](#testing-with-martian-test)
     - [Generative testing](#generative-testing)
     - [Non-generative testing](#non-generative-testing)
-12. [Recording and playback with `martian-vcr`](#recording-and-playback-with-martian-vcr)
-13. [Custom behaviour](#custom-behaviour)
+13. [Recording and playback with `martian-vcr`](#recording-and-playback-with-martian-vcr)
+14. [Custom behaviour](#custom-behaviour)
     - [Custom interceptors](#custom-interceptors)
       - [Global interceptors](#global-interceptors)
       - [Per route interceptors](#per-route-interceptors)
@@ -64,12 +65,12 @@ same way, ensuring that your response handling code is also correct. Examples ar
     - [Built-in encoders options](#built-in-encoders-options)
     - [Custom media types](#custom-media-types)
     - [HTTP client-specific options](#http-client-specific-options)
-14. [Development mode](#development-mode)
-15. [Java](#java)
-16. [Caveats](#caveats)
-17. [Development](#development)
-18. [Issues and features](#issues-and-features)
-19. [Acknowledgements](#acknowledgements)
+15. [Development mode](#development-mode)
+16. [Java](#java)
+17. [Caveats](#caveats)
+18. [Development](#development)
+19. [Issues and features](#issues-and-features)
+20. [Acknowledgements](#acknowledgements)
 
 ---
 
@@ -125,6 +126,7 @@ connecting your UI to data sources.
 - Easy to [add support for any other media type](#custom-media-types) or reconfigure encoders for the built-in ones
 - Support for integration testing without requiring external HTTP stubs
 - Routes are named as idiomatic kebab-case keywords of the endpoint's `operationId` in the OpenAPI/Swagger definition
+  (default) or [generated from the URL (path) pattern, HTTP method, and definition](#route-name-sources)
 - Parameters are aliased to kebab-case keywords so that your code remains [idiomatic](#idiomatic-parameters) and neat
 - [Parameter defaults](#parameter-defaults) can be optionally applied
 - Simple, data driven behaviour with low coupling using libraries and patterns you already know
@@ -323,6 +325,36 @@ If you set the `use-defaults?` option to `true`, they can be seen using `explore
   (martian/request-for m :create-pet {:pet {:id 123}}))
   ;; => {:method :post, :url "https://api.org/pets/", :body {:id 123, :name "Bryson"}}
 ```
+
+## Route name sources
+
+By default, you need to have an "operationId" property in the OpenAPI/Swagger definition to name a corresponding route
+when using `bootstrap-openapi`/`bootstrap-swagger` functions.
+
+The `:route-name-sources` option can be used to generate route names for definitions that don't have an "operationId":
+
+```clojure
+(require '[martian.core :as martian]
+         '[martian.clj-http :as martian-http])
+
+(-> (martian-http/bootstrap-swagger "https://poligon.aidevs.pl/swagger/poligon.json")
+    (martian/explore))
+;; WARN martian.openapi - No route name, ignoring endpoint {:url-pattern :/dane.txt, :method :get}
+;; WARN martian.openapi - No route name, ignoring endpoint {:url-pattern :/verify, :method :post}
+;; => []
+
+(-> (martian-http/bootstrap-swagger "https://poligon.aidevs.pl/swagger/poligon.json"
+                                    {:route-name-sources [:operationId :method+path]})
+    (martian/explore))
+;; => [[:get-dane-txt "Retrieve data file"] [:post-verify "Submit report"]]
+```
+
+The `:route-name-sources` is a vector of route name sources to try in order. Supported sources are:
+- `:operationId` — use an "operationId" property from the definition
+- `:method+path` — use a method and URL (path) pattern concatenation
+- any ternary fn of URL (path) pattern, HTTP method, and definition
+
+Note that [pedestal-api](https://github.com/oliyh/pedestal-api) auto-generates `operationId`s from given route names.
 
 ## Built-in media types
 
@@ -730,8 +762,6 @@ martian.urlFor("get-pet", new HashMap<String, Object> {{ put("id", 123); }});
 
 ## Caveats
 
-- You need `:operationId` in the OpenAPI/Swagger spec to name routes when using `bootstrap-openapi`
-  - [pedestal-api](https://github.com/oliyh/pedestal-api) automatically generates these from the route name
 - Martian does not yet cover every intricacy of JSON schema when parsing OpenAPI/Swagger specs, and as such it may not
   transmit data that it decides does not conform to the schema it has derived
   - The main examples currently are `anyOf`, `allOf` and `oneOf`
