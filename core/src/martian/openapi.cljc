@@ -135,17 +135,23 @@
             %)
          url-parts)))
 
+(defn- generate-route-name
+  [url-pattern method]
+  (->> (tokenise-path url-pattern)
+       (remove keyword?)
+       (map #(str/replace % "/" ""))
+       (map #(str/replace % #"[^a-zA-Z0-9\-]" "-"))
+       (cons (name method))
+       (str/join "-")))
+
 (defn produce-route-name
   [url-pattern method definition gen-route-names?]
-  (if-some [operation-id (:operationId definition)]
-    (->kebab-case-keyword operation-id)
-    (when gen-route-names?
-      (let [prepared-path (->> (tokenise-path url-pattern)
-                               (remove keyword?)
-                               (map #(str/replace % "/" ""))
-                               (map #(str/replace % #"[^a-zA-Z0-9\-]" "-"))
-                               (str/join "-"))]
-        (->kebab-case-keyword (str (name method) "-" prepared-path))))))
+  (some-> (or (:operationId definition)
+              (when gen-route-names?
+                (generate-route-name url-pattern method))
+              #?(:clj (println "A definition without the \"operationId\"" {:url-pattern url-pattern :method method})
+                 :cljs (js/console.warn "A definition without the \"operationId\"" {:url-pattern url-pattern :method method})))
+          (->kebab-case-keyword)))
 
 (defn openapi->handlers
   ([openapi-json content-types]
