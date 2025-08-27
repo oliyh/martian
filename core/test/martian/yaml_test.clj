@@ -1,26 +1,21 @@
 (ns martian.yaml-test
-  (:require [martian.test-helpers :refer [yaml-resource]]
-            [clojure.test :refer [deftest is testing]]
-            [schema.core :as s]
+  (:require [clojure.test :refer [deftest is testing]]
+            [martian.openapi :refer [openapi->handlers]]
+            [martian.test-helpers :refer [yaml-resource]]
             [martian.yaml :as yaml]
-            [martian.openapi :refer [openapi->handlers]]))
+            [schema.core :as s]))
 
 (def openapi-yaml
   (yaml-resource "openapi.yaml"))
-
-(defn map-vals [f m]
-  (->> (map (fn [[k v]] [k (f v)]) m)
-       (into {})))
 
 (defn deprecate-all
   "Adds the deprecated field to all paths"
   [yml]
   (update yml :paths
           (fn [paths]
-            (map-vals (fn [path]
-                        (map-vals #(assoc % :deprecated true)
-                                  path))
-                      paths))))
+            (update-vals paths
+                         (fn [path]
+                           (update-vals path #(assoc % :deprecated true)))))))
 
 (deftest openapi-sanity-check
   (testing "parses each handler"
@@ -85,7 +80,8 @@
            (-> openapi-yaml
                (yaml/cleanup)
                deprecate-all
-               (openapi->handlers {})
+               (openapi->handlers {:encodes ["application/xml"]
+                                   :decodes ["application/json"]})
                (->> (filter #(= (:route-name %) :update-pet)))
                first
                (select-keys [:deprecated?]))))))
