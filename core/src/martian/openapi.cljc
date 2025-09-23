@@ -160,15 +160,13 @@
       (if (some? route-name)
         (->kebab-case-keyword route-name)
         (if (empty? rest)
-          #?(:clj (println "No route name, ignoring endpoint" {:url-pattern url-pattern :method method})
-             :cljs (js/console.warn "No route name, ignoring endpoint" {:url-pattern url-pattern :method method}))
+          (log/warn "No route name, ignoring endpoint" {:url-pattern url-pattern :method method})
           (recur rest))))))
 
 (defn unique-route-name?
   [route-name route-names]
   (if (contains? @route-names route-name)
-    #?(:clj (println "Non-unique route name, ignoring endpoint" {:route-name route-name})
-       :cljs (js/console.warn "Non-unique route name, ignoring endpoint" {:route-name route-name}))
+    (log/warn "Non-unique route name, ignoring endpoint" {:route-name route-name})
     (do (swap! route-names conj route-name) true)))
 
 (defn openapi->handlers
