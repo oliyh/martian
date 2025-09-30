@@ -1,4 +1,4 @@
-(defproject com.github.oliyh/martian-suite "0.2.1"
+(defproject com.github.oliyh/martian-suite "0.2.2-SNAPSHOT"
   :description "Client routing for Swagger APIs"
   :url "https://github.com/oliyh/martian"
   :license {:name "The MIT License"
@@ -8,17 +8,17 @@
                                        [org.clojure/clojurescript]]}
              :test {:modules {:subprocess "lein"}}}
   :modules {:subprocess nil}
-  :managed-dependencies [[com.github.oliyh/martian "0.2.1"]
-                         [com.github.oliyh/martian-httpkit "0.2.1"]
-                         [com.github.oliyh/martian-clj-http "0.2.1"]
-                         [com.github.oliyh/martian-clj-http-lite "0.2.1"]
-                         [com.github.oliyh/martian-hato "0.2.1"]
-                         [com.github.oliyh/martian-babashka-http-client "0.2.1"]
-                         [com.github.oliyh/martian-cljs-http "0.2.1"]
-                         [com.github.oliyh/martian-cljs-http-promise "0.2.1"]
-                         [com.github.oliyh/martian-re-frame "0.2.1"]
-                         [com.github.oliyh/martian-test "0.2.1"]
-                         [com.github.oliyh/martian-vcr "0.2.1"]
+  :managed-dependencies [[com.github.oliyh/martian "0.2.2-SNAPSHOT"]
+                         [com.github.oliyh/martian-httpkit "0.2.2-SNAPSHOT"]
+                         [com.github.oliyh/martian-clj-http "0.2.2-SNAPSHOT"]
+                         [com.github.oliyh/martian-clj-http-lite "0.2.2-SNAPSHOT"]
+                         [com.github.oliyh/martian-hato "0.2.2-SNAPSHOT"]
+                         [com.github.oliyh/martian-babashka-http-client "0.2.2-SNAPSHOT"]
+                         [com.github.oliyh/martian-cljs-http "0.2.2-SNAPSHOT"]
+                         [com.github.oliyh/martian-cljs-http-promise "0.2.2-SNAPSHOT"]
+                         [com.github.oliyh/martian-re-frame "0.2.2-SNAPSHOT"]
+                         [com.github.oliyh/martian-test "0.2.2-SNAPSHOT"]
+                         [com.github.oliyh/martian-vcr "0.2.2-SNAPSHOT"]
 
                          [org.clojure/clojure "1.12.1"]
                          [org.clojure/clojurescript "1.12.42"]
