@@ -210,12 +210,20 @@
    - `:coercion-matcher`   — a unary fn of schema used for parameters coercion;
                              defaults to the `default-coercion-matcher`;
    - `:use-defaults?`      — if true, will read 'default' directives from the
-                             OpenAPI/Swagger spec; false by default."
+                             OpenAPI/Swagger spec; false by default;
+   - `:route-name-sources` — a vector of route name sources; supported sources:
+                             - `:operationId` — use an \"operationId\" property
+                             - `:method+path` — use method + URL (path) pattern
+                             - any fn of 'url-pattern', 'method', 'definition';
+                             defaults to `[:operationId]`."
   [api-root json & [opts]]
-  (let [{:keys [interceptors] :or {interceptors default-interceptors} :as opts} (keywordize-keys opts)
+  (let [{:keys [interceptors route-name-sources] :as opts} (keywordize-keys opts)
         handlers (if (openapi-schema? json)
-                   (openapi->handlers json (interceptors/supported-content-types interceptors))
-                   (swagger->handlers json))]
+                   (let [content-types (-> interceptors
+                                           (or default-interceptors)
+                                           (interceptors/supported-content-types))]
+                     (openapi->handlers json content-types route-name-sources))
+                   (swagger->handlers json route-name-sources))]
     (build-instance api-root handlers opts)))
 
 (def
@@ -231,7 +239,12 @@
    - `:coercion-matcher`   — a unary fn of schema used for parameters coercion;
                              defaults to the `default-coercion-matcher`;
    - `:use-defaults?`      — if true, will read 'default' directives from the
-                             OpenAPI/Swagger spec; false by default."
+                             OpenAPI/Swagger spec; false by default;
+   - `:route-name-sources` — a vector of route name sources; supported sources:
+                             - `:operationId` — use an \"operationId\" property
+                             - `:method+path` — use method + URL (path) pattern
+                             - any fn of 'url-pattern', 'method', 'definition';
+                             defaults to `[:operationId]`."
     :arglists '([api-root json & [opts]])}
   bootstrap-swagger
   bootstrap-openapi)

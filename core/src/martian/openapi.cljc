@@ -1,25 +1,26 @@
 (ns martian.openapi
   (:require [camel-snake-kebab.core :refer [->kebab-case-keyword]]
-            [lambdaisland.uri :as uri]
-            [clojure.string :as string]
+            [clojure.string :as str]
             [clojure.walk :refer [keywordize-keys]]
-            [schema.core :as s]
+            [inflections.core :refer [parameterize singular]]
+            [lambdaisland.uri :as uri]
             [martian.log :as log]
-            [martian.schema :refer [leaf-schema wrap-default]]
-            [martian.utils :as utils]))
+            [martian.schema :as schema]
+            [martian.utils :as utils]
+            [schema.core :as s]))
 
 (defn openapi-schema? [json]
-  (some #(get json %) [:openapi "openapi"]))
+  (boolean (some #(get json %) [:openapi "openapi"])))
 
 (defn base-url [url server-url json]
   (let [first-server (get-in json [:servers 0 :url] "")
         {:keys [scheme host port]} (uri/uri url)
         api-root (or server-url first-server)]
-    (if (and (openapi-schema? json) (not (string/starts-with? api-root "/")))
+    (if (and (openapi-schema? json) (not (str/starts-with? api-root "/")))
       api-root
       (str scheme "://"
            host
-           (when (not (string/blank? port)) (str ":" port))
+           (when (not (str/blank? port)) (str ":" port))
            (if (openapi-schema? json)
              api-root
              (get json :basePath ""))))))
@@ -33,7 +34,7 @@
   (reduce (fn [schema f]
             (f property schema))
           schema
-          [wrap-default wrap-nullable]))
+          [schema/wrap-default wrap-nullable]))
 
 (defn- openapi->schema
   ([schema components] (openapi->schema schema components #{}))
@@ -42,7 +43,7 @@
      (if (contains? seen-set reference)
        s/Any ; If we've already seen this, then we're in a loop. Rather than
              ; trying to solve for the fixpoint, just return Any.
-       (recur (martian.schema/lookup-ref reference {:components components})
+       (recur (schema/lookup-ref reference {:components components})
               components
               (conj seen-set reference)))
      (wrap schema
@@ -75,7 +76,7 @@
                                          (openapi->schema v components seen-set)}))
                                  (:properties schema))
                            {s/Any s/Any}))
-             (leaf-schema schema))))))
+             (schema/leaf-schema schema))))))
 
 (defn- warn-on-no-matching-content-type
   [supported-content-types content header-name]
@@ -117,48 +118,82 @@
                              [json-schema content-type] (get-matching-schema value content-types "Content-Type")]]
     {:status       (if (= status-code "default")
                      s/Any
-                     (s/eq (if (number? status-code) status-code (utils/string->int (name status-code)))))
+                     (s/eq (if (number? status-code) status-code (parse-long (name status-code)))))
      :body         (and json-schema (openapi->schema json-schema components))
      :content-type content-type}))
 
-(defn- sanitise [x]
-  (if (string? x)
-    x
-    ;; consistent across clj and cljs
-    (-> (str x)
-        (string/replace-first ":" ""))))
+(defn- sanitise-url [url-pattern]
+  (if (string? url-pattern)
+    url-pattern
+    ;; NB: This is consistent across CLJ and CLJS.
+    (str/replace-first (str url-pattern) ":" "")))
 
 (defn tokenise-path [url-pattern]
-  (let [url-pattern (sanitise url-pattern)
-        parts (map first (re-seq #"([^{}]+|\{.+?\})" url-pattern))]
+  (let [sanitised (sanitise-url url-pattern)
+        url-parts (map first (re-seq #"([^{}]+|\{.+?\})" sanitised))]
     (map #(if-let [param-name (second (re-matches #"^\{(.*)\}" %))]
             (keyword param-name)
-            %) parts)))
+            %)
+         url-parts)))
 
-;; TODO: Substitute with `update-vals` (built-in, cross-platform).
-(defn update-vals-future
-  "An implementation of `update-vals` that is in Clojure 1.11.0+."
-  [m f]
-  (zipmap (keys m) (map f (vals m))))
+(defn generate-route-name
+  [url-pattern method]
+  ;; NB: This is a simple algo based on the naming conventions:
+  ;;     - GET "/users/{uid}/orders/"      -> :get-user-orders
+  ;;     - GET "/users/{uid}/orders/{oid}" -> :get-user-order
+  (->> (tokenise-path url-pattern)
+       (partition-all 2)
+       (map (fn [[part param]]
+              (cond-> (parameterize (str/replace part "/" ""))
+                      param (singular))))
+       (cons (name method))
+       (str/join "-")))
 
-(defn openapi->handlers [openapi-json content-types]
-  (let [openapi-spec (keywordize-keys openapi-json)
-        resolve-ref (martian.schema/resolve-ref-fn openapi-spec)
-        components (:components openapi-spec)]
-    (for [[url methods] (:paths openapi-spec)
-          :let [common-parameters (map resolve-ref (:parameters methods))]
-          [method definition] (dissoc methods :parameters)
-          ;; We only care about things which have a defined operationId, and
-          ;; which aren't the associated OPTIONS call.
-          :when (and (:operationId definition)
-                     (not= :options method))
-          :let [parameters (group-by (comp keyword :in) (concat common-parameters
-                                                                (map resolve-ref (:parameters definition))))
-                body       (process-body (:requestBody definition) components (:encodes content-types))
-                responses  (process-responses (update-vals-future (:responses definition)
-                                                                  resolve-ref)
-                                              components (:decodes content-types))]]
-      (-> {:path-parts         (vec (tokenise-path url))
+(defn produce-route-name
+  [route-name-sources url-pattern method definition]
+  (loop [sources (or route-name-sources [:operationId])]
+    (let [[source & rest] sources
+          route-name (cond
+                       (= :operationId source) (:operationId definition)
+                       (= :method+path source) (generate-route-name url-pattern method)
+                       (fn? source) (source url-pattern method definition))]
+      (if (some? route-name)
+        (->kebab-case-keyword route-name)
+        (if (empty? rest)
+          (log/warn "No route name, ignoring endpoint" {:url-pattern url-pattern :method method})
+          (recur rest))))))
+
+(defn unique-route-name?
+  [route-name route-names]
+  (if (contains? @route-names route-name)
+    (log/warn "Non-unique route name, ignoring endpoint" {:route-name route-name})
+    (do (swap! route-names conj route-name) true)))
+
+(defn openapi->handlers
+  ([openapi-json content-types]
+   (openapi->handlers openapi-json content-types nil))
+  ([openapi-json {:keys [encodes decodes] :as _content-types} route-name-sources]
+   (let [openapi-spec (keywordize-keys openapi-json)
+         resolve-ref (schema/resolve-ref-fn openapi-spec)
+         components (:components openapi-spec)
+         route-names (atom #{})]
+     (for [[url-pattern methods] (:paths openapi-spec)
+           :let [common-parameters (map resolve-ref (:parameters methods))]
+           [method definition] (dissoc methods :parameters)
+           :let [route-name (produce-route-name route-name-sources url-pattern method definition)]
+           ;; NB: We only care about routes that have a unique name
+           ;;     and which aren't the associated HTTP OPTIONS call.
+           :when (and (some? route-name)
+                      (unique-route-name? route-name route-names)
+                      (not= :options method))
+           :let [parameters (->> (map resolve-ref (:parameters definition))
+                                 (concat common-parameters)
+                                 (group-by (comp keyword :in)))
+                 body       (process-body (:requestBody definition) components encodes)
+                 responses  (-> (:responses definition)
+                                (update-vals resolve-ref)
+                                (process-responses components decodes))]]
+       (-> {:path-parts         (vec (tokenise-path url-pattern))
            :method             method
            :path-schema        (process-parameters (:path parameters) components)
            :query-schema       (process-parameters (:query parameters) components)
@@ -172,5 +207,5 @@
            :summary            (:summary definition)
            :description        (:description definition)
            :openapi-definition definition
-           :route-name         (->kebab-case-keyword (:operationId definition))}
-          (cond-> (:deprecated definition) (assoc :deprecated? true))))))
+           :route-name         route-name}
+          (cond-> (:deprecated definition) (assoc :deprecated? true)))))))
