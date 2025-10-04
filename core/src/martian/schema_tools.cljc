@@ -1,5 +1,6 @@
 (ns martian.schema-tools
-  (:require [schema.core :as s #?@(:cljs [:refer [MapEntry EqSchema]])]
+  (:require [flatland.ordered.set :refer [ordered-set]]
+            [schema.core :as s #?@(:cljs [:refer [MapEntry EqSchema]])]
             [schema.spec.core :as spec])
   #?(:clj (:import [schema.core MapEntry EqSchema])))
 
@@ -24,12 +25,16 @@
   "Returns a collection of paths which would address all possible entries (using `get-in`) in data described by the schema"
   [schema]
   (when (map? schema)
-    (loop [paths [[]]
+    (loop [paths (ordered-set [])
            paths-and-schemas (with-paths [] schema)]
       (if-let [{:keys [path schema]} (first paths-and-schemas)]
         (recur (conj paths path) (concat (rest paths-and-schemas)
                                          (with-paths path schema)))
-        paths))))
+        (vec paths)))))
+
+;;
+
+;; TODO: Cover with more tests and lean on the `schema-tools.walk` if possible.
 
 (defn walk-with-path
   "Identical to `clojure.walk/walk` except keeps track of the path through the data structure (as per `get-in`)
