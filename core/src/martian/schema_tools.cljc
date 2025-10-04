@@ -9,8 +9,7 @@
     (s/explicit-schema-key k)
     k))
 
-(defn default? [schema]
-  (= "schema_tools.impl.Default" (Class/.getName (class schema))))
+(def default-schema? #'sti/default?)
 
 (defn with-paths [path schema]
   (when (satisfies? schema.core/Schema schema)
@@ -20,7 +19,7 @@
                               (instance? EqSchema (:key-schema schema)))
                          (let [key-schema-v (:v (:key-schema schema))
                                val-schema (:val-schema schema)]
-                           (if (default? val-schema)
+                           (if (default-schema? val-schema)
                              [{:path (conj path key-schema-v)
                                :schema val-schema}
                               {:path (conj path key-schema-v :schema)
@@ -33,7 +32,7 @@
                          [{:path path
                            :schema schema}]
                          (vector? schema)
-                         [{:path (conj path :martian/idx)
+                         [{:path (conj path ::idx) ; must be qualified!
                            :schema (first schema)}])))
          (remove nil?))))
 
