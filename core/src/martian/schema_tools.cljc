@@ -1,6 +1,5 @@
 (ns martian.schema-tools
-  (:require [flatland.ordered.set :refer [ordered-set]]
-            [schema.core :as s #?@(:cljs [:refer [MapEntry EqSchema]])]
+  (:require [schema.core :as s #?@(:cljs [:refer [MapEntry EqSchema]])]
             [schema-tools.impl :as sti]
             [schema.spec.core :as spec])
   #?(:clj (:import [schema.core MapEntry EqSchema])))
@@ -40,16 +39,16 @@
          (remove nil?))))
 
 (defn key-seqs
-  "Returns a vec of paths (key seqs) which would address all possible entries
-   in a data described by the `schema`."
+  "Returns a coll of paths (key seqs) which would address all possible entries
+   in a data described by the given `schema` as well as the `schema` itself."
   [schema]
   (when (map? schema)
-    (loop [paths (ordered-set [])
+    (loop [paths [[]]
            paths-and-schemas (with-paths [] schema)]
       (if-let [{:keys [path schema]} (first paths-and-schemas)]
         (recur (conj paths path) (concat (rest paths-and-schemas)
                                          (with-paths path schema)))
-        (vec paths)))))
+        (distinct paths)))))
 
 ;;
 
