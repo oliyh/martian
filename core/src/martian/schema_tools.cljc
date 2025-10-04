@@ -1,8 +1,11 @@
 (ns martian.schema-tools
   (:require [flatland.ordered.set :refer [ordered-set]]
             [schema.core :as s #?@(:cljs [:refer [MapEntry EqSchema]])]
+            [schema-tools.impl :as sti]
             [schema.spec.core :as spec])
   #?(:clj (:import [schema.core MapEntry EqSchema])))
+
+;; TODO: Cover `key-seqs` and `walk-with-path` functions with some tests.
 
 (defn unspecify-key [k]
   (if (s/specific-key? k)
@@ -37,7 +40,8 @@
          (remove nil?))))
 
 (defn key-seqs
-  "Returns a collection of paths which would address all possible entries (using `get-in`) in data described by the schema"
+  "Returns a vec of paths (key seqs) which would address all possible entries
+   in a data described by the `schema`."
   [schema]
   (when (map? schema)
     (loop [paths (ordered-set [])
@@ -49,11 +53,10 @@
 
 ;;
 
-;; TODO: Cover with more tests and lean on the `schema-tools.walk` if possible.
-
 (defn walk-with-path
-  "Identical to `clojure.walk/walk` except keeps track of the path through the data structure (as per `get-in`)
-   as it goes, calling `inner` and `outer` with two args: the path and form"
+  "Similar to the `schema-tools.walk/walk` except it keeps track of the `path`
+   through the data structure as it goes, calling `inner` and `outer` with two
+   args: the `path` and the `form`. It also does not preserve any metadata."
   ([inner outer form] (walk-with-path inner outer [] form))
   ([inner outer path form]
    (cond
