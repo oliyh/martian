@@ -58,17 +58,27 @@
   ([inner outer form] (walk-with-path inner outer [] form))
   ([inner outer path form]
    (cond
-     (list? form) (outer path (apply list (map (partial inner path) form)))
      (map-entry? form)
-     (outer path #?(:clj (clojure.lang.MapEntry. (inner path (key form)) (inner (conj path (key form)) (val form)))
-                    :cljs (cljs.core/MapEntry. (inner path (key form)) (inner (conj path (key form)) (val form)) nil)))
-     (seq? form) (outer path (doall (map (partial inner path) form)))
-     (record? form) (outer path (reduce (fn [r x] (conj r (inner path x))) form form))
-     (coll? form) (outer path (into (empty form) (map (partial inner path) form)))
+     (outer path [(inner path (key form))
+                  (inner (conj path (key form)) (val form))])
+     (record? form)
+     (outer path (reduce (fn [r x] (conj r (inner path x))) form form))
+     (list? form)
+     (outer path (apply list (map #(inner path %) form)))
+     (seq? form)
+     (outer path (doall (map #(inner path %) form)))
+     (coll? form)
+     (outer path (into (empty form) (map #(inner path %) form)))
      :else (outer path form))))
 
 (defn postwalk-with-path [f path form]
-  (walk-with-path (partial postwalk-with-path f) f path form))
+  (walk-with-path (fn [path form] (postwalk-with-path f path form))
+                  f
+                  path
+                  form))
 
 (defn prewalk-with-path [f path form]
-  (walk-with-path (partial prewalk-with-path f) (fn [_path form] form) path (f path form)))
+  (walk-with-path (fn [path form] (prewalk-with-path f path form))
+                  (fn [_path form] form)
+                  path
+                  (f path form)))
