@@ -4,8 +4,10 @@
             [schema.spec.core :as spec])
   #?(:clj (:import [schema.core MapEntry EqSchema])))
 
-;; todo
-;; write some tests and lean on schema-tools.core where possible
+(defn unspecify-key [k]
+  (if (s/specific-key? k)
+    (s/explicit-schema-key k)
+    k))
 
 (defn with-paths [path schema]
   (keep (fn [schema]
