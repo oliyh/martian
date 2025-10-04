@@ -14,7 +14,10 @@
                  :schema (:val-schema schema)}
                 (map? schema)
                 {:path path
-                 :schema schema}))
+                 :schema schema}
+                (vector? schema)
+                {:path (conj path :martian/idx)
+                 :schema (first schema)}))
         (spec/subschemas (s/spec schema))))
 
 (defn key-seqs
