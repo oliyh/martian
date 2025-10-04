@@ -1,10 +1,8 @@
 (ns martian.parameter-aliases
-  (:require [schema.core :as s]
-            [camel-snake-kebab.core :refer [->kebab-case]]
+  (:require [camel-snake-kebab.core :refer [->kebab-case]]
             [clojure.set :refer [rename-keys]]
-            [martian.schema-tools :refer [unspecify-key key-seqs prewalk-with-path]]))
-
-;; TODO: Lean on `schema-tools.core` for some of these transformations.
+            [martian.schema-tools :refer [unspecify-key key-seqs prewalk-with-path]]
+            [schema.core :as s]))
 
 (defn can-be-kebabised? [k]
   (not (and (keyword? k) (namespace k))))
@@ -18,7 +16,10 @@
   (vec (keep ->idiomatic path)))
 
 (defn parameter-aliases
-  "Produces a data structure for use with `unalias-data`"
+  "Produces a data structure with idiomatic keys (aliases) mappings per path
+   in a (possibly, deeply nested) `schema` for all its unqualified keys.
+
+   The result is then used with `alias-schema` and `unalias-data` functions."
   [schema]
   (reduce (fn [acc path]
             (if-let [idiomatic-key (some-> path last ->idiomatic)]
@@ -30,7 +31,8 @@
           (key-seqs schema)))
 
 (defn unalias-data
-  "Takes parameter aliases and (deeply nested) data, returning data with deeply-nested keys renamed as described by parameter-aliases"
+  "Given a (possibly, deeply nested) data `x`, returns the data with all keys
+   renamed as described by the `parameter-aliases`."
   [parameter-aliases x]
   (if parameter-aliases
     (prewalk-with-path (fn [path x]
@@ -42,7 +44,9 @@
     x))
 
 (defn alias-schema
-  "Walks a schema, transforming all keys into their aliases (idiomatic keys)"
+  "Given a (possibly, deeply nested) `schema`, renames all keys (in it and its
+   subschemas) into corresponding idiomatic keys (aliases) as described by the
+   `parameter-aliases`."
   [parameter-aliases schema]
   (if parameter-aliases
     (prewalk-with-path (fn [path x]
