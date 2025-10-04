@@ -9,19 +9,33 @@
     (s/explicit-schema-key k)
     k))
 
+(defn default? [schema]
+  (= "schema_tools.impl.Default" (Class/.getName (class schema))))
+
 (defn with-paths [path schema]
-  (keep (fn [schema]
-          (cond (and (instance? MapEntry schema)
-                     (instance? EqSchema (:key-schema schema)))
-                {:path (conj path (:v (:key-schema schema)))
-                 :schema (:val-schema schema)}
-                (map? schema)
-                {:path path
-                 :schema schema}
-                (vector? schema)
-                {:path (conj path :martian/idx)
-                 :schema (first schema)}))
-        (spec/subschemas (s/spec schema))))
+  (when (satisfies? schema.core/Schema schema)
+    (->> (spec/subschemas (s/spec schema))
+         (mapcat (fn [schema]
+                   (cond (and (instance? MapEntry schema)
+                              (instance? EqSchema (:key-schema schema)))
+                         (let [key-schema-v (:v (:key-schema schema))
+                               val-schema (:val-schema schema)]
+                           (if (default? val-schema)
+                             [{:path (conj path key-schema-v)
+                               :schema val-schema}
+                              {:path (conj path key-schema-v :schema)
+                               :schema (:schema val-schema)}
+                              {:path (conj path key-schema-v :value)
+                               :schema (:value val-schema)}]
+                             [{:path (conj path key-schema-v)
+                               :schema val-schema}]))
+                         (map? schema)
+                         [{:path path
+                           :schema schema}]
+                         (vector? schema)
+                         [{:path (conj path :martian/idx)
+                           :schema (first schema)}])))
+         (remove nil?))))
 
 (defn key-seqs
   "Returns a collection of paths which would address all possible entries (using `get-in`) in data described by the schema"
