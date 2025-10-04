@@ -2,13 +2,17 @@
   (:require [schema.core :as s]
             [camel-snake-kebab.core :refer [->kebab-case]]
             [clojure.set :refer [rename-keys]]
-            [martian.schema-tools :refer [key-seqs prewalk-with-path]]))
+            [martian.schema-tools :refer [unspecify-key key-seqs prewalk-with-path]]))
 
-;; todo lean on schema-tools.core for some of this
+;; TODO: Lean on `schema-tools.core` for some of these transformations.
+
+(defn can-be-kebabised? [k]
+  (not (and (keyword? k) (namespace k))))
 
 (defn ->idiomatic [k]
-  (when (and k (s/specific-key? k) (not (and (keyword? k) (namespace k))))
-    (->kebab-case (s/explicit-schema-key k))))
+  (when-some [uk (when k (unspecify-key k))]
+    (when (can-be-kebabised? uk)
+      (->kebab-case uk))))
 
 (defn- idiomatic-path [path]
   (vec (keep ->idiomatic path)))
