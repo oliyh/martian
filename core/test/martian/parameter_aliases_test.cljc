@@ -51,24 +51,65 @@
                                  :Baz (st/default {:QUU s/Str
                                                    :Quux [{:Fizz s/Str}]}
                                                   {:QUU "hi"
-                                                   :Quux []})}))))))
+                                                   :Quux []})}))))
+
+    (testing "qualified keys are not aliased"
+      (is (= {} (parameter-aliases {:foo/Bar s/Str
+                                    :Baz/DOO s/Str}))))))
 
 (deftest unalias-data-test
   (testing "renames idiomatic keys back to original"
-    (let [schema {:FOO s/Str
-                  :fooBar s/Str
-                  (s/optional-key :Bar) s/Str}]
+    (testing "map schemas with optional keys"
       (is (= {:FOO "a"
               :fooBar "b"
               :Bar "c"}
-             (unalias-data (parameter-aliases schema) {:foo "a" :foo-bar "b" :bar "c"})))))
+             (let [schema {:FOO s/Str
+                           :fooBar s/Str
+                           (s/optional-key :Bar) s/Str}]
+               (unalias-data (parameter-aliases schema) {:foo "a"
+                                                         :foo-bar "b"
+                                                         :bar "c"})))))
 
-  (testing "works on nested maps and sequences"
-    (let [schema {:FOO {:fooBar s/Str
-                        (s/optional-key :Bar) [{:BAZ s/Str}]}}]
+    (testing "nested map and vector schemas"
       (is (= {:FOO {:fooBar "b"
                     :Bar [{:BAZ "c"}]}}
-             (unalias-data (parameter-aliases schema) {:foo {:foo-bar "b" :bar [{:baz "c"}]}}))))))
+             (let [schema {:FOO {:fooBar s/Str
+                                 (s/optional-key :Bar) [{:BAZ s/Str}]}}]
+               (unalias-data (parameter-aliases schema) {:foo {:foo-bar "b"
+                                                               :bar [{:baz "c"}]}})))))
+
+    (testing "deeply nested vector schemas"
+      (is (= {:FOO {:Bar [[{:barDoo "a"
+                            :barDee "b"}]]}}
+             (let [schema {(s/optional-key :FOO)
+                           {:Bar [[{:barDoo s/Str
+                                    (s/optional-key :barDee) s/Str}]]}}]
+               (unalias-data (parameter-aliases schema) {:foo {:bar [[{:bar-doo "a"
+                                                                       :bar-dee "b"}]]}})))))
+
+    (testing "default schemas"
+      (is (= {:fooBar "a"
+              :BAR "b"
+              :Baz {:QUU "c"
+                    :Quux [{:Fizz "d"}]}}
+             (let [schema {:fooBar s/Str
+                           (s/optional-key :BAR) s/Str
+                           :Baz (st/default {:QUU s/Str
+                                             :Quux [{:Fizz s/Str}]}
+                                            {:QUU "hi"
+                                             :Quux []})}]
+               (unalias-data (parameter-aliases schema) {:foo-bar "a"
+                                                         :bar "b"
+                                                         :baz {:quu "c"
+                                                               :quux [{:fizz "d"}]}})))))
+
+    (testing "qualified keys are not aliased"
+      (is (= {:foo/Bar "a"
+              :Baz/DOO "b"}
+             (let [schema {:foo/Bar s/Str
+                           :Baz/DOO s/Str}]
+               (unalias-data (parameter-aliases schema) {:foo/Bar "a"
+                                                         :Baz/DOO "b"})))))))
 
 (deftest alias-schema-test
   (testing "renames schema keys into idiomatic keys"
@@ -110,4 +151,11 @@
                                              :Quux [{:Fizz s/Str}]}
                                             {:QUU "hi"
                                              :Quux []})}]
+               (alias-schema (parameter-aliases schema) schema)))))
+
+    (testing "qualified keys are not aliased"
+      (is (= {:foo/Bar s/Str
+              :Baz/DOO s/Str}
+             (let [schema {:foo/Bar s/Str
+                           :Baz/DOO s/Str}]
                (alias-schema (parameter-aliases schema) schema)))))))
