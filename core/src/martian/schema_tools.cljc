@@ -50,8 +50,6 @@
 
 ;;
 
-;; TODO: Cover the `walk-with-path` function with some tests.
-
 (defn walk-with-path
   "Similar to the `schema-tools.walk/walk` except it keeps track of the `path`
    through the data structure as it goes, calling `inner` and `outer` with two
