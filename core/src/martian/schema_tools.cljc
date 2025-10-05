@@ -4,8 +4,6 @@
             [schema.spec.core :as spec])
   #?(:clj (:import [schema.core MapEntry EqSchema])))
 
-;; TODO: Cover `key-seqs` and `walk-with-path` functions with some tests.
-
 (defn unspecify-key [k]
   (if (s/specific-key? k)
     (s/explicit-schema-key k)
@@ -51,6 +49,8 @@
         (distinct paths)))))
 
 ;;
+
+;; TODO: Cover the `walk-with-path` function with some tests.
 
 (defn walk-with-path
   "Similar to the `schema-tools.walk/walk` except it keeps track of the `path`
