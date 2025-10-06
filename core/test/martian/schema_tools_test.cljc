@@ -85,6 +85,20 @@
             [:name]
             [:fooBar]]
            (key-seqs (s/named {:fooBar s/Str} "FooBar")))
+        "Must contain paths for both the schema and a data described by it"))
+
+  (testing "maybe schemas"
+    (is (= [[]
+            [:schema]
+            [:schema :fooBar]
+            [:fooBar]]
+           (key-seqs (s/maybe {:fooBar s/Str})))
+        "Must contain paths for both the schema and a data described by it")
+    (is (= [[]
+            [:fooBar]
+            [:fooBar :Baz]
+            [:fooBar :Baz :schema]]
+           (key-seqs {:fooBar {:Baz (s/maybe s/Str)}}))
         "Must contain paths for both the schema and a data described by it")))
 
 (deftest prewalk-with-path-test

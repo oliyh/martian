@@ -70,6 +70,17 @@
              (parameter-aliases (s/named {:fooBar s/Str} "FooBar")))
           "Must contain aliases for both the schema and a data described by it"))
 
+    (testing "maybe schemas"
+      (is (= {[] {:foo-bar :fooBar}
+              [:foo-bar] {:baz :Baz}
+              [:foo-bar :schema] {:baz :Baz}}
+             (parameter-aliases {:fooBar (s/maybe {:Baz s/Str})}))
+          "Must contain aliases for both the schema and a data described by it")
+      (is (= {[] {:foo-bar :fooBar}
+              [:schema] {:foo-bar :fooBar}}
+             (parameter-aliases (s/maybe {:fooBar s/Str})))
+          "Must contain aliases for both the schema and a data described by it"))
+
     (testing "qualified keys are not aliased"
       (is (= {} (parameter-aliases {:foo/Bar s/Str
                                     :Baz/DOO s/Str}))))))
@@ -131,6 +142,14 @@
     (testing "named schemas"
       (is (= {:fooBar "a"}
              (let [schema (s/named {:fooBar s/Str} "FooBar")]
+               (unalias-data (parameter-aliases schema) {:foo-bar "a"})))))
+
+    (testing "maybe schemas"
+      (is (= {:fooBar {:Baz "a"}}
+             (let [schema {:fooBar (s/maybe {:Baz s/Str})}]
+               (unalias-data (parameter-aliases schema) {:foo-bar {:baz "a"}}))))
+      (is (= {:fooBar "a"}
+             (let [schema (s/maybe {:fooBar s/Str})]
                (unalias-data (parameter-aliases schema) {:foo-bar "a"})))))
 
     (testing "qualified keys are not aliased"
@@ -195,6 +214,14 @@
     (testing "named schemas"
       (is (= (s/named {:foo-bar s/Str} "FooBar")
              (let [schema (s/named {:fooBar s/Str} "FooBar")]
+               (alias-schema (parameter-aliases schema) schema)))))
+
+    (testing "maybe schemas"
+      (is (= {:foo-bar (s/maybe {:baz s/Str})}
+             (let [schema {:fooBar (s/maybe {:Baz s/Str})}]
+               (alias-schema (parameter-aliases schema) schema))))
+      (is (= (s/maybe {:foo-bar s/Str})
+             (let [schema (s/maybe {:fooBar s/Str})]
                (alias-schema (parameter-aliases schema) schema)))))
 
     (testing "qualified keys are not aliased"
