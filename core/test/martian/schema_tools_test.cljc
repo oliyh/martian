@@ -63,7 +63,7 @@
                                         :Quux []})}))
         "Must contain paths for both the schema and a data described by it")))
 
-(deftest key-seqs-test
+(deftest prewalk-with-path-test
   (testing "map schemas with optional keys"
     (let [paths+forms (atom [])]
       (prewalk-with-path (fn [path form]
