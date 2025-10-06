@@ -46,14 +46,14 @@
             [:BAR]
             [:Baz]
             [:Baz :schema]
-            [:Baz :value]
             [:Baz :schema :QUU]
             [:Baz :schema :Quux]
+            [:Baz :schema :Quux :Fizz]
+            [:Baz :value]
             [:Baz :value :QUU]
             [:Baz :value :Quux]
             [:Baz :QUU]
             [:Baz :Quux]
-            [:Baz :schema :Quux :Fizz]
             [:Baz :Quux :Fizz]]
            (key-seqs {:fooBar s/Str
                       (s/optional-key :BAR) s/Str
@@ -61,6 +61,22 @@
                                         :Quux [{:Fizz s/Str}]}
                                        {:QUU "hi"
                                         :Quux []})}))
+        "Must contain paths for both the schema and a data described by it")
+    (is (= [[]
+            [:schema]
+            [:schema :QUU]
+            [:schema :Quux]
+            [:schema :Quux :Fizz]
+            [:value]
+            [:value :QUU]
+            [:value :Quux]
+            [:QUU]
+            [:Quux]
+            [:Quux :Fizz]]
+           (key-seqs (st/default {:QUU s/Str
+                                  :Quux [{:Fizz s/Str}]}
+                                 {:QUU "hi"
+                                  :Quux []})))
         "Must contain paths for both the schema and a data described by it")))
 
 (deftest prewalk-with-path-test
