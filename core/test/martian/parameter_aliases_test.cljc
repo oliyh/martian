@@ -51,7 +51,18 @@
                                  :Baz (st/default {:QUU s/Str
                                                    :Quux [{:Fizz s/Str}]}
                                                   {:QUU "hi"
-                                                   :Quux []})}))))
+                                                   :Quux []})}))
+          "Must contain aliases for both the schema and a data described by it")
+      (is (= {[] {:quu :QUU, :quux :Quux}
+              [:quux] {:fizz :Fizz}
+              [:schema] {:quu :QUU, :quux :Quux}
+              [:schema :quux] {:fizz :Fizz}
+              [:value] {:quu :QUU, :quux :Quux}}
+             (parameter-aliases (st/default {:QUU s/Str
+                                             :Quux [{:Fizz s/Str}]}
+                                            {:QUU "hi"
+                                             :Quux []})))
+          "Must contain aliases for both the schema and a data described by it"))
 
     (testing "qualified keys are not aliased"
       (is (= {} (parameter-aliases {:foo/Bar s/Str
@@ -101,7 +112,15 @@
                (unalias-data (parameter-aliases schema) {:foo-bar "a"
                                                          :bar "b"
                                                          :baz {:quu "c"
-                                                               :quux [{:fizz "d"}]}})))))
+                                                               :quux [{:fizz "d"}]}}))))
+      (is (= {:QUU "c"
+              :Quux [{:Fizz "d"}]}
+             (let [schema (st/default {:QUU s/Str
+                                       :Quux [{:Fizz s/Str}]}
+                                      {:QUU "hi"
+                                       :Quux []})]
+               (unalias-data (parameter-aliases schema) {:quu "c"
+                                                         :quux [{:fizz "d"}]})))))
 
     (testing "qualified keys are not aliased"
       (is (= {:foo/Bar "a"
@@ -151,6 +170,15 @@
                                              :Quux [{:Fizz s/Str}]}
                                             {:QUU "hi"
                                              :Quux []})}]
+               (alias-schema (parameter-aliases schema) schema))))
+      (is (= (st/default {:quu s/Str
+                          :quux [{:fizz s/Str}]}
+                         {:quu "hi"
+                          :quux []})
+             (let [schema (st/default {:QUU s/Str
+                                       :Quux [{:Fizz s/Str}]}
+                                      {:QUU "hi"
+                                       :Quux []})]
                (alias-schema (parameter-aliases schema) schema)))))
 
     (testing "qualified keys are not aliased"
