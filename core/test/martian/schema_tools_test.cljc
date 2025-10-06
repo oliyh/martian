@@ -1,5 +1,6 @@
 (ns martian.schema-tools-test
-  (:require [martian.schema-tools :refer [key-seqs prewalk-with-path]]
+  (:require [clojure.string :as str]
+            [martian.schema-tools :refer [key-seqs prewalk-with-path]]
             [schema.core :as s]
             [schema-tools.core :as st]
             #?(:clj  [clojure.test :refer [deftest testing is]]
@@ -99,7 +100,24 @@
             [:fooBar :Baz]
             [:fooBar :Baz :schema]]
            (key-seqs {:fooBar {:Baz (s/maybe s/Str)}}))
-        "Must contain paths for both the schema and a data described by it")))
+        "Must contain paths for both the schema and a data described by it"))
+
+  (testing "constrained schemas"
+    (is (= [[]
+            [:fooBar]
+            [:fooBar :schema]
+            [:fooBar :postcondition]
+            [:fooBar :post-name]]
+           (key-seqs {:fooBar (s/constrained s/Str (complement str/blank?))}))
+        "Must contain paths for both the schema and a data described by it")
+    (is (= [[]
+            [:fooBar]
+            [:fooBar :schema]
+            [:fooBar :schema :Baz]
+            [:fooBar :postcondition]
+            [:fooBar :post-name]
+            [:fooBar :Baz]]
+           (key-seqs {:fooBar (s/constrained {:Baz s/Str} some?)})))))
 
 (deftest prewalk-with-path-test
   (testing "map schemas (with all sorts of keys)"

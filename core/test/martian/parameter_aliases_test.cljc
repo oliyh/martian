@@ -1,9 +1,13 @@
 (ns martian.parameter-aliases-test
-  (:require [martian.parameter-aliases :refer [parameter-aliases unalias-data alias-schema]]
+  (:require [clojure.string :as str]
+            [martian.parameter-aliases :refer [parameter-aliases unalias-data alias-schema]]
             [schema-tools.core :as st]
             [schema.core :as s]
             #?(:clj  [clojure.test :refer [deftest testing is]]
                :cljs [cljs.test :refer-macros [deftest testing is]])))
+
+(defn not-blank? [s]
+  (not (str/blank? s)))
 
 (deftest parameter-aliases-test
   (testing "produces idiomatic aliases for all keys in a schema"
@@ -81,6 +85,15 @@
              (parameter-aliases (s/maybe {:fooBar s/Str})))
           "Must contain aliases for both the schema and a data described by it"))
 
+    (testing "constrained schemas"
+      (is (= {[] {:foo-bar :fooBar}}
+             (parameter-aliases {:fooBar (s/constrained s/Str not-blank?)})))
+      (is (= {[] {:foo-bar :fooBar}
+              [:foo-bar :schema] {:baz :Baz}
+              [:foo-bar] {:baz :Baz}}
+             (parameter-aliases {:fooBar (s/constrained {:Baz s/Str} some?)}))
+          "Must contain aliases for both the schema and a data described by it"))
+
     (testing "qualified keys are not aliased"
       (is (= {} (parameter-aliases {:foo/Bar s/Str
                                     :Baz/DOO s/Str}))))))
@@ -152,6 +165,14 @@
              (let [schema (s/maybe {:fooBar s/Str})]
                (unalias-data (parameter-aliases schema) {:foo-bar "a"})))))
 
+    (testing "constrained schemas"
+      (is (= {:fooBar "a"}
+             (let [schema {:fooBar (s/constrained s/Str not-blank?)}]
+               (unalias-data (parameter-aliases schema) {:foo-bar "a"}))))
+      (is (= {:fooBar {:Baz "b"}}
+             (let [schema {:fooBar (s/constrained {:Baz s/Str} some?)}]
+               (unalias-data (parameter-aliases schema) {:foo-bar {:baz "b"}})))))
+
     (testing "qualified keys are not aliased"
       (is (= {:foo/Bar "a"
               :Baz/DOO "b"}
@@ -222,6 +243,14 @@
                (alias-schema (parameter-aliases schema) schema))))
       (is (= (s/maybe {:foo-bar s/Str})
              (let [schema (s/maybe {:fooBar s/Str})]
+               (alias-schema (parameter-aliases schema) schema)))))
+
+    (testing "constrained schemas"
+      (is (= {:foo-bar (s/constrained s/Str not-blank?)}
+             (let [schema {:fooBar (s/constrained s/Str not-blank?)}]
+               (alias-schema (parameter-aliases schema) schema))))
+      (is (= {:foo-bar (s/constrained {:baz s/Str} some?)}
+             (let [schema {:fooBar (s/constrained {:Baz s/Str} some?)}]
                (alias-schema (parameter-aliases schema) schema)))))
 
     (testing "qualified keys are not aliased"
