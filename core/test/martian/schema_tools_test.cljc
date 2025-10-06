@@ -32,9 +32,8 @@
     (is (= [[]
             [:FOO]
             [:FOO :Bar]
-            [:FOO :Bar :martian.schema-tools/idx]
-            [:FOO :Bar :martian.schema-tools/idx :barDoo]
-            [:FOO :Bar :martian.schema-tools/idx :barDee]]
+            [:FOO :Bar :barDoo]
+            [:FOO :Bar :barDee]]
            (key-seqs {(s/optional-key :FOO)
                       {:Bar [[{:barDoo s/Str
                                (s/optional-key :barDee) s/Str}]]}}))
@@ -77,6 +76,15 @@
                                   :Quux [{:Fizz s/Str}]}
                                  {:QUU "hi"
                                   :Quux []})))
+        "Must contain paths for both the schema and a data described by it"))
+
+  (testing "named schemas"
+    (is (= [[]
+            [:schema]
+            [:schema :fooBar]
+            [:name]
+            [:fooBar]]
+           (key-seqs (s/named {:fooBar s/Str} "FooBar")))
         "Must contain paths for both the schema and a data described by it")))
 
 (deftest prewalk-with-path-test
