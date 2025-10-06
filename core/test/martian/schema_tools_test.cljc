@@ -6,14 +6,14 @@
                :cljs [cljs.test :refer-macros [deftest testing is]])))
 
 (deftest key-seqs-test
-  (testing "map schemas with optional keys"
+  (testing "map schemas (with all sorts of keys)"
     (is (= [[]
             [:fooBar]
             [:BAR]
             [:Baz]]
            (key-seqs {:fooBar s/Str
                       (s/optional-key :BAR) s/Str
-                      :Baz s/Str}))))
+                      (s/required-key :Baz) s/Str}))))
 
   (testing "nested map and vector schemas"
     (is (= [[]
@@ -64,7 +64,7 @@
         "Must contain paths for both the schema and a data described by it")))
 
 (deftest prewalk-with-path-test
-  (testing "map schemas with optional keys"
+  (testing "map schemas (with all sorts of keys)"
     (let [paths+forms (atom [])]
       (prewalk-with-path (fn [path form]
                            (swap! paths+forms conj [path form])
@@ -72,7 +72,7 @@
                          []
                          {:fooBar s/Str
                           (s/optional-key :BAR) s/Str
-                          :Baz s/Str})
+                          (s/required-key :Baz) s/Str})
       (is (= [[[] {:fooBar s/Str, (s/optional-key :BAR) s/Str, :Baz s/Str}]
               [[] [:fooBar s/Str]]
               [[] :fooBar]

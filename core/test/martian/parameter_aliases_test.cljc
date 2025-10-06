@@ -7,13 +7,13 @@
 
 (deftest parameter-aliases-test
   (testing "produces idiomatic aliases for all keys in a schema"
-    (testing "map schemas with optional keys"
+    (testing "map schemas (with all sorts of keys)"
       (is (= {[] {:foo-bar :fooBar
                   :bar :BAR
                   :baz :Baz}}
              (parameter-aliases {:fooBar s/Str
                                  (s/optional-key :BAR) s/Str
-                                 :Baz s/Str}))))
+                                 (s/required-key :Baz) s/Str}))))
 
     (testing "nested map and vector schemas"
       (is (= {[] {:foo-bar :fooBar
@@ -59,16 +59,16 @@
 
 (deftest unalias-data-test
   (testing "renames idiomatic keys back to original"
-    (testing "map schemas with optional keys"
-      (is (= {:FOO "a"
-              :fooBar "b"
-              :Bar "c"}
-             (let [schema {:FOO s/Str
-                           :fooBar s/Str
-                           (s/optional-key :Bar) s/Str}]
-               (unalias-data (parameter-aliases schema) {:foo "a"
-                                                         :foo-bar "b"
-                                                         :bar "c"})))))
+    (testing "map schemas (with all sorts of keys)"
+      (is (= {:fooBar "a"
+              :BAR "b"
+              :Baz "c"}
+             (let [schema {:fooBar s/Str
+                           (s/optional-key :BAR) s/Str
+                           (s/required-key :Baz) s/Str}]
+               (unalias-data (parameter-aliases schema) {:foo-bar "a"
+                                                         :bar "b"
+                                                         :baz "c"})))))
 
     (testing "nested map and vector schemas"
       (is (= {:FOO {:fooBar "b"
@@ -113,13 +113,13 @@
 
 (deftest alias-schema-test
   (testing "renames schema keys into idiomatic keys"
-    (testing "map schemas with optional keys"
+    (testing "map schemas (with all sorts of keys)"
       (is (= {:foo-bar s/Str
               (s/optional-key :bar) s/Str
-              :baz s/Str}
+              (s/required-key :baz) s/Str}
              (let [schema {:fooBar s/Str
                            (s/optional-key :BAR) s/Str
-                           :Baz s/Str}]
+                           (s/required-key :Baz) s/Str}]
                (alias-schema (parameter-aliases schema) schema)))))
 
     (testing "nested map and vector schemas"
