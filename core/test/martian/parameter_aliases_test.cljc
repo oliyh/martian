@@ -64,6 +64,12 @@
                                              :Quux []})))
           "Must contain aliases for both the schema and a data described by it"))
 
+    (testing "named schemas"
+      (is (= {[] {:foo-bar :fooBar}
+              [:schema] {:foo-bar :fooBar}}
+             (parameter-aliases (s/named {:fooBar s/Str} "FooBar")))
+          "Must contain aliases for both the schema and a data described by it"))
+
     (testing "qualified keys are not aliased"
       (is (= {} (parameter-aliases {:foo/Bar s/Str
                                     :Baz/DOO s/Str}))))))
@@ -122,6 +128,11 @@
                (unalias-data (parameter-aliases schema) {:quu "c"
                                                          :quux [{:fizz "d"}]})))))
 
+    (testing "named schemas"
+      (is (= {:fooBar "a"}
+             (let [schema (s/named {:fooBar s/Str} "FooBar")]
+               (unalias-data (parameter-aliases schema) {:foo-bar "a"})))))
+
     (testing "qualified keys are not aliased"
       (is (= {:foo/Bar "a"
               :Baz/DOO "b"}
@@ -179,6 +190,11 @@
                                        :Quux [{:Fizz s/Str}]}
                                       {:QUU "hi"
                                        :Quux []})]
+               (alias-schema (parameter-aliases schema) schema)))))
+
+    (testing "named schemas"
+      (is (= (s/named {:foo-bar s/Str} "FooBar")
+             (let [schema (s/named {:fooBar s/Str} "FooBar")]
                (alias-schema (parameter-aliases schema) schema)))))
 
     (testing "qualified keys are not aliased"
