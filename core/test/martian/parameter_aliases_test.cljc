@@ -140,6 +140,17 @@
                                                  :Quux [{:Fizz s/Str}]})}))
           "Must contain aliases for both the schema and a data described by it"))
 
+    (testing "cond-pre schemas"
+      (is (= {[] {:foo-bar :fooBar}
+              [:schemas] {:foo-bar :fooBar}}
+             (parameter-aliases (s/cond-pre {:fooBar s/Str} s/Str)))
+          "Must contain paths for both the schema and a data described by it")
+      (is (= {[] {:foo :FOO}
+              [:foo] {:foo-bar :fooBar}
+              [:foo :schemas] {:foo-bar :fooBar}}
+             (parameter-aliases {:FOO (s/cond-pre {:fooBar s/Str} s/Str)}))
+          "Must contain paths for both the schema and a data described by it"))
+
     (testing "qualified keys are not aliased"
       (is (= {} (parameter-aliases {:foo/Bar s/Str
                                     :Baz/DOO s/Str}))))))
@@ -293,6 +304,20 @@
                (unalias-data (parameter-aliases schema) {:foo {:quu "c"
                                                                :quux [{:fizz "d"}]}})))))
 
+    (testing "cond-pre schemas"
+      (is (= {:fooBar "a"}
+             (let [schema (s/cond-pre {:fooBar s/Str} s/Str)]
+               (unalias-data (parameter-aliases schema) {:foo-bar "a"}))))
+      (is (= "b"
+             (let [schema (s/cond-pre {:fooBar s/Str} s/Str)]
+               (unalias-data (parameter-aliases schema) "b"))))
+      (is (= {:FOO {:fooBar "a"}}
+             (let [schema {:FOO (s/cond-pre {:fooBar s/Str} s/Str)}]
+               (unalias-data (parameter-aliases schema) {:foo {:foo-bar "a"}}))))
+      (is (= {:FOO "b"}
+             (let [schema {:FOO (s/cond-pre {:fooBar s/Str} s/Str)}]
+               (unalias-data (parameter-aliases schema) {:foo "b"})))))
+
     (testing "qualified keys are not aliased"
       (is (= {:foo/Bar "a"
               :Baz/DOO "b"}
@@ -419,6 +444,14 @@
                                            (s/required-key :Baz) s/Str}
                                           {:QUU s/Str
                                            :Quux [{:Fizz s/Str}]})}]
+               (alias-schema (parameter-aliases schema) schema)))))
+
+    (testing "cond-pre schemas"
+      (is (= (s/cond-pre {:foo-bar s/Str} s/Str)
+             (let [schema (s/cond-pre {:fooBar s/Str} s/Str)]
+               (alias-schema (parameter-aliases schema) schema))))
+      (is (= {:foo (s/cond-pre {:foo-bar s/Str} s/Str)}
+             (let [schema {:FOO (s/cond-pre {:fooBar s/Str} s/Str)}]
                (alias-schema (parameter-aliases schema) schema)))))
 
     (testing "qualified keys are not aliased"
