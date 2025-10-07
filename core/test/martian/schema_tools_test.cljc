@@ -201,7 +201,18 @@
                                       :Quux [{:Fizz s/Str}]})}))
         "Must contain paths for both the schema and a data described by it"))
 
-  )
+  (testing "cond-pre schemas"
+    (is (= [[]
+            [:schemas :fooBar]
+            [:fooBar]]
+           (key-seqs (s/cond-pre {:fooBar s/Str} s/Str)))
+        "Must contain paths for both the schema and a data described by it")
+    (is (= [[]
+            [:FOO]
+            [:FOO :schemas :fooBar]
+            [:FOO :fooBar]]
+           (key-seqs {:FOO (s/cond-pre {:fooBar s/Str} s/Str)}))
+        "Must contain paths for both the schema and a data described by it")))
 
 (deftest prewalk-with-path-test
   (testing "map schemas (with all sorts of keys)"
