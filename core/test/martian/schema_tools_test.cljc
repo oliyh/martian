@@ -117,7 +117,91 @@
             [:fooBar :postcondition]
             [:fooBar :post-name]
             [:fooBar :Baz]]
-           (key-seqs {:fooBar (s/constrained {:Baz s/Str} some?)})))))
+           (key-seqs {:fooBar (s/constrained {:Baz s/Str} some?)}))))
+
+  (testing "both schemas"
+    (is (= [[]
+            [:schemas :fooBar]
+            [:schemas :BAR]
+            [:schemas :Baz]
+            [:schemas :QUU]
+            [:schemas :Quux]
+            [:schemas :Quux :Fizz]
+            [:fooBar]
+            [:BAR]
+            [:Baz]
+            [:QUU]
+            [:Quux]
+            [:Quux :Fizz]]
+           (key-seqs (s/both {:fooBar s/Str
+                              (s/optional-key :BAR) s/Str
+                              (s/required-key :Baz) s/Str}
+                             {:QUU s/Str
+                              :Quux [{:Fizz s/Str}]})))
+        "Must contain paths for both the schema and a data described by it")
+    (is (= [[]
+            [:FOO]
+            [:FOO :schemas :fooBar]
+            [:FOO :schemas :BAR]
+            [:FOO :schemas :Baz]
+            [:FOO :schemas :QUU]
+            [:FOO :schemas :Quux]
+            [:FOO :schemas :Quux :Fizz]
+            [:FOO :fooBar]
+            [:FOO :BAR]
+            [:FOO :Baz]
+            [:FOO :QUU]
+            [:FOO :Quux]
+            [:FOO :Quux :Fizz]]
+           (key-seqs {:FOO (s/both {:fooBar s/Str
+                                    (s/optional-key :BAR) s/Str
+                                    (s/required-key :Baz) s/Str}
+                                   {:QUU s/Str
+                                    :Quux [{:Fizz s/Str}]})}))
+        "Must contain paths for both the schema and a data described by it"))
+
+  (testing "either schemas"
+    (is (= [[]
+            [:schemas :fooBar]
+            [:schemas :BAR]
+            [:schemas :Baz]
+            [:schemas :QUU]
+            [:schemas :Quux]
+            [:schemas :Quux :Fizz]
+            [:fooBar]
+            [:BAR]
+            [:Baz]
+            [:QUU]
+            [:Quux]
+            [:Quux :Fizz]]
+           (key-seqs (s/either {:fooBar s/Str
+                                (s/optional-key :BAR) s/Str
+                                (s/required-key :Baz) s/Str}
+                               {:QUU s/Str
+                                :Quux [{:Fizz s/Str}]})))
+        "Must contain paths for both the schema and a data described by it")
+    (is (= [[]
+            [:FOO]
+            [:FOO :schemas :fooBar]
+            [:FOO :schemas :BAR]
+            [:FOO :schemas :Baz]
+            [:FOO :schemas :QUU]
+            [:FOO :schemas :Quux]
+            [:FOO :schemas :Quux :Fizz]
+            [:FOO :fooBar]
+            [:FOO :BAR]
+            [:FOO :Baz]
+            [:FOO :QUU]
+            [:FOO :Quux]
+            [:FOO :Quux :Fizz]]
+           (key-seqs {:FOO (s/either {:fooBar s/Str
+                                      (s/optional-key :BAR) s/Str
+                                      (s/required-key :Baz) s/Str}
+                                     {:QUU s/Str
+                                      :Quux [{:Fizz s/Str}]})}))
+        "Must contain paths for both the schema and a data described by it"))
+
+  )
 
 (deftest prewalk-with-path-test
   (testing "map schemas (with all sorts of keys)"
