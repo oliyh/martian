@@ -5,6 +5,11 @@
 (defn explicit-key [k]
   (if (s/specific-key? k) (s/explicit-schema-key k) k))
 
+(defn concrete-key? [k]
+  (or (keyword? k)
+      (s/specific-key? k)
+      (string? k)))
+
 (defn- concat* [& xs]
   (apply concat (remove nil? xs)))
 
@@ -20,9 +25,10 @@
     (concat*
       (when include-self? (list path))
       (mapcat (fn [[k v]]
-                (let [k' (explicit-key k)
-                      path' (conj path k')]
-                  (cons path' (-paths v path' false))))
+                (when (concrete-key? k)
+                  (let [k' (explicit-key k)
+                        path' (conj path k')]
+                    (cons path' (-paths v path' false)))))
               schema)))
 
   ;; NB: Vector schemas are transparent (indices are ignored).

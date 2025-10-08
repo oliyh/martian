@@ -264,7 +264,29 @@
                              :else
                              {:QUU s/Str
                               :Quux [{:Fizz s/Str}]})}))
-        "Must contain paths for both the schema and a data described by it")))
+        "Must contain paths for both the schema and a data described by it"))
+
+  (testing "non-keyword keys"
+    (is (= [[]
+            ["fooBar"]]
+           (key-seqs {"fooBar" s/Str
+                      'bazQuux s/Str}))
+        "Symbols are excluded for performance purposes, could work as well"))
+
+  (testing "qualified keys"
+    (is (= [[]
+            [:foo/Bar]
+            [:Baz/DOO]]
+           (key-seqs {:foo/Bar s/Str
+                      :Baz/DOO s/Str}))))
+
+  (testing "generic keys"
+    (is (= [[]]
+           (key-seqs {s/Str {:foo s/Str}})))
+    (is (= [[]]
+           (key-seqs {s/Keyword {:foo s/Str}})))
+    (is (= [[]]
+           (key-seqs (st/any-keys))))))
 
 (deftest prewalk-with-path-test
   (testing "map schemas (with all sorts of keys)"
