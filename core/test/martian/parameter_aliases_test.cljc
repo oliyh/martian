@@ -54,9 +54,12 @@
               [:baz] {:quu :QUU
                       :quux :Quux}
               [:baz :quux] {:fizz :Fizz}
-              [:baz :schema] {:quu :QUU, :quux :Quux}
+              [:baz :schema] {:quu :QUU
+                              :quux :Quux}
               [:baz :schema :quux] {:fizz :Fizz}
-              [:baz :value] {:quu :QUU, :quux :Quux}}
+              [:baz :value] {:quu :QUU
+                             :quux :Quux}
+              [:baz :value :quux] {:fizz :Fizz}}
              (parameter-aliases {:fooBar s/Str
                                  (s/optional-key :BAR) s/Str
                                  :Baz (st/default {:QUU s/Str
@@ -64,11 +67,15 @@
                                                   {:QUU "hi"
                                                    :Quux []})}))
           "Must contain aliases for both the schema and a data described by it")
-      (is (= {[] {:quu :QUU, :quux :Quux}
+      (is (= {[] {:quu :QUU
+                  :quux :Quux}
               [:quux] {:fizz :Fizz}
-              [:schema] {:quu :QUU, :quux :Quux}
+              [:schema] {:quu :QUU
+                         :quux :Quux}
               [:schema :quux] {:fizz :Fizz}
-              [:value] {:quu :QUU, :quux :Quux}}
+              [:value] {:quu :QUU
+                        :quux :Quux}
+              [:value :quux] {:fizz :Fizz}}
              (parameter-aliases (st/default {:QUU s/Str
                                              :Quux [{:Fizz s/Str}]}
                                             {:QUU "hi"
@@ -102,9 +109,17 @@
           "Must contain aliases for both the schema and a data described by it"))
 
     (testing "both schemas"
-      (is (= {[] {:foo-bar :fooBar, :bar :BAR, :baz :Baz, :quu :QUU, :quux :Quux}
+      (is (= {[] {:foo-bar :fooBar
+                  :bar :BAR
+                  :baz :Baz
+                  :quu :QUU
+                  :quux :Quux}
               [:quux] {:fizz :Fizz}
-              [:schemas] {:foo-bar :fooBar, :bar :BAR, :baz :Baz, :quu :QUU, :quux :Quux}
+              [:schemas] {:foo-bar :fooBar
+                          :bar :BAR
+                          :baz :Baz
+                          :quu :QUU
+                          :quux :Quux}
               [:schemas :quux] {:fizz :Fizz}}
              (parameter-aliases (s/both {:fooBar s/Str
                                          (s/optional-key :BAR) s/Str
@@ -113,9 +128,17 @@
                                          :Quux [{:Fizz s/Str}]})))
           "Must contain aliases for both the schema and a data described by it")
       (is (= {[] {:foo :FOO}
-              [:foo] {:foo-bar :fooBar, :bar :BAR, :baz :Baz, :quu :QUU, :quux :Quux}
+              [:foo] {:foo-bar :fooBar
+                      :bar :BAR
+                      :baz :Baz
+                      :quu :QUU
+                      :quux :Quux}
               [:foo :quux] {:fizz :Fizz}
-              [:foo :schemas] {:foo-bar :fooBar, :bar :BAR, :baz :Baz, :quu :QUU, :quux :Quux}
+              [:foo :schemas] {:foo-bar :fooBar
+                               :bar :BAR
+                               :baz :Baz
+                               :quu :QUU
+                               :quux :Quux}
               [:foo :schemas :quux] {:fizz :Fizz}}
              (parameter-aliases {:FOO (s/both {:fooBar s/Str
                                                (s/optional-key :BAR) s/Str
@@ -125,9 +148,17 @@
           "Must contain aliases for both the schema and a data described by it"))
 
     (testing "either schemas"
-      (is (= {[] {:foo-bar :fooBar, :bar :BAR, :baz :Baz, :quu :QUU, :quux :Quux}
+      (is (= {[] {:foo-bar :fooBar
+                  :bar :BAR
+                  :baz :Baz
+                  :quu :QUU
+                  :quux :Quux}
               [:quux] {:fizz :Fizz}
-              [:schemas] {:foo-bar :fooBar, :bar :BAR, :baz :Baz, :quu :QUU, :quux :Quux}
+              [:schemas] {:foo-bar :fooBar
+                          :bar :BAR
+                          :baz :Baz
+                          :quu :QUU
+                          :quux :Quux}
               [:schemas :quux] {:fizz :Fizz}}
              (parameter-aliases (s/either {:fooBar s/Str
                                            (s/optional-key :BAR) s/Str
@@ -136,9 +167,17 @@
                                            :Quux [{:Fizz s/Str}]})))
           "Must contain aliases for both the schema and a data described by it")
       (is (= {[] {:foo :FOO}
-              [:foo] {:foo-bar :fooBar, :bar :BAR, :baz :Baz, :quu :QUU, :quux :Quux}
+              [:foo] {:foo-bar :fooBar
+                      :bar :BAR
+                      :baz :Baz
+                      :quu :QUU
+                      :quux :Quux}
               [:foo :quux] {:fizz :Fizz}
-              [:foo :schemas] {:foo-bar :fooBar, :bar :BAR, :baz :Baz, :quu :QUU, :quux :Quux}
+              [:foo :schemas] {:foo-bar :fooBar
+                               :bar :BAR
+                               :baz :Baz
+                               :quu :QUU
+                               :quux :Quux}
               [:foo :schemas :quux] {:fizz :Fizz}}
              (parameter-aliases {:FOO (s/either {:fooBar s/Str
                                                  (s/optional-key :BAR) s/Str
@@ -159,9 +198,17 @@
           "Must contain paths for both the schema and a data described by it"))
 
     (testing "conditional schemas"
-      (is (= {[] {:foo-bar :fooBar, :bar :BAR, :baz :Baz, :quu :QUU, :quux :Quux}
+      (is (= {[] {:foo-bar :fooBar
+                  :bar :BAR
+                  :baz :Baz
+                  :quu :QUU
+                  :quux :Quux}
               [:quux] {:fizz :Fizz}
-              [:preds-and-schemas] {:foo-bar :fooBar, :bar :BAR, :baz :Baz, :quu :QUU, :quux :Quux}
+              [:preds-and-schemas] {:foo-bar :fooBar
+                                    :bar :BAR
+                                    :baz :Baz
+                                    :quu :QUU
+                                    :quux :Quux}
               [:preds-and-schemas :quux] {:fizz :Fizz}}
              (parameter-aliases (s/conditional
                                   foo-map?
@@ -173,9 +220,17 @@
                                    :Quux [{:Fizz s/Str}]})))
           "Must contain paths for both the schema and a data described by it")
       (is (= {[] {:foo :FOO}
-              [:foo] {:foo-bar :fooBar, :bar :BAR, :baz :Baz, :quu :QUU, :quux :Quux}
+              [:foo] {:foo-bar :fooBar
+                      :bar :BAR
+                      :baz :Baz
+                      :quu :QUU
+                      :quux :Quux}
               [:foo :quux] {:fizz :Fizz}
-              [:foo :preds-and-schemas] {:foo-bar :fooBar, :bar :BAR, :baz :Baz, :quu :QUU, :quux :Quux}
+              [:foo :preds-and-schemas] {:foo-bar :fooBar
+                                         :bar :BAR
+                                         :baz :Baz
+                                         :quu :QUU
+                                         :quux :Quux}
               [:foo :preds-and-schemas :quux] {:fizz :Fizz}}
              (parameter-aliases {:FOO (s/conditional
                                         foo-map?
@@ -224,8 +279,8 @@
     (testing "default schemas"
       (is (= {:fooBar "a"
               :BAR "b"
-              :Baz {:QUU "c"
-                    :Quux [{:Fizz "d"}]}}
+              :Baz {:QUU "x"
+                    :Quux [{:Fizz "y"}]}}
              (let [schema {:fooBar s/Str
                            (s/optional-key :BAR) s/Str
                            :Baz (st/default {:QUU s/Str
@@ -234,16 +289,16 @@
                                              :Quux []})}]
                (unalias-data (parameter-aliases schema) {:foo-bar "a"
                                                          :bar "b"
-                                                         :baz {:quu "c"
-                                                               :quux [{:fizz "d"}]}}))))
-      (is (= {:QUU "c"
-              :Quux [{:Fizz "d"}]}
+                                                         :baz {:quu "x"
+                                                               :quux [{:fizz "y"}]}}))))
+      (is (= {:QUU "x"
+              :Quux [{:Fizz "y"}]}
              (let [schema (st/default {:QUU s/Str
                                        :Quux [{:Fizz s/Str}]}
                                       {:QUU "hi"
                                        :Quux []})]
-               (unalias-data (parameter-aliases schema) {:quu "c"
-                                                         :quux [{:fizz "d"}]})))))
+               (unalias-data (parameter-aliases schema) {:quu "x"
+                                                         :quux [{:fizz "y"}]})))))
 
     (testing "named schemas"
       (is (= {:fooBar "a"}
@@ -270,8 +325,8 @@
       (is (= {:fooBar "a"
               :BAR "b"
               :Baz "c"
-              :QUU "c"
-              :Quux [{:Fizz "d"}]}
+              :QUU "x"
+              :Quux [{:Fizz "y"}]}
              (let [schema (s/both {:fooBar s/Str
                                    (s/optional-key :BAR) s/Str
                                    (s/required-key :Baz) s/Str}
@@ -280,13 +335,13 @@
                (unalias-data (parameter-aliases schema) {:foo-bar "a"
                                                          :bar "b"
                                                          :baz "c"
-                                                         :quu "c"
-                                                         :quux [{:fizz "d"}]}))))
+                                                         :quu "x"
+                                                         :quux [{:fizz "y"}]}))))
       (is (= {:FOO {:fooBar "a"
                     :BAR "b"
                     :Baz "c"
-                    :QUU "c"
-                    :Quux [{:Fizz "d"}]}}
+                    :QUU "x"
+                    :Quux [{:Fizz "y"}]}}
              (let [schema {:FOO (s/both {:fooBar s/Str
                                          (s/optional-key :BAR) s/Str
                                          (s/required-key :Baz) s/Str}
@@ -295,118 +350,90 @@
                (unalias-data (parameter-aliases schema) {:foo {:foo-bar "a"
                                                                :bar "b"
                                                                :baz "c"
-                                                               :quu "c"
-                                                               :quux [{:fizz "d"}]}})))))
+                                                               :quu "x"
+                                                               :quux [{:fizz "y"}]}})))))
 
     (testing "either schemas"
-      (is (= {:fooBar "a"
-              :BAR "b"
-              :Baz "c"}
-             (let [schema (s/either {:fooBar s/Str
-                                     (s/optional-key :BAR) s/Str
-                                     (s/required-key :Baz) s/Str}
-                                    {:QUU s/Str
-                                     :Quux [{:Fizz s/Str}]})]
+      (let [schema (s/either {:fooBar s/Str
+                              (s/optional-key :BAR) s/Str
+                              (s/required-key :Baz) s/Str}
+                             {:QUU s/Str
+                              :Quux [{:Fizz s/Str}]})]
+        (is (= {:fooBar "a"
+                :BAR "b"
+                :Baz "c"}
                (unalias-data (parameter-aliases schema) {:foo-bar "a"
                                                          :bar "b"
-                                                         :baz "c"}))))
-      (is (= {:QUU "c"
-              :Quux [{:Fizz "d"}]}
-             (let [schema (s/either {:fooBar s/Str
-                                     (s/optional-key :BAR) s/Str
-                                     (s/required-key :Baz) s/Str}
-                                    {:QUU s/Str
-                                     :Quux [{:Fizz s/Str}]})]
-               (unalias-data (parameter-aliases schema) {:quu "c"
-                                                         :quux [{:fizz "d"}]}))))
-      (is (= {:FOO {:fooBar "a"
-                    :BAR "b"
-                    :Baz "c"}}
-             (let [schema {:FOO (s/either {:fooBar s/Str
-                                           (s/optional-key :BAR) s/Str
-                                           (s/required-key :Baz) s/Str}
-                                          {:QUU s/Str
-                                           :Quux [{:Fizz s/Str}]})}]
+                                                         :baz "c"})))
+        (is (= {:QUU "x"
+                :Quux [{:Fizz "y"}]}
+               (unalias-data (parameter-aliases schema) {:quu "x"
+                                                         :quux [{:fizz "y"}]}))))
+      (let [schema {:FOO (s/either {:fooBar s/Str
+                                    (s/optional-key :BAR) s/Str
+                                    (s/required-key :Baz) s/Str}
+                                   {:QUU s/Str
+                                    :Quux [{:Fizz s/Str}]})}]
+        (is (= {:FOO {:fooBar "a"
+                      :BAR "b"
+                      :Baz "c"}}
                (unalias-data (parameter-aliases schema) {:foo {:foo-bar "a"
                                                                :bar "b"
-                                                               :baz "c"}}))))
-      (is (= {:FOO {:QUU "c"
-                    :Quux [{:Fizz "d"}]}}
-             (let [schema {:FOO (s/either {:fooBar s/Str
-                                           (s/optional-key :BAR) s/Str
-                                           (s/required-key :Baz) s/Str}
-                                          {:QUU s/Str
-                                           :Quux [{:Fizz s/Str}]})}]
-               (unalias-data (parameter-aliases schema) {:foo {:quu "c"
-                                                               :quux [{:fizz "d"}]}})))))
+                                                               :baz "c"}})))
+        (is (= {:FOO {:QUU "x"
+                      :Quux [{:Fizz "y"}]}}
+               (unalias-data (parameter-aliases schema) {:foo {:quu "x"
+                                                               :quux [{:fizz "y"}]}})))))
 
     (testing "cond-pre schemas"
-      (is (= {:fooBar "a"}
-             (let [schema (s/cond-pre {:fooBar s/Str} s/Str)]
-               (unalias-data (parameter-aliases schema) {:foo-bar "a"}))))
-      (is (= "b"
-             (let [schema (s/cond-pre {:fooBar s/Str} s/Str)]
+      (let [schema (s/cond-pre {:fooBar s/Str} s/Str)]
+        (is (= {:fooBar "a"}
+               (unalias-data (parameter-aliases schema) {:foo-bar "a"})))
+        (is (= "b"
                (unalias-data (parameter-aliases schema) "b"))))
-      (is (= {:FOO {:fooBar "a"}}
-             (let [schema {:FOO (s/cond-pre {:fooBar s/Str} s/Str)}]
-               (unalias-data (parameter-aliases schema) {:foo {:foo-bar "a"}}))))
-      (is (= {:FOO "b"}
-             (let [schema {:FOO (s/cond-pre {:fooBar s/Str} s/Str)}]
+      (let [schema {:FOO (s/cond-pre {:fooBar s/Str} s/Str)}]
+        (is (= {:FOO {:fooBar "a"}}
+               (unalias-data (parameter-aliases schema) {:foo {:foo-bar "a"}})))
+        (is (= {:FOO "b"}
                (unalias-data (parameter-aliases schema) {:foo "b"})))))
 
     (testing "conditional schemas"
-      (is (= {:fooBar "a"
-              :BAR "b"
-              :Baz "c"}
-             (let [schema (s/conditional
-                            foo-map?
-                            {:fooBar s/Str
-                             (s/optional-key :BAR) s/Str
-                             (s/required-key :Baz) s/Str}
-                            not-foo-map?
-                            {:QUU s/Str
-                             :Quux [{:Fizz s/Str}]})]
+      (let [schema (s/conditional
+                     foo-map?
+                     {:fooBar s/Str
+                      (s/optional-key :BAR) s/Str
+                      (s/required-key :Baz) s/Str}
+                     not-foo-map?
+                     {:QUU s/Str
+                      :Quux [{:Fizz s/Str}]})]
+        (is (= {:fooBar "a"
+                :BAR "b"
+                :Baz "c"}
                (unalias-data (parameter-aliases schema) {:foo-bar "a"
                                                          :bar "b"
-                                                         :baz "c"}))))
-      (is (= {:QUU "c"
-              :Quux [{:Fizz "d"}]}
-             (let [schema (s/conditional
-                            foo-map?
-                            {:fooBar s/Str
-                             (s/optional-key :BAR) s/Str
-                             (s/required-key :Baz) s/Str}
-                            not-foo-map?
-                            {:QUU s/Str
-                             :Quux [{:Fizz s/Str}]})]
-               (unalias-data (parameter-aliases schema) {:quu "c"
-                                                         :quux [{:fizz "d"}]}))))
-      (is (= {:FOO {:fooBar "a"
-                    :BAR "b"
-                    :Baz "c"}}
-             (let [schema {:FOO (s/conditional
-                                  foo-map?
-                                  {:fooBar s/Str
-                                   (s/optional-key :BAR) s/Str
-                                   (s/required-key :Baz) s/Str}
-                                  not-foo-map?
-                                  {:QUU s/Str
-                                   :Quux [{:Fizz s/Str}]})}]
+                                                         :baz "c"})))
+        (is (= {:QUU "x"
+                :Quux [{:Fizz "y"}]}
+               (unalias-data (parameter-aliases schema) {:quu "x"
+                                                         :quux [{:fizz "y"}]}))))
+      (let [schema {:FOO (s/conditional
+                           foo-map?
+                           {:fooBar s/Str
+                            (s/optional-key :BAR) s/Str
+                            (s/required-key :Baz) s/Str}
+                           not-foo-map?
+                           {:QUU s/Str
+                            :Quux [{:Fizz s/Str}]})}]
+        (is (= {:FOO {:fooBar "a"
+                      :BAR "b"
+                      :Baz "c"}}
                (unalias-data (parameter-aliases schema) {:foo {:foo-bar "a"
                                                                :bar "b"
-                                                               :baz "c"}}))))
-      (is (= {:FOO {:QUU "c"
-                    :Quux [{:Fizz "d"}]}}
-             (let [schema {:FOO (s/conditional
-                                  foo-map?
-                                  {:fooBar s/Str
-                                   (s/optional-key :BAR) s/Str
-                                   (s/required-key :Baz) s/Str}
-                                  not-foo-map?
-                                  {:QUU s/Str
-                                   :Quux [{:Fizz s/Str}]})}]
-               (unalias-data (parameter-aliases schema) {:foo {:quu "c"
-                                                               :quux [{:fizz "d"}]}})))))
+                                                               :baz "c"}})))
+        (is (= {:FOO {:QUU "x"
+                      :Quux [{:Fizz "y"}]}}
+               (unalias-data (parameter-aliases schema) {:foo {:quu "x"
+                                                               :quux [{:fizz "y"}]}})))))
 
     (testing "qualified keys are not aliased"
       (is (= {:foo/Bar "a"
