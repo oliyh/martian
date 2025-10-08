@@ -6,6 +6,9 @@
             #?(:clj  [clojure.test :refer [deftest testing is]]
                :cljs [cljs.test :refer-macros [deftest testing is]])))
 
+(defn not-blank? [s]
+  (not (str/blank? s)))
+
 (defn foo-map? [x]
   (and (map? x)
        (let [str-keys (map (comp str/lower-case name) (keys x))]
@@ -57,6 +60,7 @@
             [:Baz :value]
             [:Baz :value :QUU]
             [:Baz :value :Quux]
+            [:Baz :value :Quux :Fizz]
             [:Baz :QUU]
             [:Baz :Quux]
             [:Baz :Quux :Fizz]]
@@ -75,6 +79,7 @@
             [:value]
             [:value :QUU]
             [:value :Quux]
+            [:value :Quux :Fizz]
             [:QUU]
             [:Quux]
             [:Quux :Fizz]]
@@ -88,7 +93,6 @@
     (is (= [[]
             [:schema]
             [:schema :fooBar]
-            [:name]
             [:fooBar]]
            (key-seqs (s/named {:fooBar s/Str} "FooBar")))
         "Must contain paths for both the schema and a data described by it"))
@@ -110,17 +114,13 @@
   (testing "constrained schemas"
     (is (= [[]
             [:fooBar]
-            [:fooBar :schema]
-            [:fooBar :postcondition]
-            [:fooBar :post-name]]
-           (key-seqs {:fooBar (s/constrained s/Str (complement str/blank?))}))
+            [:fooBar :schema]]
+           (key-seqs {:fooBar (s/constrained s/Str not-blank?)}))
         "Must contain paths for both the schema and a data described by it")
     (is (= [[]
             [:fooBar]
             [:fooBar :schema]
             [:fooBar :schema :Baz]
-            [:fooBar :postcondition]
-            [:fooBar :post-name]
             [:fooBar :Baz]]
            (key-seqs {:fooBar (s/constrained {:Baz s/Str} some?)}))))
 
