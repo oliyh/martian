@@ -240,11 +240,25 @@
                                         :else
                                         {:QUU s/Str
                                          :Quux [{:Fizz s/Str}]})}))
-          "Must contain paths for both the schema and a data described by it"))
+          "Must contain paths for both the schema and a data described by it")))
 
-    (testing "qualified keys are not aliased"
-      (is (= {} (parameter-aliases {:foo/Bar s/Str
-                                    :Baz/DOO s/Str}))))))
+  (testing "non-keyword keys"
+    (is (= {[] {"foo-bar" "fooBar"}}
+           (parameter-aliases {"fooBar" s/Str
+                               'bazQuux s/Str}))
+        "Symbols are excluded for performance purposes, could work as well"))
+
+  (testing "qualified keys are not aliased"
+    (is (= {} (parameter-aliases {:foo/Bar s/Str
+                                  :Baz/DOO s/Str}))))
+
+  (testing "generic keys are not aliased"
+    (is (= {}
+           (parameter-aliases {s/Str {:fooBar s/Str}})))
+    (is (= {}
+           (parameter-aliases {s/Keyword {:fooBar s/Str}})))
+    (is (= {}
+           (parameter-aliases (st/any-keys))))))
 
 (deftest unalias-data-test
   (testing "renames idiomatic keys back to original"
@@ -433,15 +447,35 @@
         (is (= {:FOO {:QUU "x"
                       :Quux [{:Fizz "y"}]}}
                (unalias-data (parameter-aliases schema) {:foo {:quu "x"
-                                                               :quux [{:fizz "y"}]}})))))
+                                                               :quux [{:fizz "y"}]}}))))))
 
-    (testing "qualified keys are not aliased"
-      (is (= {:foo/Bar "a"
-              :Baz/DOO "b"}
-             (let [schema {:foo/Bar s/Str
-                           :Baz/DOO s/Str}]
-               (unalias-data (parameter-aliases schema) {:foo/Bar "a"
-                                                         :Baz/DOO "b"})))))))
+  (testing "non-keyword keys"
+    (is (= {"fooBar" "a"
+            'baz-quux "b"}
+           (let [schema {"fooBar" s/Str
+                         'bazQuux s/Str}]
+             (unalias-data (parameter-aliases schema) {"foo-bar" "a"
+                                                       'baz-quux "b"})))
+        "Symbols are excluded for performance purposes, could work as well"))
+
+  (testing "qualified keys are not renamed"
+    (is (= {:foo/Bar "a"
+            :Baz/DOO "b"}
+           (let [schema {:foo/Bar s/Str
+                         :Baz/DOO s/Str}]
+             (unalias-data (parameter-aliases schema) {:foo/Bar "a"
+                                                       :Baz/DOO "b"})))))
+
+  (testing "generic keys are not renamed"
+    (is (= {"a" {:foo-bar "b"}}
+           (let [schema {s/Str {:fooBar s/Str}}]
+             (unalias-data (parameter-aliases schema) {"a" {:foo-bar "b"}}))))
+    (is (= {:a {:foo-bar "b"}}
+           (let [schema {s/Keyword {:fooBar s/Str}}]
+             (unalias-data (parameter-aliases schema) {:a {:foo-bar "b"}}))))
+    (is (= {:foo-bar "a"}
+           (let [schema (st/any-keys)]
+             (unalias-data (parameter-aliases schema) {:foo-bar "a"}))))))
 
 (deftest alias-schema-test
   (testing "renames schema keys into idiomatic keys"
@@ -605,11 +639,30 @@
                                   not-foo-map?
                                   {:QUU s/Str
                                    :Quux [{:Fizz s/Str}]})}]
-               (alias-schema (parameter-aliases schema) schema)))))
+               (alias-schema (parameter-aliases schema) schema))))))
 
-    (testing "qualified keys are not aliased"
-      (is (= {:foo/Bar s/Str
-              :Baz/DOO s/Str}
-             (let [schema {:foo/Bar s/Str
-                           :Baz/DOO s/Str}]
-               (alias-schema (parameter-aliases schema) schema)))))))
+  (testing "non-keyword keys"
+    (is (= {"foo-bar" s/Str
+            'bazQuux s/Str}
+           (let [schema {"fooBar" s/Str
+                         'bazQuux s/Str}]
+             (alias-schema (parameter-aliases schema) schema)))
+        "Symbols are excluded for performance purposes, could work as well"))
+
+  (testing "qualified keys are not renamed"
+    (is (= {:foo/Bar s/Str
+            :Baz/DOO s/Str}
+           (let [schema {:foo/Bar s/Str
+                         :Baz/DOO s/Str}]
+             (alias-schema (parameter-aliases schema) schema)))))
+
+  (testing "generic keys are not renamed"
+    (is (= {s/Str {:fooBar s/Str}}
+           (let [schema {s/Str {:fooBar s/Str}}]
+             (alias-schema (parameter-aliases schema) schema))))
+    (is (= {s/Keyword {:fooBar s/Str}}
+           (let [schema {s/Keyword {:fooBar s/Str}}]
+             (alias-schema (parameter-aliases schema) schema))))
+    (is (= (st/any-keys)
+           (let [schema (st/any-keys)]
+             (alias-schema (parameter-aliases schema) schema))))))

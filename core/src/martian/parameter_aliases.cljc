@@ -4,13 +4,14 @@
             [martian.schema-tools :refer [explicit-key key-seqs prewalk-with-path]]
             [schema.core :as s]))
 
-(defn can-be-kebabised? [k]
-  (not (and (keyword? k) (namespace k))))
+(defn can-be-renamed? [k]
+  ;; NB: See `camel-snake-kebab.internals.alter-name` ns.
+  (or (and (keyword? k) (not (namespace k))) (string? k)))
 
 (defn ->idiomatic [k]
-  (when-some [uk (when k (explicit-key k))]
-    (when (can-be-kebabised? uk)
-      (->kebab-case uk))))
+  (when-some [k' (when k (explicit-key k))]
+    (when (can-be-renamed? k')
+      (->kebab-case k'))))
 
 (defn- idiomatic-path [path]
   (vec (keep ->idiomatic path)))
