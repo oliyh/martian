@@ -4,10 +4,8 @@
             [schema.spec.core :as spec])
   #?(:clj (:import [schema.core MapEntry EqSchema])))
 
-(defn unspecify-key [k]
-  (if (s/specific-key? k)
-    (s/explicit-schema-key k)
-    k))
+(defn explicit-key [k]
+  (if (s/specific-key? k) (s/explicit-schema-key k) k))
 
 (def default-schema? #'sti/default?)
 

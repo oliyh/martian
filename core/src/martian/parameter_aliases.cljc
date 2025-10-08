@@ -1,14 +1,14 @@
 (ns martian.parameter-aliases
   (:require [camel-snake-kebab.core :refer [->kebab-case]]
             [clojure.set :refer [rename-keys]]
-            [martian.schema-tools :refer [unspecify-key key-seqs prewalk-with-path]]
+            [martian.schema-tools :refer [explicit-key key-seqs prewalk-with-path]]
             [schema.core :as s]))
 
 (defn can-be-kebabised? [k]
   (not (and (keyword? k) (namespace k))))
 
 (defn ->idiomatic [k]
-  (when-some [uk (when k (unspecify-key k))]
+  (when-some [uk (when k (explicit-key k))]
     (when (can-be-kebabised? uk)
       (->kebab-case uk))))
 
