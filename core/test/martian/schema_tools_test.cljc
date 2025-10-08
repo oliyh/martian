@@ -6,6 +6,11 @@
             #?(:clj  [clojure.test :refer [deftest testing is]]
                :cljs [cljs.test :refer-macros [deftest testing is]])))
 
+(defn foo-map? [x]
+  (and (map? x)
+       (let [str-keys (map (comp str/lower-case name) (keys x))]
+         (boolean (some #(str/starts-with? % "foo") str-keys)))))
+
 (deftest key-seqs-test
   (testing "map schemas (with all sorts of keys)"
     (is (= [[]
@@ -212,6 +217,53 @@
             [:FOO :schemas :fooBar]
             [:FOO :fooBar]]
            (key-seqs {:FOO (s/cond-pre {:fooBar s/Str} s/Str)}))
+        "Must contain paths for both the schema and a data described by it"))
+
+  (testing "conditional schemas"
+    (is (= [[]
+            [:preds-and-schemas :fooBar]
+            [:preds-and-schemas :BAR]
+            [:preds-and-schemas :Baz]
+            [:preds-and-schemas :QUU]
+            [:preds-and-schemas :Quux]
+            [:preds-and-schemas :Quux :Fizz]
+            [:fooBar]
+            [:BAR]
+            [:Baz]
+            [:QUU]
+            [:Quux]
+            [:Quux :Fizz]]
+           (key-seqs (s/conditional
+                       foo-map?
+                       {:fooBar s/Str
+                        (s/optional-key :BAR) s/Str
+                        (s/required-key :Baz) s/Str}
+                       :else
+                       {:QUU s/Str
+                        :Quux [{:Fizz s/Str}]})))
+        "Must contain paths for both the schema and a data described by it")
+    (is (= [[]
+            [:FOO]
+            [:FOO :preds-and-schemas :fooBar]
+            [:FOO :preds-and-schemas :BAR]
+            [:FOO :preds-and-schemas :Baz]
+            [:FOO :preds-and-schemas :QUU]
+            [:FOO :preds-and-schemas :Quux]
+            [:FOO :preds-and-schemas :Quux :Fizz]
+            [:FOO :fooBar]
+            [:FOO :BAR]
+            [:FOO :Baz]
+            [:FOO :QUU]
+            [:FOO :Quux]
+            [:FOO :Quux :Fizz]]
+           (key-seqs {:FOO (s/conditional
+                             foo-map?
+                             {:fooBar s/Str
+                              (s/optional-key :BAR) s/Str
+                              (s/required-key :Baz) s/Str}
+                             :else
+                             {:QUU s/Str
+                              :Quux [{:Fizz s/Str}]})}))
         "Must contain paths for both the schema and a data described by it")))
 
 (deftest prewalk-with-path-test
