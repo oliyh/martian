@@ -1,50 +1,134 @@
 (ns martian.schema-tools
-  (:require [schema.core :as s #?@(:cljs [:refer [MapEntry EqSchema]])]
-            [schema-tools.impl :as sti]
-            [schema.spec.core :as spec])
-  #?(:clj (:import [schema.core MapEntry EqSchema])))
+  (:require [schema.core :as s]
+            [schema-tools.impl]))
 
 (defn explicit-key [k]
   (if (s/specific-key? k) (s/explicit-schema-key k) k))
 
-(def default-schema? #'sti/default?)
+(defn- concat* [& xs]
+  (apply concat (remove nil? xs)))
 
-(defn with-paths [path schema]
-  (when (satisfies? schema.core/Schema schema)
-    (->> (spec/subschemas (s/spec schema))
-         (mapcat (fn [schema]
-                   (cond (and (instance? MapEntry schema)
-                              (instance? EqSchema (:key-schema schema)))
-                         (let [key-schema-v (:v (:key-schema schema))
-                               val-schema (:val-schema schema)]
-                           (if (default-schema? val-schema)
-                             [{:path (conj path key-schema-v)
-                               :schema val-schema}
-                              {:path (conj path key-schema-v :schema)
-                               :schema (:schema val-schema)}
-                              {:path (conj path key-schema-v :value)
-                               :schema (:value val-schema)}]
-                             [{:path (conj path key-schema-v)
-                               :schema val-schema}]))
-                         (map? schema)
-                         [{:path path
-                           :schema schema}]
-                         (vector? schema)
-                         [{:path (conj path ::idx) ; must be qualified!
-                           :schema (first schema)}])))
-         (remove nil?))))
+(defprotocol KeyPaths
+  (-paths [schema path include-self?]
+    "Returns a sequence of path vectors found within the given prefix `path`.
+     If `include-self?` is true, includes `path` itself as the first element."))
+
+(extend-protocol KeyPaths
+  #?(:clj  clojure.lang.APersistentMap
+     :cljs cljs.core.PersistentArrayMap)
+  (-paths [schema path include-self?]
+    (concat*
+      (when include-self? (list path))
+      (mapcat (fn [[k v]]
+                (let [k' (explicit-key k)
+                      path' (conj path k')]
+                  (cons path' (-paths v path' false))))
+              schema)))
+
+  ;; NB: Vector schemas are transparent (indices are ignored).
+  #?(:clj  clojure.lang.APersistentVector
+     :cljs cljs.core.PersistentVector)
+  (-paths [schema path include-self?]
+    (concat*
+      (when include-self? (list path))
+      (mapcat #(-paths % path false) schema)))
+
+  schema.core.NamedSchema
+  (-paths [schema path include-self?]
+    (let [inner-schema (:schema schema)]
+      (concat*
+        (when include-self? (list path))
+        (-paths inner-schema (conj path :schema) true)
+        (-paths inner-schema path false))))
+
+  schema.core.Maybe
+  (-paths [schema path include-self?]
+    (let [inner-schema (:schema schema)]
+      (concat*
+        (when include-self? (list path))
+        (-paths inner-schema (conj path :schema) true)
+        (-paths inner-schema path false))))
+
+  schema.core.Constrained
+  (-paths [schema path include-self?]
+    (let [inner-schema (:schema schema)]
+      (concat*
+        (when include-self? (list path))
+        (-paths inner-schema (conj path :schema) true)
+        (-paths inner-schema path false))))
+
+  schema.core.One
+  (-paths [schema path include-self?]
+    (let [inner-schema (:schema schema)]
+      (concat*
+        (when include-self? (list path))
+        (-paths inner-schema (conj path :schema) true)
+        (-paths inner-schema path false))))
+
+  schema.core.Record
+  (-paths [schema path include-self?]
+    (let [inner-schema (:schema schema)]
+      (concat*
+        (when include-self? (list path))
+        (-paths inner-schema (conj path :schema) true)
+        (-paths inner-schema path false))))
+
+  schema.core.Both
+  (-paths [schema path include-self?]
+    (let [inner-schemas (:schemas schema)]
+      (concat*
+        (when include-self? (list path))
+        (mapcat #(-paths % (conj path :schemas) false) inner-schemas)
+        (mapcat #(-paths % path false) inner-schemas))))
+
+  schema.core.Either
+  (-paths [schema path include-self?]
+    (let [inner-schemas (:schemas schema)]
+      (concat*
+        (when include-self? (list path))
+        (mapcat #(-paths % (conj path :schemas) false) inner-schemas)
+        (mapcat #(-paths % path false) inner-schemas))))
+
+  schema.core.CondPre
+  (-paths [schema path include-self?]
+    (let [inner-schemas (:schemas schema)]
+      (concat*
+        (when include-self? (list path))
+        (mapcat #(-paths % (conj path :schemas) false) inner-schemas)
+        (mapcat #(-paths % path false) inner-schemas))))
+
+  schema.core.ConditionalSchema
+  (-paths [schema path include-self?]
+    (let [inner-schemas (map second (:preds-and-schemas schema))]
+      (concat*
+        (when include-self? (list path))
+        (mapcat #(-paths % (conj path :preds-and-schemas) false) inner-schemas)
+        (mapcat #(-paths % path false) inner-schemas))))
+
+  schema_tools.impl.Default
+  (-paths [schema path include-self?]
+    (let [inner-schema (:schema schema)]
+      (concat*
+        (when include-self? (list path))
+        (-paths inner-schema (conj path :schema) true)
+        (-paths inner-schema (conj path :value) true)
+        (-paths inner-schema path false))))
+
+  #?(:clj Object :cljs default)
+  (-paths [_ path include-self?]
+    (when include-self? (list path)))
+
+  nil
+  (-paths [_ _ _] nil))
 
 (defn key-seqs
-  "Returns a coll of paths (key seqs) which would address all possible entries
-   in a data described by the given `schema` as well as the `schema` itself."
+  "Returns a vec of unique key paths (key seqs) for `schema` and all subschemas
+   that will cover all possible entries in a data described by `schema` as well
+   as the `schema` itself."
   [schema]
-  (when (map? schema)
-    (loop [paths [[]]
-           paths-and-schemas (with-paths [] schema)]
-      (if-let [{:keys [path schema]} (first paths-and-schemas)]
-        (recur (conj paths path) (concat (rest paths-and-schemas)
-                                         (with-paths path schema)))
-        (distinct paths)))))
+  (->> (-paths schema [] true)
+       (distinct)
+       (vec)))
 
 ;;
 
