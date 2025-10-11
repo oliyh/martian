@@ -23,11 +23,11 @@
    The result is then used with `alias-schema` and `unalias-data` functions."
   [schema]
   (reduce (fn [acc path]
-            (if-let [idiomatic-key (some-> path last ->idiomatic)]
-              (if-not (= (last path) idiomatic-key)
-                (update acc (idiomatic-path (drop-last path)) merge {idiomatic-key (last path)})
-                acc)
-              acc))
+            (let [leaf (peek path)
+                  idiomatic-key (some-> leaf ->idiomatic)]
+              (if (and idiomatic-key (not= leaf idiomatic-key))
+                (update acc (idiomatic-path (pop path)) assoc idiomatic-key leaf)
+                acc)))
           {}
           (key-seqs schema)))
 
