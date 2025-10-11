@@ -1,32 +1,39 @@
 (ns martian.parameter-aliases
-  (:require [schema.core :as s]
-            [camel-snake-kebab.core :refer [->kebab-case]]
+  (:require [camel-snake-kebab.core :refer [->kebab-case]]
             [clojure.set :refer [rename-keys]]
-            [martian.schema-tools :refer [key-seqs prewalk-with-path]]))
+            [martian.schema-tools :refer [explicit-key key-seqs prewalk-with-path]]
+            [schema.core :as s]))
 
-;; todo lean on schema-tools.core for some of this
+(defn can-be-renamed? [k]
+  ;; NB: See `camel-snake-kebab.internals.alter-name` ns.
+  (or (and (keyword? k) (not (namespace k))) (string? k)))
 
 (defn ->idiomatic [k]
-  (when (and k (s/specific-key? k) (not (and (keyword? k) (namespace k))))
-    (->kebab-case (s/explicit-schema-key k))))
+  (when-some [k' (when k (explicit-key k))]
+    (when (can-be-renamed? k')
+      (->kebab-case k'))))
 
 (defn- idiomatic-path [path]
   (vec (keep ->idiomatic path)))
 
 (defn parameter-aliases
-  "Produces a data structure for use with `unalias-data`"
+  "Produces a data structure with idiomatic keys (aliases) mappings per path
+   in a (possibly, deeply nested) `schema` for all its unqualified keys.
+
+   The result is then used with `alias-schema` and `unalias-data` functions."
   [schema]
   (reduce (fn [acc path]
-            (if-let [idiomatic-key (some-> path last ->idiomatic)]
-              (if-not (= (last path) idiomatic-key)
-                (update acc (idiomatic-path (drop-last path)) merge {idiomatic-key (last path)})
-                acc)
-              acc))
+            (let [leaf (peek path)
+                  idiomatic-key (some-> leaf ->idiomatic)]
+              (if (and idiomatic-key (not= leaf idiomatic-key))
+                (update acc (idiomatic-path (pop path)) assoc idiomatic-key leaf)
+                acc)))
           {}
           (key-seqs schema)))
 
 (defn unalias-data
-  "Takes parameter aliases and (deeply nested) data, returning data with deeply-nested keys renamed as described by parameter-aliases"
+  "Given a (possibly, deeply nested) data `x`, returns the data with all keys
+   renamed as described by the `parameter-aliases`."
   [parameter-aliases x]
   (if parameter-aliases
     (prewalk-with-path (fn [path x]
@@ -38,7 +45,9 @@
     x))
 
 (defn alias-schema
-  "Walks a schema, transforming all keys into their aliases (idiomatic keys)"
+  "Given a (possibly, deeply nested) `schema`, renames all keys (in it and its
+   subschemas) into corresponding idiomatic keys (aliases) as described by the
+   `parameter-aliases`."
   [parameter-aliases schema]
   (if parameter-aliases
     (prewalk-with-path (fn [path x]
