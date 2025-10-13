@@ -416,18 +416,26 @@
                                              :camel-version 2}
                             {:include-query? true})))
 
-    (is (= {:path-schema {[] {:camel-id :camelId}},
-            :query-schema {[] {:camel-version :camelVersion}},
-            :body-schema {[] {:camel :Camel},
-                          [:camel] {:camel-name :camelName,
-                                    :camel-train :camelTrain,
-                                    :any-camel :anyCamel},
-                          [:camel :camel-train] {:leader-name :leaderName,
-                                                 :follower-camels :followerCamels},
-                          [:camel :camel-train :follower-camels] {:follower-name :followerName}},
-            :form-schema {[] {:camel-humps :camelHumps}},
-            :headers-schema {[] {:camel-token :camelToken}}}
-           (:parameter-aliases (martian/handler-for m :create-camel))))
+    (let [param-aliases (:parameter-aliases (martian/handler-for m :create-camel))]
+      (is (= {:camel-id :camelId}
+             (get-in param-aliases [:path-schema []])))
+      (is (= {:camel-version :camelVersion}
+             (get-in param-aliases [:query-schema []])))
+      (is (= {:camel :Camel}
+             (get-in param-aliases [:body-schema []])))
+      (is (= {:camel-name :camelName
+              :camel-train :camelTrain
+              :any-camel :anyCamel}
+             (get-in param-aliases [:body-schema [:camel]])))
+      (is (= {:leader-name :leaderName
+              :follower-camels :followerCamels}
+             (get-in param-aliases [:body-schema [:camel :camel-train]])))
+      (is (= {:follower-name :followerName}
+             (get-in param-aliases [:body-schema [:camel :camel-train :follower-camels]])))
+      (is (= {:camel-humps :camelHumps}
+             (get-in param-aliases [:form-schema []])))
+      (is (= {:camel-token :camelToken}
+             (get-in param-aliases [:headers-schema []]))))
 
     (is (= {:method :put,
             :url "https://camels.org/camels/1",
