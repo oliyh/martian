@@ -29,6 +29,12 @@
 
 (def not-foo-map? (complement foo-map?))
 
+(declare schema-b)
+(def schema-a {:FOO s/Str
+               :Bar (s/recursive #'schema-b)})
+(def schema-b {:BAZ s/Str
+               :Quu (s/recursive #'schema-a)})
+
 (deftest parameter-aliases-test
   (testing "produces idiomatic aliases for all keys in a schema"
     (testing "map schemas (with all sorts of keys)"
@@ -274,6 +280,19 @@
                     :else
                     {:QUU s/Str
                      :Quux [{:Fizz s/Str}]})})
+          "Must contain paths for both the schema and a data described by it"))
+
+    (testing "recursive schemas"
+      (is (=aliases
+            {[] {:foo :FOO, :bar :Bar}
+             [:bar] {:baz :BAZ, :quu :Quu}
+             [:bar :derefable] {:baz :BAZ, :quu :Quu}
+             [:bar :quu] {:foo :FOO, :bar :Bar}
+             [:bar :quu :derefable] {:foo :FOO, :bar :Bar}
+             [:bar :quu :bar] {:baz :BAZ, :quu :Quu}
+             [:bar :quu :bar :derefable] {:baz :BAZ, :quu :Quu}
+             #_"..."}
+            schema-a)
           "Must contain paths for both the schema and a data described by it")))
 
   (testing "non-keyword keys"
@@ -490,7 +509,37 @@
         (is (= {:FOO {:QUU "x"
                       :Quux [{:Fizz "y"}]}}
                (unalias-data (parameter-aliases schema) {:foo {:quu "x"
-                                                               :quux [{:fizz "y"}]}}))))))
+                                                               :quux [{:fizz "y"}]}})))))
+
+    (testing "recursive schemas"
+      (is (= {:FOO "a"
+              :Bar nil}
+             (unalias-data (parameter-aliases schema-a) {:foo "a"
+                                                         :bar nil})))
+      (is (= {:FOO "a"
+              :Bar {:BAZ "b"
+                    :Quu nil}}
+             (unalias-data (parameter-aliases schema-a) {:foo "a"
+                                                         :bar {:baz "b"
+                                                               :quu nil}})))
+      (is (= {:FOO "a1"
+              :Bar {:BAZ "b1"
+                    :Quu {:FOO "a2"
+                          :Bar nil}}}
+             (unalias-data (parameter-aliases schema-a) {:foo "a1"
+                                                         :bar {:baz "b1"
+                                                               :quu {:foo "a2"
+                                                                     :bar nil}}})))
+      (is (= {:FOO "a1"
+              :Bar {:BAZ "b1"
+                    :Quu {:FOO "a2"
+                          :Bar {:BAZ "b2"
+                                :Quu nil}}}}
+             (unalias-data (parameter-aliases schema-a) {:foo "a1"
+                                                         :bar {:baz "b1"
+                                                               :quu {:foo "a2"
+                                                                     :bar {:baz "b2"
+                                                                           :quu nil}}}})))))
 
   (testing "non-keyword keys"
     (is (= {"fooBar" "a"
@@ -685,7 +734,15 @@
                                   not-foo-map?
                                   {:QUU s/Str
                                    :Quux [{:Fizz s/Str}]})}]
-               (alias-schema (parameter-aliases schema) schema))))))
+               (alias-schema (parameter-aliases schema) schema)))))
+
+    (testing "recursive schemas"
+      (is (= {:foo s/Str
+              :bar (s/recursive #'schema-b)}
+             (alias-schema (parameter-aliases schema-a) schema-a)))
+      (is (= {:baz s/Str
+              :quu (s/recursive #'schema-a)}
+             (alias-schema (parameter-aliases schema-b) schema-b)))))
 
   (testing "non-keyword keys"
     (is (= {"foo-bar" s/Str

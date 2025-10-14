@@ -129,6 +129,16 @@
         (= :schema (first path)) (-aliases-at inner-schema (rest path))
         :else                    (-aliases-at inner-schema path))))
 
+  ;; Recursive schemas: no cycle guards are required in this per-path lookup.
+
+  schema.core.Recursive
+  (-aliases-at [schema path]
+    (let [inner-schema @(:derefable schema)]
+      (cond
+        (empty? path)               (-aliases-at inner-schema [])
+        (= :derefable (first path)) (-aliases-at inner-schema (rest path))
+        :else                       (-aliases-at inner-schema path))))
+
   ;; Multi-variant unions: combine the alternatives; aware of any inner hops.
 
   schema.core.Both
