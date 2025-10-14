@@ -213,18 +213,21 @@
                              :Quux [{:Fizz s/Str}]})})
           "Must contain aliases for both the schema and a data described by it"))
 
-    (testing "cond-pre schemas"
-      (is (=aliases
-            {[] {:foo-bar :fooBar}
-             [:schemas] {:foo-bar :fooBar}}
-            (s/cond-pre {:fooBar s/Str} s/Str))
-          "Must contain paths for both the schema and a data described by it")
-      (is (=aliases
-            {[] {:foo :FOO}
-             [:foo] {:foo-bar :fooBar}
-             [:foo :schemas] {:foo-bar :fooBar}}
-            {:FOO (s/cond-pre {:fooBar s/Str} s/Str)})
-          "Must contain paths for both the schema and a data described by it"))
+    ;; TODO: An SCI issue happens for this test case. Unwrap when fixed.
+    #?(:bb nil
+       :default
+       (testing "cond-pre schemas"
+         (is (=aliases
+               {[] {:foo-bar :fooBar}
+                [:schemas] {:foo-bar :fooBar}}
+               (s/cond-pre {:fooBar s/Str} s/Str))
+             "Must contain paths for both the schema and a data described by it")
+         (is (=aliases
+               {[] {:foo :FOO}
+                [:foo] {:foo-bar :fooBar}
+                [:foo :schemas] {:foo-bar :fooBar}}
+               {:FOO (s/cond-pre {:fooBar s/Str} s/Str)})
+             "Must contain paths for both the schema and a data described by it")))
 
     (testing "conditional schemas"
       (is (=aliases
@@ -436,17 +439,20 @@
                (unalias-data (parameter-aliases schema) {:foo {:quu "x"
                                                                :quux [{:fizz "y"}]}})))))
 
-    (testing "cond-pre schemas"
-      (let [schema (s/cond-pre {:fooBar s/Str} s/Str)]
-        (is (= {:fooBar "a"}
-               (unalias-data (parameter-aliases schema) {:foo-bar "a"})))
-        (is (= "b"
-               (unalias-data (parameter-aliases schema) "b"))))
-      (let [schema {:FOO (s/cond-pre {:fooBar s/Str} s/Str)}]
-        (is (= {:FOO {:fooBar "a"}}
-               (unalias-data (parameter-aliases schema) {:foo {:foo-bar "a"}})))
-        (is (= {:FOO "b"}
-               (unalias-data (parameter-aliases schema) {:foo "b"})))))
+    ;; TODO: An SCI issue happens for this test case. Unwrap when fixed.
+    #?(:bb nil
+       :default
+       (testing "cond-pre schemas"
+         (let [schema (s/cond-pre {:fooBar s/Str} s/Str)]
+           (is (= {:fooBar "a"}
+                  (unalias-data (parameter-aliases schema) {:foo-bar "a"})))
+           (is (= "b"
+                  (unalias-data (parameter-aliases schema) "b"))))
+         (let [schema {:FOO (s/cond-pre {:fooBar s/Str} s/Str)}]
+           (is (= {:FOO {:fooBar "a"}}
+                  (unalias-data (parameter-aliases schema) {:foo {:foo-bar "a"}})))
+           (is (= {:FOO "b"}
+                  (unalias-data (parameter-aliases schema) {:foo "b"}))))))
 
     (testing "conditional schemas"
       (let [schema (s/conditional
@@ -634,13 +640,16 @@
                                            :Quux [{:Fizz s/Str}]})}]
                (alias-schema (parameter-aliases schema) schema)))))
 
-    (testing "cond-pre schemas"
-      (is (= (s/cond-pre {:foo-bar s/Str} s/Str)
-             (let [schema (s/cond-pre {:fooBar s/Str} s/Str)]
-               (alias-schema (parameter-aliases schema) schema))))
-      (is (= {:foo (s/cond-pre {:foo-bar s/Str} s/Str)}
-             (let [schema {:FOO (s/cond-pre {:fooBar s/Str} s/Str)}]
-               (alias-schema (parameter-aliases schema) schema)))))
+    ;; TODO: An SCI issue happens for this test case. Unwrap when fixed.
+    #?(:bb nil
+       :default
+       (testing "cond-pre schemas"
+         (is (= (s/cond-pre {:foo-bar s/Str} s/Str)
+                (let [schema (s/cond-pre {:fooBar s/Str} s/Str)]
+                  (alias-schema (parameter-aliases schema) schema))))
+         (is (= {:foo (s/cond-pre {:foo-bar s/Str} s/Str)}
+                (let [schema {:FOO (s/cond-pre {:fooBar s/Str} s/Str)}]
+                  (alias-schema (parameter-aliases schema) schema))))))
 
     (testing "conditional schemas"
       (is (= (s/conditional

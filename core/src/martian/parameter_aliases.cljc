@@ -25,50 +25,83 @@
           (swap! cache assoc path' m')
           m'))))
 
-#?(:clj
-   (do
-     (deftype LazyRegistry [schema cache interner]
-       clojure.lang.ILookup
-       (valAt [_ k]
-         (aliases-at schema cache interner k))
-       (valAt [_ k not-found]
-         (or (aliases-at schema cache interner k) not-found)))
+#?(:bb nil
 
-     (defmethod print-method martian.parameter_aliases.LazyRegistry
-       [^martian.parameter_aliases.LazyRegistry r ^java.io.Writer w]
-       (.write w (str "#LazyRegistry (cached " (count @(.cache r)) ")")))))
+   :clj
+   (deftype LazyRegistry [schema cache interner]
+     clojure.lang.ILookup
+     (valAt [_ k]
+       (aliases-at schema cache interner k))
+     (valAt [_ k not-found]
+       (or (aliases-at schema cache interner k) not-found))
+     Object
+     (toString [_] (str "#LazyRegistry (cached " (count @cache) ")")))
 
-#?(:cljs
+   :cljs
    (deftype LazyRegistry [schema cache interner]
      cljs.core/ILookup
      (-lookup [_ k]
        (aliases-at schema cache interner k))
      (-lookup [_ k not-found]
        (or (aliases-at schema cache interner k) not-found))
-
      cljs.core/IPrintWithWriter
      (-pr-writer [_ writer _opts]
        (-write writer (str "#LazyRegistry (cached " (count @cache) ")")))))
 
-(defn parameter-aliases
-  "Build a lazy alias registry for the given `schema`.
-
-   Aliases are computed on demand via `martian.schema-tools/compute-aliases-at`,
-   so materializing massive alias maps upfront is avoided. Per-path results are
-   memoized within the registry. Identical alias maps are shared to cut memory
-   usage.
-
-   The returned value implements `ILookup` and is indexed by an idiomatic path
-   (a vector of segments as used when walking data/schemas). Looking up a path
-   yields the alias map for that level, mapping \"idiomatic keys\" (kebab-case,
-   unqualified) to their original explicit schema keys (with optional/required
-   wrappers when applicable)."
-  [schema]
-  (when schema
-    (new LazyRegistry schema (atom {}) (atom {}))))
-
 (defn- idiomatic-path [path]
   (vec (keep schema-tools/->idiomatic path)))
+
+(defn aliases-hash-map
+  "Eagerly compute the registry as a plain hash map for the given `schema`.
+
+   NB: This covers schema wrapper-aware paths (e.g. `[:baz :schema :quux]`)
+       and equivalent data-level paths (e.g. `[:baz :quux]`) uniformly."
+  [schema]
+  (let [*amap (volatile! {})
+        *seen (volatile! #{})
+        *pick (volatile! [])
+
+        explore! (fn [path]
+                   (when-not (contains? @*seen path)
+                     (vswap! *seen conj path)
+                     (when-let [m (schema-tools/compute-aliases-at schema path)]
+                       (vswap! *amap assoc path m)
+                       (vswap! *pick into (map #(conj path %) (keys m))))))]
+    ;; structure-driven seeding
+    (schema-tools/prewalk-with-path
+      (fn [p x] (explore! (idiomatic-path p)) x)
+      []
+      schema)
+    ;; drain alias-driven paths (covers data-level hops)
+    (loop []
+      (when-some [paths (not-empty @*pick)]
+        (vreset! *pick (pop paths))
+        (explore! (peek paths))
+        (recur)))
+    @*amap))
+
+(defn parameter-aliases
+  "Builds a lookupable registry of parameter alias maps for the given `schema`.
+
+  - On JVM/CLJS:
+    Returns an instance of a lazy registry.
+
+    Aliases are computed on demand (via `compute-aliases-at`), so materializing
+    massive alias maps upfront is avoided. Per-path results are memoized within
+    the registry. Identical alias maps are shared to cut memory usage.
+
+    The returned value implements `ILookup` and is indexed by an idiomatic path
+    (a vector of segments as used when walking data/schemas). Looking up a path
+    yields the alias map for that level, mapping \"idiomatic keys\" (kebab-case,
+    unqualified) to their original explicit schema keys (with optional/required
+    wrappers when applicable).
+
+  - On Babashka:
+    Returns a plain hash map that is computed eagerly via `compute-aliases-at`."
+  [schema]
+  (when schema
+    #?(:bb      (aliases-hash-map schema)
+       :default (new LazyRegistry schema (atom {}) (atom {})))))
 
 (defn unalias-data
   "Given a (possibly, deeply nested) data `x`, returns the data with all keys
