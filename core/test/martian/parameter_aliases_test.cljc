@@ -282,31 +282,18 @@
                      :Quux [{:Fizz s/Str}]})})
           "Must contain paths for both the schema and a data described by it"))
 
-    #?(:bb
-       ;; NB: The Babashka version is not that deep, since it uses plain hash map.
-       (testing "recursive schemas"
-         (is (=aliases
-               {[] {:foo :FOO, :bar :Bar}
-                [:bar] {:baz :BAZ, :quu :Quu}
-                [:bar :derefable] {:baz :BAZ, :quu :Quu}
-                [:bar :quu] {:foo :FOO, :bar :Bar}
-                [:bar :quu :bar] {:baz :BAZ, :quu :Quu}
-                #_"..."}
-               schema-a)
-             "Must contain paths for both the schema and a data described by it"))
-       :default
-       (testing "recursive schemas"
-         (is (=aliases
-               {[] {:foo :FOO, :bar :Bar}
-                [:bar] {:baz :BAZ, :quu :Quu}
-                [:bar :derefable] {:baz :BAZ, :quu :Quu}
-                [:bar :quu] {:foo :FOO, :bar :Bar}
-                [:bar :quu :derefable] {:foo :FOO, :bar :Bar}
-                [:bar :quu :bar] {:baz :BAZ, :quu :Quu}
-                [:bar :quu :bar :derefable] {:baz :BAZ, :quu :Quu}
-                #_"..."}
-               schema-a)
-             "Must contain paths for both the schema and a data described by it"))))
+    (testing "recursive schemas"
+      (is (=aliases
+            {[] {:foo :FOO, :bar :Bar}
+             [:bar] {:baz :BAZ, :quu :Quu}
+             [:bar :derefable] {:baz :BAZ, :quu :Quu}
+             [:bar :quu] {:foo :FOO, :bar :Bar}
+             [:bar :quu :derefable] {:foo :FOO, :bar :Bar}
+             [:bar :quu :bar] {:baz :BAZ, :quu :Quu}
+             [:bar :quu :bar :derefable] {:baz :BAZ, :quu :Quu}
+             #_"..."}
+            schema-a)
+          "Must contain paths for both the schema and a data described by it")))
 
   (testing "non-keyword keys"
     (is (=aliases

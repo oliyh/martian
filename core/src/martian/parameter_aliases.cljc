@@ -53,7 +53,7 @@
 
 (def ^:dynamic *max-aliases-path-length*
   "Maximum idiomatic path length allowed during the alias-driven expansion."
-  20)
+  10)
 
 (defn aliases-hash-map
   "Eagerly compute the registry as a plain hash map for the given `schema`.
@@ -64,17 +64,23 @@
   (let [*amap (volatile! {})
         *seen (volatile! #{})
         *pick (volatile! [])
-
+        *ends (volatile! #{})
         explore! (fn [path]
                    (when-not (contains? @*seen path)
                      (vswap! *seen conj path)
                      (when-let [m (schema-tools/compute-aliases-at schema path)]
                        (vswap! *amap assoc path m)
                        (when (< (count path) *max-aliases-path-length*)
-                         (vswap! *pick into (map #(conj path %) (keys m)))))))]
+                         (vswap! *pick into (map #(conj path %) (keys m)))
+                         (vswap! *pick into (map #(conj path %) @*ends))))))]
     ;; structure-driven seeding
     (schema-tools/prewalk-with-path
-      (fn [p x] (explore! (idiomatic-path p)) x)
+      (fn [p x]
+        (let [ip (idiomatic-path p)]
+          ;; learn tail segments (e.g. `:schema`, etc.)
+          (when (seq ip) (vswap! *ends conj (peek ip)))
+          (explore! ip))
+        x)
       []
       schema)
     ;; drain alias-driven paths (covers data-level hops)
