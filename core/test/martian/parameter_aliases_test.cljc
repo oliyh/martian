@@ -286,11 +286,15 @@
       (is (=aliases
             {[] {:foo :FOO, :bar :Bar}
              [:bar] {:baz :BAZ, :quu :Quu}
-             [:bar :derefable] {:baz :BAZ, :quu :Quu}
              [:bar :quu] {:foo :FOO, :bar :Bar}
-             [:bar :quu :derefable] {:foo :FOO, :bar :Bar}
              [:bar :quu :bar] {:baz :BAZ, :quu :Quu}
              [:bar :quu :bar :derefable] {:baz :BAZ, :quu :Quu}
+             [:bar :quu :derefable] {:foo :FOO, :bar :Bar}
+             [:bar :quu :derefable :bar] {:baz :BAZ, :quu :Quu}
+             [:bar :quu :derefable :bar :derefable] {:baz :BAZ, :quu :Quu}
+             [:bar :derefable] {:baz :BAZ, :quu :Quu}
+             [:bar :derefable :quu] {:foo :FOO, :bar :Bar}
+             [:bar :derefable :quu :derefable] {:foo :FOO, :bar :Bar}
              #_"..."}
             schema-a)
           "Must contain paths for both the schema and a data described by it")))
