@@ -1,13 +1,14 @@
 (ns martian.schema-tools
   (:require [camel-snake-kebab.core :refer [->kebab-case]]
             [schema.core :as s]
-            [schema-tools.impl])
-  #?(:clj (:import (clojure.lang IDeref))))
+            [schema-tools.impl]))
 
 (defn explicit-key [k]
   (if (s/specific-key? k) (s/explicit-schema-key k) k))
 
-(defn concrete-key? [k]
+(defn concrete-key?
+  "Checks if the schema key `k` is not generic (`s/Any`, `s/Keyword`, etc.)."
+  [k]
   (or (keyword? k) (s/specific-key? k) (string? k)))
 
 (defn- can-be-renamed? [k]
@@ -61,6 +62,15 @@
    along a single path."
   3)
 
+(defmacro with-recursion-guard [rec-target form]
+  `(when ~rec-target
+     (let [n# (get @*seen-recursion* ~rec-target 0)]
+       (when (< n# *max-recursions-per-target*)
+         (vswap! *seen-recursion* update ~rec-target (fnil inc 0))
+         (let [res# ~form]
+           (vswap! *seen-recursion* update ~rec-target #(max 0 (dec %)))
+           res#)))))
+
 (defprotocol PathAliases
   "Internal traversal API used to locate alias maps inside Prismatic schemas."
   (-paths [schema path include-self?]
@@ -98,12 +108,12 @@
                         path' (conj path k')]
                     (cons path' (-paths v path' false)))))
               schema)))
-  (-aliases-at [ms path]
+  (-aliases-at [schema path]
     (if (empty? path)
-      (map-entry-aliases ms)
+      (map-entry-aliases schema)
       (let [seg (first path)]
         (when (or (keyword? seg) (string? seg))
-          (when-some [child (child-by-idiomatic ms seg)]
+          (when-some [child (child-by-idiomatic schema seg)]
             (-aliases-at child (rest path)))))))
 
   ;; Vector schemas are transparent
@@ -113,8 +123,8 @@
     (concat*
       (when include-self? (list path))
       (mapcat #(-paths % path false) schema)))
-  (-aliases-at [vs path]
-    (combine-aliases-at path vs))
+  (-aliases-at [schema path]
+    (combine-aliases-at path schema))
 
   ;; Single-child wrappers
 
@@ -194,16 +204,12 @@
     (let [target (:derefable schema)]
       (concat*
         (when include-self? (list path))
-        (when target
-          (let [n (get @*seen-recursion* target 0)]
-            (when (< n *max-recursions-per-target*)
-              (vswap! *seen-recursion* update target (fnil inc 0))
-              (let [inner-schema @target
-                    res (concat
-                          (-paths inner-schema (conj path :derefable) true)
-                          (-paths inner-schema path false))]
-                (vswap! *seen-recursion* update target #(max 0 (dec %)))
-                res)))))))
+        (with-recursion-guard
+          target
+          (let [inner-schema @target]
+            (concat
+              (-paths inner-schema (conj path :derefable) true)
+              (-paths inner-schema path false)))))))
   (-aliases-at [schema path]
     (let [inner-schema @(:derefable schema)]
       (cond
@@ -345,14 +351,20 @@
      (outer path (into (empty form) (map #(inner path %) form)))
      :else (outer path form))))
 
-(defn postwalk-with-path [f path form]
-  (walk-with-path (fn [path form] (postwalk-with-path f path form))
-                  f
-                  path
-                  form))
+(defn postwalk-with-path
+  ([f form]
+   (postwalk-with-path f [] form))
+  ([f path form]
+   (walk-with-path (fn [path form] (postwalk-with-path f path form))
+                   f
+                   path
+                   form)))
 
-(defn prewalk-with-path [f path form]
-  (walk-with-path (fn [path form] (prewalk-with-path f path form))
-                  (fn [_path form] form)
-                  path
-                  (f path form)))
+(defn prewalk-with-path
+  ([f form]
+   (prewalk-with-path f [] form))
+  ([f path form]
+   (walk-with-path (fn [path form] (prewalk-with-path f path form))
+                   (fn [_path form] form)
+                   path
+                   (f path form))))

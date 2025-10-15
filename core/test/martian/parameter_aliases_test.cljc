@@ -1,23 +1,23 @@
 (ns martian.parameter-aliases-test
   (:require [clojure.string :as str]
-            [martian.parameter-aliases :refer [parameter-aliases unalias-data alias-schema]]
+            [martian.parameter-aliases :refer [registry unalias-data alias-schema]]
             [schema-tools.core :as st]
             [schema.core :as s]
             #?(:clj  [clojure.test :refer [deftest testing is]]
                :cljs [cljs.test :refer-macros [deftest testing is]])))
 
 (defn select-aliases-from-registry
-  "Given a lazy registry and an expected map whose keys are paths,
+  "Given a (possibly, lazy) registry and an expected map whose keys are paths,
    pull exactly those paths and return a plain {path -> alias-map}."
-  [lazy-reg expected]
+  [registry expected]
   (into {}
-        (map (fn [path] [path (get lazy-reg path)]))
+        (map (fn [path] [path (get registry path)]))
         (keys expected)))
 
 (defmacro =aliases
   [expected schema]
-  `(let [lazy-reg# (parameter-aliases ~schema)]
-     (= ~expected (select-aliases-from-registry lazy-reg# ~expected))))
+  `(let [reg# (registry ~schema)]
+     (= ~expected (select-aliases-from-registry reg# ~expected))))
 
 (defn not-blank? [s]
   (not (str/blank? s)))
@@ -35,7 +35,7 @@
 (def schema-b {:BAZ s/Str
                :Quu (s/recursive #'schema-a)})
 
-(deftest parameter-aliases-test
+(deftest registry-test
   (testing "produces idiomatic aliases for all keys in a schema"
     (testing "map schemas (with all sorts of keys)"
       (is (=aliases
@@ -332,17 +332,17 @@
              (let [schema {:fooBar s/Str
                            (s/optional-key :BAR) s/Str
                            (s/required-key :Baz) s/Str}]
-               (unalias-data (parameter-aliases schema) {:foo-bar "a"
-                                                         :bar "b"
-                                                         :baz "c"})))))
+               (unalias-data (registry schema) {:foo-bar "a"
+                                                :bar "b"
+                                                :baz "c"})))))
 
     (testing "nested map and vector schemas"
       (is (= {:FOO {:fooBar "b"
                     :Bar [{:BAZ "c"}]}}
              (let [schema {:FOO {:fooBar s/Str
                                  (s/optional-key :Bar) [{:BAZ s/Str}]}}]
-               (unalias-data (parameter-aliases schema) {:foo {:foo-bar "b"
-                                                               :bar [{:baz "c"}]}})))))
+               (unalias-data (registry schema) {:foo {:foo-bar "b"
+                                                      :bar [{:baz "c"}]}})))))
 
     (testing "deeply nested vector schemas"
       (is (= {:FOO {:Bar [[{:barDoo "a"
@@ -350,8 +350,8 @@
              (let [schema {(s/optional-key :FOO)
                            {:Bar [[{:barDoo s/Str
                                     (s/optional-key :barDee) s/Str}]]}}]
-               (unalias-data (parameter-aliases schema) {:foo {:bar [[{:bar-doo "a"
-                                                                       :bar-dee "b"}]]}})))))
+               (unalias-data (registry schema) {:foo {:bar [[{:bar-doo "a"
+                                                              :bar-dee "b"}]]}})))))
 
     (testing "default schemas"
       (is (= {:fooBar "a"
@@ -364,39 +364,39 @@
                                              :Quux [{:Fizz s/Str}]}
                                             {:QUU "hi"
                                              :Quux []})}]
-               (unalias-data (parameter-aliases schema) {:foo-bar "a"
-                                                         :bar "b"
-                                                         :baz {:quu "x"
-                                                               :quux [{:fizz "y"}]}}))))
+               (unalias-data (registry schema) {:foo-bar "a"
+                                                :bar "b"
+                                                :baz {:quu "x"
+                                                      :quux [{:fizz "y"}]}}))))
       (is (= {:QUU "x"
               :Quux [{:Fizz "y"}]}
              (let [schema (st/default {:QUU s/Str
                                        :Quux [{:Fizz s/Str}]}
                                       {:QUU "hi"
                                        :Quux []})]
-               (unalias-data (parameter-aliases schema) {:quu "x"
-                                                         :quux [{:fizz "y"}]})))))
+               (unalias-data (registry schema) {:quu "x"
+                                                :quux [{:fizz "y"}]})))))
 
     (testing "named schemas"
       (is (= {:fooBar "a"}
              (let [schema (s/named {:fooBar s/Str} "FooBar")]
-               (unalias-data (parameter-aliases schema) {:foo-bar "a"})))))
+               (unalias-data (registry schema) {:foo-bar "a"})))))
 
     (testing "maybe schemas"
       (is (= {:fooBar {:Baz "a"}}
              (let [schema {:fooBar (s/maybe {:Baz s/Str})}]
-               (unalias-data (parameter-aliases schema) {:foo-bar {:baz "a"}}))))
+               (unalias-data (registry schema) {:foo-bar {:baz "a"}}))))
       (is (= {:fooBar "a"}
              (let [schema (s/maybe {:fooBar s/Str})]
-               (unalias-data (parameter-aliases schema) {:foo-bar "a"})))))
+               (unalias-data (registry schema) {:foo-bar "a"})))))
 
     (testing "constrained schemas"
       (is (= {:fooBar "a"}
              (let [schema {:fooBar (s/constrained s/Str not-blank?)}]
-               (unalias-data (parameter-aliases schema) {:foo-bar "a"}))))
+               (unalias-data (registry schema) {:foo-bar "a"}))))
       (is (= {:fooBar {:Baz "b"}}
              (let [schema {:fooBar (s/constrained {:Baz s/Str} some?)}]
-               (unalias-data (parameter-aliases schema) {:foo-bar {:baz "b"}})))))
+               (unalias-data (registry schema) {:foo-bar {:baz "b"}})))))
 
     (testing "both schemas"
       (is (= {:fooBar "a"
@@ -409,11 +409,11 @@
                                    (s/required-key :Baz) s/Str}
                                   {:QUU s/Str
                                    :Quux [{:Fizz s/Str}]})]
-               (unalias-data (parameter-aliases schema) {:foo-bar "a"
-                                                         :bar "b"
-                                                         :baz "c"
-                                                         :quu "x"
-                                                         :quux [{:fizz "y"}]}))))
+               (unalias-data (registry schema) {:foo-bar "a"
+                                                :bar "b"
+                                                :baz "c"
+                                                :quu "x"
+                                                :quux [{:fizz "y"}]}))))
       (is (= {:FOO {:fooBar "a"
                     :BAR "b"
                     :Baz "c"
@@ -424,11 +424,11 @@
                                          (s/required-key :Baz) s/Str}
                                         {:QUU s/Str
                                          :Quux [{:Fizz s/Str}]})}]
-               (unalias-data (parameter-aliases schema) {:foo {:foo-bar "a"
-                                                               :bar "b"
-                                                               :baz "c"
-                                                               :quu "x"
-                                                               :quux [{:fizz "y"}]}})))))
+               (unalias-data (registry schema) {:foo {:foo-bar "a"
+                                                      :bar "b"
+                                                      :baz "c"
+                                                      :quu "x"
+                                                      :quux [{:fizz "y"}]}})))))
 
     (testing "either schemas"
       (let [schema (s/either {:fooBar s/Str
@@ -439,13 +439,13 @@
         (is (= {:fooBar "a"
                 :BAR "b"
                 :Baz "c"}
-               (unalias-data (parameter-aliases schema) {:foo-bar "a"
-                                                         :bar "b"
-                                                         :baz "c"})))
+               (unalias-data (registry schema) {:foo-bar "a"
+                                                :bar "b"
+                                                :baz "c"})))
         (is (= {:QUU "x"
                 :Quux [{:Fizz "y"}]}
-               (unalias-data (parameter-aliases schema) {:quu "x"
-                                                         :quux [{:fizz "y"}]}))))
+               (unalias-data (registry schema) {:quu "x"
+                                                :quux [{:fizz "y"}]}))))
       (let [schema {:FOO (s/either {:fooBar s/Str
                                     (s/optional-key :BAR) s/Str
                                     (s/required-key :Baz) s/Str}
@@ -454,13 +454,13 @@
         (is (= {:FOO {:fooBar "a"
                       :BAR "b"
                       :Baz "c"}}
-               (unalias-data (parameter-aliases schema) {:foo {:foo-bar "a"
-                                                               :bar "b"
-                                                               :baz "c"}})))
+               (unalias-data (registry schema) {:foo {:foo-bar "a"
+                                                      :bar "b"
+                                                      :baz "c"}})))
         (is (= {:FOO {:QUU "x"
                       :Quux [{:Fizz "y"}]}}
-               (unalias-data (parameter-aliases schema) {:foo {:quu "x"
-                                                               :quux [{:fizz "y"}]}})))))
+               (unalias-data (registry schema) {:foo {:quu "x"
+                                                      :quux [{:fizz "y"}]}})))))
 
     ;; TODO: An SCI issue happens for this test case. Unwrap when fixed.
     #?(:bb nil
@@ -468,14 +468,14 @@
        (testing "cond-pre schemas"
          (let [schema (s/cond-pre {:fooBar s/Str} s/Str)]
            (is (= {:fooBar "a"}
-                  (unalias-data (parameter-aliases schema) {:foo-bar "a"})))
+                  (unalias-data (registry schema) {:foo-bar "a"})))
            (is (= "b"
-                  (unalias-data (parameter-aliases schema) "b"))))
+                  (unalias-data (registry schema) "b"))))
          (let [schema {:FOO (s/cond-pre {:fooBar s/Str} s/Str)}]
            (is (= {:FOO {:fooBar "a"}}
-                  (unalias-data (parameter-aliases schema) {:foo {:foo-bar "a"}})))
+                  (unalias-data (registry schema) {:foo {:foo-bar "a"}})))
            (is (= {:FOO "b"}
-                  (unalias-data (parameter-aliases schema) {:foo "b"}))))))
+                  (unalias-data (registry schema) {:foo "b"}))))))
 
     (testing "conditional schemas"
       (let [schema (s/conditional
@@ -489,13 +489,13 @@
         (is (= {:fooBar "a"
                 :BAR "b"
                 :Baz "c"}
-               (unalias-data (parameter-aliases schema) {:foo-bar "a"
-                                                         :bar "b"
-                                                         :baz "c"})))
+               (unalias-data (registry schema) {:foo-bar "a"
+                                                :bar "b"
+                                                :baz "c"})))
         (is (= {:QUU "x"
                 :Quux [{:Fizz "y"}]}
-               (unalias-data (parameter-aliases schema) {:quu "x"
-                                                         :quux [{:fizz "y"}]}))))
+               (unalias-data (registry schema) {:quu "x"
+                                                :quux [{:fizz "y"}]}))))
       (let [schema {:FOO (s/conditional
                            foo-map?
                            {:fooBar s/Str
@@ -507,51 +507,51 @@
         (is (= {:FOO {:fooBar "a"
                       :BAR "b"
                       :Baz "c"}}
-               (unalias-data (parameter-aliases schema) {:foo {:foo-bar "a"
-                                                               :bar "b"
-                                                               :baz "c"}})))
+               (unalias-data (registry schema) {:foo {:foo-bar "a"
+                                                      :bar "b"
+                                                      :baz "c"}})))
         (is (= {:FOO {:QUU "x"
                       :Quux [{:Fizz "y"}]}}
-               (unalias-data (parameter-aliases schema) {:foo {:quu "x"
-                                                               :quux [{:fizz "y"}]}})))))
+               (unalias-data (registry schema) {:foo {:quu "x"
+                                                      :quux [{:fizz "y"}]}})))))
 
     (testing "recursive schemas"
       (is (= {:FOO "a"
               :Bar nil}
-             (unalias-data (parameter-aliases schema-a) {:foo "a"
-                                                         :bar nil})))
+             (unalias-data (registry schema-a) {:foo "a"
+                                                :bar nil})))
       (is (= {:FOO "a"
               :Bar {:BAZ "b"
                     :Quu nil}}
-             (unalias-data (parameter-aliases schema-a) {:foo "a"
-                                                         :bar {:baz "b"
-                                                               :quu nil}})))
+             (unalias-data (registry schema-a) {:foo "a"
+                                                :bar {:baz "b"
+                                                      :quu nil}})))
       (is (= {:FOO "a1"
               :Bar {:BAZ "b1"
                     :Quu {:FOO "a2"
                           :Bar nil}}}
-             (unalias-data (parameter-aliases schema-a) {:foo "a1"
-                                                         :bar {:baz "b1"
-                                                               :quu {:foo "a2"
-                                                                     :bar nil}}})))
+             (unalias-data (registry schema-a) {:foo "a1"
+                                                :bar {:baz "b1"
+                                                      :quu {:foo "a2"
+                                                            :bar nil}}})))
       (is (= {:FOO "a1"
               :Bar {:BAZ "b1"
                     :Quu {:FOO "a2"
                           :Bar {:BAZ "b2"
                                 :Quu nil}}}}
-             (unalias-data (parameter-aliases schema-a) {:foo "a1"
-                                                         :bar {:baz "b1"
-                                                               :quu {:foo "a2"
-                                                                     :bar {:baz "b2"
-                                                                           :quu nil}}}})))))
+             (unalias-data (registry schema-a) {:foo "a1"
+                                                :bar {:baz "b1"
+                                                      :quu {:foo "a2"
+                                                            :bar {:baz "b2"
+                                                                  :quu nil}}}})))))
 
   (testing "non-keyword keys"
     (is (= {"fooBar" "a"
             'baz-quux "b"}
            (let [schema {"fooBar" s/Str
                          'bazQuux s/Str}]
-             (unalias-data (parameter-aliases schema) {"foo-bar" "a"
-                                                       'baz-quux "b"})))
+             (unalias-data (registry schema) {"foo-bar" "a"
+                                              'baz-quux "b"})))
         "Symbols are excluded for performance purposes, could work as well"))
 
   (testing "qualified keys are not renamed"
@@ -559,19 +559,19 @@
             :Baz/DOO "b"}
            (let [schema {:foo/Bar s/Str
                          :Baz/DOO s/Str}]
-             (unalias-data (parameter-aliases schema) {:foo/Bar "a"
-                                                       :Baz/DOO "b"})))))
+             (unalias-data (registry schema) {:foo/Bar "a"
+                                              :Baz/DOO "b"})))))
 
   (testing "generic keys are not renamed"
     (is (= {"a" {:foo-bar "b"}}
            (let [schema {s/Str {:fooBar s/Str}}]
-             (unalias-data (parameter-aliases schema) {"a" {:foo-bar "b"}}))))
+             (unalias-data (registry schema) {"a" {:foo-bar "b"}}))))
     (is (= {:a {:foo-bar "b"}}
            (let [schema {s/Keyword {:fooBar s/Str}}]
-             (unalias-data (parameter-aliases schema) {:a {:foo-bar "b"}}))))
+             (unalias-data (registry schema) {:a {:foo-bar "b"}}))))
     (is (= {:foo-bar "a"}
            (let [schema (st/any-keys)]
-             (unalias-data (parameter-aliases schema) {:foo-bar "a"}))))))
+             (unalias-data (registry schema) {:foo-bar "a"}))))))
 
 (deftest alias-schema-test
   (testing "renames schema keys into idiomatic keys"
@@ -582,14 +582,14 @@
              (let [schema {:fooBar s/Str
                            (s/optional-key :BAR) s/Str
                            (s/required-key :Baz) s/Str}]
-               (alias-schema (parameter-aliases schema) schema)))))
+               (alias-schema (registry schema) schema)))))
 
     (testing "nested map and vector schemas"
       (is (= {:foo {:foo-bar s/Str
                     (s/optional-key :bar) [{:baz s/Str}]}}
              (let [schema {:FOO {:fooBar s/Str
                                  (s/optional-key :Bar) [{:BAZ s/Str}]}}]
-               (alias-schema (parameter-aliases schema) schema)))))
+               (alias-schema (registry schema) schema)))))
 
     (testing "deeply nested vector schemas"
       (is (= {(s/optional-key :foo)
@@ -598,7 +598,7 @@
              (let [schema {(s/optional-key :FOO)
                            {:Bar [[{:barDoo s/Str
                                     (s/optional-key :barDee) s/Str}]]}}]
-               (alias-schema (parameter-aliases schema) schema)))))
+               (alias-schema (registry schema) schema)))))
 
     (testing "default schemas"
       (is (= {:foo-bar s/Str
@@ -613,7 +613,7 @@
                                              :Quux [{:Fizz s/Str}]}
                                             {:QUU "hi"
                                              :Quux []})}]
-               (alias-schema (parameter-aliases schema) schema))))
+               (alias-schema (registry schema) schema))))
       (is (= (st/default {:quu s/Str
                           :quux [{:fizz s/Str}]}
                          {:quu "hi"
@@ -622,28 +622,28 @@
                                        :Quux [{:Fizz s/Str}]}
                                       {:QUU "hi"
                                        :Quux []})]
-               (alias-schema (parameter-aliases schema) schema)))))
+               (alias-schema (registry schema) schema)))))
 
     (testing "named schemas"
       (is (= (s/named {:foo-bar s/Str} "FooBar")
              (let [schema (s/named {:fooBar s/Str} "FooBar")]
-               (alias-schema (parameter-aliases schema) schema)))))
+               (alias-schema (registry schema) schema)))))
 
     (testing "maybe schemas"
       (is (= {:foo-bar (s/maybe {:baz s/Str})}
              (let [schema {:fooBar (s/maybe {:Baz s/Str})}]
-               (alias-schema (parameter-aliases schema) schema))))
+               (alias-schema (registry schema) schema))))
       (is (= (s/maybe {:foo-bar s/Str})
              (let [schema (s/maybe {:fooBar s/Str})]
-               (alias-schema (parameter-aliases schema) schema)))))
+               (alias-schema (registry schema) schema)))))
 
     (testing "constrained schemas"
       (is (= {:foo-bar (s/constrained s/Str not-blank?)}
              (let [schema {:fooBar (s/constrained s/Str not-blank?)}]
-               (alias-schema (parameter-aliases schema) schema))))
+               (alias-schema (registry schema) schema))))
       (is (= {:foo-bar (s/constrained {:baz s/Str} some?)}
              (let [schema {:fooBar (s/constrained {:Baz s/Str} some?)}]
-               (alias-schema (parameter-aliases schema) schema)))))
+               (alias-schema (registry schema) schema)))))
 
     (testing "both schemas"
       (is (= (s/both {:foo-bar s/Str
@@ -656,7 +656,7 @@
                                    (s/required-key :Baz) s/Str}
                                   {:QUU s/Str
                                    :Quux [{:Fizz s/Str}]})]
-               (alias-schema (parameter-aliases schema) schema))))
+               (alias-schema (registry schema) schema))))
       (is (= {:foo (s/both {:foo-bar s/Str
                             (s/optional-key :bar) s/Str
                             (s/required-key :baz) s/Str}
@@ -667,7 +667,7 @@
                                          (s/required-key :Baz) s/Str}
                                         {:QUU s/Str
                                          :Quux [{:Fizz s/Str}]})}]
-               (alias-schema (parameter-aliases schema) schema)))))
+               (alias-schema (registry schema) schema)))))
 
     (testing "either schemas"
       (is (= (s/either {:foo-bar s/Str
@@ -680,7 +680,7 @@
                                      (s/required-key :Baz) s/Str}
                                     {:QUU s/Str
                                      :Quux [{:Fizz s/Str}]})]
-               (alias-schema (parameter-aliases schema) schema))))
+               (alias-schema (registry schema) schema))))
       (is (= {:foo (s/either {:foo-bar s/Str
                               (s/optional-key :bar) s/Str
                               (s/required-key :baz) s/Str}
@@ -691,7 +691,7 @@
                                            (s/required-key :Baz) s/Str}
                                           {:QUU s/Str
                                            :Quux [{:Fizz s/Str}]})}]
-               (alias-schema (parameter-aliases schema) schema)))))
+               (alias-schema (registry schema) schema)))))
 
     ;; TODO: An SCI issue happens for this test case. Unwrap when fixed.
     #?(:bb nil
@@ -699,10 +699,10 @@
        (testing "cond-pre schemas"
          (is (= (s/cond-pre {:foo-bar s/Str} s/Str)
                 (let [schema (s/cond-pre {:fooBar s/Str} s/Str)]
-                  (alias-schema (parameter-aliases schema) schema))))
+                  (alias-schema (registry schema) schema))))
          (is (= {:foo (s/cond-pre {:foo-bar s/Str} s/Str)}
                 (let [schema {:FOO (s/cond-pre {:fooBar s/Str} s/Str)}]
-                  (alias-schema (parameter-aliases schema) schema))))))
+                  (alias-schema (registry schema) schema))))))
 
     (testing "conditional schemas"
       (is (= (s/conditional
@@ -721,7 +721,7 @@
                             not-foo-map?
                             {:QUU s/Str
                              :Quux [{:Fizz s/Str}]})]
-               (alias-schema (parameter-aliases schema) schema))))
+               (alias-schema (registry schema) schema))))
       (is (= {:foo (s/conditional
                      foo-map?
                      {:foo-bar s/Str
@@ -738,22 +738,22 @@
                                   not-foo-map?
                                   {:QUU s/Str
                                    :Quux [{:Fizz s/Str}]})}]
-               (alias-schema (parameter-aliases schema) schema)))))
+               (alias-schema (registry schema) schema)))))
 
     (testing "recursive schemas"
       (is (= {:foo s/Str
               :bar (s/recursive #'schema-b)}
-             (alias-schema (parameter-aliases schema-a) schema-a)))
+             (alias-schema (registry schema-a) schema-a)))
       (is (= {:baz s/Str
               :quu (s/recursive #'schema-a)}
-             (alias-schema (parameter-aliases schema-b) schema-b)))))
+             (alias-schema (registry schema-b) schema-b)))))
 
   (testing "non-keyword keys"
     (is (= {"foo-bar" s/Str
             'bazQuux s/Str}
            (let [schema {"fooBar" s/Str
                          'bazQuux s/Str}]
-             (alias-schema (parameter-aliases schema) schema)))
+             (alias-schema (registry schema) schema)))
         "Symbols are excluded for performance purposes, could work as well"))
 
   (testing "qualified keys are not renamed"
@@ -761,15 +761,15 @@
             :Baz/DOO s/Str}
            (let [schema {:foo/Bar s/Str
                          :Baz/DOO s/Str}]
-             (alias-schema (parameter-aliases schema) schema)))))
+             (alias-schema (registry schema) schema)))))
 
   (testing "generic keys are not renamed"
     (is (= {s/Str {:fooBar s/Str}}
            (let [schema {s/Str {:fooBar s/Str}}]
-             (alias-schema (parameter-aliases schema) schema))))
+             (alias-schema (registry schema) schema))))
     (is (= {s/Keyword {:fooBar s/Str}}
            (let [schema {s/Keyword {:fooBar s/Str}}]
-             (alias-schema (parameter-aliases schema) schema))))
+             (alias-schema (registry schema) schema))))
     (is (= (st/any-keys)
            (let [schema (st/any-keys)]
-             (alias-schema (parameter-aliases schema) schema))))))
+             (alias-schema (registry schema) schema))))))
