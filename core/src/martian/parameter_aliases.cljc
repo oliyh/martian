@@ -51,45 +51,22 @@
 (defn- idiomatic-path [path]
   (vec (keep schema-tools/->idiomatic path)))
 
-(def ^:dynamic *max-aliases-path-length*
-  "Maximum idiomatic path length allowed during the alias-driven expansion."
-  10)
-
 (defn aliases-hash-map
-  "Eagerly compute the registry as a plain hash map for the given `schema`.
+  "Eagerly computes the registry as a data structure for the given `schema`.
 
-   NB: This covers schema wrapper-aware paths (e.g. `[:baz :schema :quux]`)
-       and equivalent data-level paths (e.g. `[:baz :quux]`) uniformly."
+   Produces a plain hash map with idiomatic keys (aliases) mappings per path
+   in a (possibly, deeply nested) `schema` for all its unqualified keys.
+
+   The result is then used with `alias-schema` and `unalias-data` functions."
   [schema]
-  (let [*amap (volatile! {})
-        *seen (volatile! #{})
-        *pick (volatile! [])
-        *ends (volatile! #{})
-        explore! (fn [path]
-                   (when-not (contains? @*seen path)
-                     (vswap! *seen conj path)
-                     (when-let [m (schema-tools/compute-aliases-at schema path)]
-                       (vswap! *amap assoc path m)
-                       (when (< (count path) *max-aliases-path-length*)
-                         (vswap! *pick into (map #(conj path %) (keys m)))
-                         (vswap! *pick into (map #(conj path %) @*ends))))))]
-    ;; structure-driven seeding
-    (schema-tools/prewalk-with-path
-      (fn [p x]
-        (let [ip (idiomatic-path p)]
-          ;; learn tail segments (e.g. `:schema`, etc.)
-          (when (seq ip) (vswap! *ends conj (peek ip)))
-          (explore! ip))
-        x)
-      []
-      schema)
-    ;; drain alias-driven paths (covers data-level hops)
-    (loop []
-      (when-some [paths (not-empty @*pick)]
-        (vreset! *pick (pop paths))
-        (explore! (peek paths))
-        (recur)))
-    @*amap))
+  (reduce (fn [acc path]
+            (let [leaf (peek path)
+                  idiomatic-key (some-> leaf (schema-tools/->idiomatic))]
+              (if (and idiomatic-key (not= leaf idiomatic-key))
+                (update acc (idiomatic-path (pop path)) assoc idiomatic-key leaf)
+                acc)))
+          {}
+          (schema-tools/key-seqs schema)))
 
 (defn parameter-aliases
   "Builds a lookupable registry of parameter alias maps for the given `schema`.
@@ -101,14 +78,12 @@
     massive alias maps upfront is avoided. Per-path results are memoized within
     the registry. Identical alias maps are shared to cut memory usage.
 
-    The returned value implements `ILookup` and is indexed by an idiomatic path
-    (a vector of segments as used when walking data/schemas). Looking up a path
-    yields the alias map for that level, mapping \"idiomatic keys\" (kebab-case,
-    unqualified) to their original explicit schema keys (with optional/required
-    wrappers when applicable).
+    A returned value implements `ILookup` and is indexed by \"idiomatic paths\".
+    Looking up a path gives an alias map for that level, mapping idiomatic keys
+    (kebab-case, unqualified) to their original schema keys.
 
   - On Babashka:
-    Returns a plain hash map that is computed eagerly via `compute-aliases-at`."
+    Returns a plain hash map registry that is computed eagerly via `key-seqs`."
   [schema]
   (when schema
     #?(:bb      (aliases-hash-map schema)

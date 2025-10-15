@@ -7,6 +7,9 @@
 (defn explicit-key [k]
   (if (s/specific-key? k) (s/explicit-schema-key k) k))
 
+(defn concrete-key? [k]
+  (or (keyword? k) (s/specific-key? k) (string? k)))
+
 (defn- can-be-renamed? [k]
   ;; NB: See `camel-snake-kebab.internals.alter-name` ns.
   (or (and (keyword? k) (not (namespace k))) (string? k)))
@@ -46,17 +49,31 @@
   [ms seg]
   (some (fn [[k v]] (when (= seg (->idiomatic k)) v)) ms))
 
-(defprotocol PathAliases
-  "Internal traversal API used to locate alias maps inside schemas.
+(defn- concat* [& xs]
+  (apply concat (remove nil? xs)))
 
-   Implementations should walk `schema` along an `idiomatic-path` (a vector of
-   kebab-case, unqualified segments) and, when the path lands on a map schema,
-   return a map `{idiomatic -> original-explicit}` for that level; otherwise,
-   return `nil`, i.e. don't traverse past the target level or build whole-tree
-   results."
+(def ^:dynamic *seen-recursion*
+  "Cycle/budget guard for `s/recursive` schema targets. Bound in `key-seqs` fn."
+  nil)
+
+(def ^:dynamic *max-recursions-per-target*
+  "Maximum number of times the same recursive schema target may be expanded
+   along a single path."
+  3)
+
+(defprotocol PathAliases
+  "Internal traversal API used to locate alias maps inside Prismatic schemas."
+  (-paths [schema path include-self?]
+    "Returns a sequence of path vectors found within the given prefix `path`.
+     If `include-self?` is true, includes `path` itself as the first element.")
   (-aliases-at [schema idiomatic-path]
     "Returns the alias map available at `idiomatic-path` inside the `schema`,
-     or `nil` if that location is not a map level or has no aliasable keys."))
+     or `nil` if that location is not a map level or has no aliasable keys.
+
+     Implementations should walk `schema` along an `idiomatic-path` (a vector of
+     kebab-case, unqualified segments) and, when the path lands on a map schema,
+     return an alias map for that level; otherwise return `nil`. Do not traverse
+     past the target level or build whole-tree results."))
 
 (defn combine-aliases-at
   "Collects and merges alias maps from multiple `inner-schemas` at the single
@@ -72,6 +89,15 @@
 
   #?(:clj  clojure.lang.APersistentMap
      :cljs cljs.core.PersistentArrayMap)
+  (-paths [schema path include-self?]
+    (concat*
+      (when include-self? (list path))
+      (mapcat (fn [[k v]]
+                (when (concrete-key? k)
+                  (let [k' (explicit-key k)
+                        path' (conj path k')]
+                    (cons path' (-paths v path' false)))))
+              schema)))
   (-aliases-at [ms path]
     (if (empty? path)
       (map-entry-aliases ms)
@@ -80,16 +106,25 @@
           (when-some [child (child-by-idiomatic ms seg)]
             (-aliases-at child (rest path)))))))
 
-  ;; Vector schemas are transparent: we merge aliases from element schemas,
-  ;; including when `path` is empty, so deeply nested vectors work as well.
+  ;; Vector schemas are transparent
   #?(:clj  clojure.lang.APersistentVector
      :cljs cljs.core.PersistentVector)
+  (-paths [schema path include-self?]
+    (concat*
+      (when include-self? (list path))
+      (mapcat #(-paths % path false) schema)))
   (-aliases-at [vs path]
     (combine-aliases-at path vs))
 
-  ;; Single-child wrappers: aware of the inner `:schema` hop.
+  ;; Single-child wrappers
 
   schema.core.NamedSchema
+  (-paths [schema path include-self?]
+    (let [inner-schema (:schema schema)]
+      (concat*
+        (when include-self? (list path))
+        (-paths inner-schema (conj path :schema) true)
+        (-paths inner-schema path false))))
   (-aliases-at [schema path]
     (let [inner-schema (:schema schema)]
       (cond
@@ -98,6 +133,12 @@
         :else                    (-aliases-at inner-schema path))))
 
   schema.core.Maybe
+  (-paths [schema path include-self?]
+    (let [inner-schema (:schema schema)]
+      (concat*
+        (when include-self? (list path))
+        (-paths inner-schema (conj path :schema) true)
+        (-paths inner-schema path false))))
   (-aliases-at [schema path]
     (let [inner-schema (:schema schema)]
       (cond
@@ -106,6 +147,12 @@
         :else                    (-aliases-at inner-schema path))))
 
   schema.core.Constrained
+  (-paths [schema path include-self?]
+    (let [inner-schema (:schema schema)]
+      (concat*
+        (when include-self? (list path))
+        (-paths inner-schema (conj path :schema) true)
+        (-paths inner-schema path false))))
   (-aliases-at [schema path]
     (let [inner-schema (:schema schema)]
       (cond
@@ -114,6 +161,12 @@
         :else                    (-aliases-at inner-schema path))))
 
   schema.core.One
+  (-paths [schema path include-self?]
+    (let [inner-schema (:schema schema)]
+      (concat*
+        (when include-self? (list path))
+        (-paths inner-schema (conj path :schema) true)
+        (-paths inner-schema path false))))
   (-aliases-at [schema path]
     (let [inner-schema (:schema schema)]
       (cond
@@ -122,6 +175,12 @@
         :else                    (-aliases-at inner-schema path))))
 
   schema.core.Record
+  (-paths [schema path include-self?]
+    (let [inner-schema (:schema schema)]
+      (concat*
+        (when include-self? (list path))
+        (-paths inner-schema (conj path :schema) true)
+        (-paths inner-schema path false))))
   (-aliases-at [schema path]
     (let [inner-schema (:schema schema)]
       (cond
@@ -129,9 +188,22 @@
         (= :schema (first path)) (-aliases-at inner-schema (rest path))
         :else                    (-aliases-at inner-schema path))))
 
-  ;; Recursive schemas: no cycle guards are required in this per-path lookup.
-
+  ;; Recursive schemas
   schema.core.Recursive
+  (-paths [schema path include-self?]
+    (let [target (:derefable schema)]
+      (concat*
+        (when include-self? (list path))
+        (when target
+          (let [n (get @*seen-recursion* target 0)]
+            (when (< n *max-recursions-per-target*)
+              (vswap! *seen-recursion* update target (fnil inc 0))
+              (let [inner-schema @target
+                    res (concat
+                          (-paths inner-schema (conj path :derefable) true)
+                          (-paths inner-schema path false))]
+                (vswap! *seen-recursion* update target #(max 0 (dec %)))
+                res)))))))
   (-aliases-at [schema path]
     (let [inner-schema @(:derefable schema)]
       (cond
@@ -139,9 +211,15 @@
         (= :derefable (first path)) (-aliases-at inner-schema (rest path))
         :else                       (-aliases-at inner-schema path))))
 
-  ;; Multi-variant unions: combine the alternatives; aware of any inner hops.
+  ;; Multi-variant unions
 
   schema.core.Both
+  (-paths [schema path include-self?]
+    (let [inner-schemas (:schemas schema)]
+      (concat*
+        (when include-self? (list path))
+        (mapcat #(-paths % (conj path :schemas) false) inner-schemas)
+        (mapcat #(-paths % path false) inner-schemas))))
   (-aliases-at [schema path]
     (let [inner-schemas (:schemas schema)]
       (cond
@@ -150,6 +228,12 @@
         :else                     (combine-aliases-at path inner-schemas))))
 
   schema.core.Either
+  (-paths [schema path include-self?]
+    (let [inner-schemas (:schemas schema)]
+      (concat*
+        (when include-self? (list path))
+        (mapcat #(-paths % (conj path :schemas) false) inner-schemas)
+        (mapcat #(-paths % path false) inner-schemas))))
   (-aliases-at [schema path]
     (let [inner-schemas (:schemas schema)]
       (cond
@@ -158,6 +242,12 @@
         :else                     (combine-aliases-at path inner-schemas))))
 
   schema.core.CondPre
+  (-paths [schema path include-self?]
+    (let [inner-schemas (:schemas schema)]
+      (concat*
+        (when include-self? (list path))
+        (mapcat #(-paths % (conj path :schemas) false) inner-schemas)
+        (mapcat #(-paths % path false) inner-schemas))))
   (-aliases-at [schema path]
     (let [inner-schemas (:schemas schema)]
       (cond
@@ -166,6 +256,12 @@
         :else                     (combine-aliases-at path inner-schemas))))
 
   schema.core.ConditionalSchema
+  (-paths [schema path include-self?]
+    (let [inner-schemas (map second (:preds-and-schemas schema))]
+      (concat*
+        (when include-self? (list path))
+        (mapcat #(-paths % (conj path :preds-and-schemas) false) inner-schemas)
+        (mapcat #(-paths % path false) inner-schemas))))
   (-aliases-at [schema path]
     (let [inner-schemas (map second (:preds-and-schemas schema))]
       (cond
@@ -173,8 +269,15 @@
         (= :preds-and-schemas (first path)) (combine-aliases-at (rest path) inner-schemas)
         :else                               (combine-aliases-at path inner-schemas))))
 
-  ;; The `schema-tools`'s defaults: aware of the `:schema` and `:value` hops.
+  ;; Default schemas (from `schema-tools`)
   schema_tools.impl.Default
+  (-paths [schema path include-self?]
+    (let [inner-schema (:schema schema)]
+      (concat*
+        (when include-self? (list path))
+        (-paths inner-schema (conj path :schema) true)
+        (-paths inner-schema (conj path :value) true)
+        (-paths inner-schema path false))))
   (-aliases-at [schema path]
     (let [inner-schema (:schema schema)]
       (cond
@@ -184,10 +287,23 @@
         :else                    (-aliases-at inner-schema path))))
 
   #?(:clj Object :cljs default)
+  (-paths [_ path include-self?]
+    (when include-self? (list path)))
   (-aliases-at [_ _] nil)
 
   nil
+  (-paths [_ _ _] nil)
   (-aliases-at [_ _] nil))
+
+(defn key-seqs
+  "Returns a vec of unique key paths (key seqs) for `schema` and all subschemas
+   that will cover all possible entries in a data described by `schema` as well
+   as the `schema` itself."
+  [schema]
+  (->> (binding [*seen-recursion* (volatile! {})]
+         (-paths schema [] true))
+       (distinct)
+       (vec)))
 
 (defn compute-aliases-at
   "Given a `schema` and an `idiomatic-path` (a vector of kebab-case, unqualified
