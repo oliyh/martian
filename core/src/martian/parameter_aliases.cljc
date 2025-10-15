@@ -68,7 +68,7 @@
           {}
           (schema-tools/key-seqs schema)))
 
-(defn parameter-aliases
+(defn registry
   "Builds a lookupable registry of parameter alias maps for the given `schema`.
 
   - On JVM/CLJS:
@@ -89,35 +89,39 @@
     #?(:bb      (aliases-hash-map schema)
        :default (new LazyRegistry schema (atom {}) (atom {})))))
 
+;; TODO: An alias for backward compatibility. Remove later on.
+(def parameter-aliases registry)
+
 (defn unalias-data
-  "Given a (possibly, deeply nested) data `x`, returns the data with all keys
-   renamed from \"idiomatic\" using the given `parameter-aliases` registry."
-  [parameter-aliases x]
-  (if parameter-aliases
+  "Given a (possibly, deeply nested) `data` structure, returns it with all its
+   keys renamed from \"idiomatic\" (aliases) using the given parameter aliases
+   `registry`."
+  [registry data]
+  (if registry
     (schema-tools/prewalk-with-path
       (fn [path x]
         (if (map? x)
-          (rename-keys x (get parameter-aliases (idiomatic-path path)))
+          (rename-keys x (get registry (idiomatic-path path)))
           x))
-      []
-      x)
-    x))
+      data)
+    data))
 
 (defn alias-schema
   "Given a (possibly, deeply nested) `schema`, renames all keys (in it and its
    subschemas) into corresponding \"idiomatic\" keys (aliases) using the given
-   `parameter-aliases` registry."
-  [parameter-aliases schema]
-  (if parameter-aliases
+   parameter aliases `registry`."
+  [registry schema]
+  (if registry
     (schema-tools/prewalk-with-path
-      (fn [path x]
-        (if (map? x)
-          (let [kmap (reduce-kv (fn [kmap k v]
-                                  (assoc kmap v k (s/optional-key v) (s/optional-key k)))
+      (fn [path subschema]
+        (if (map? subschema)
+          (let [kmap (reduce-kv (fn [kmap idiomatic original]
+                                  (assoc kmap
+                                    original idiomatic
+                                    (s/optional-key original) (s/optional-key idiomatic)))
                                 {}
-                                (get parameter-aliases (idiomatic-path path)))]
-            (rename-keys x kmap))
-          x))
-      []
+                                (get registry (idiomatic-path path)))]
+            (rename-keys subschema kmap))
+          subschema))
       schema)
     schema))
