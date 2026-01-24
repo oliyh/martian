@@ -217,3 +217,22 @@
     (testing "parses parameters"
       (is (= {:body {:foo s/Str :bar s/Num}}
              (:body-schema handler))))))
+
+(def range-2XX @#'martian.openapi/range-2XX)
+
+(deftest status-nXX-test
+  (let [openapi-json
+        {:paths {(keyword "/getfoo")
+                 {:get {:operationId "testit"
+                        :summary "For testing"
+                        :responses {:2XX {:description "Works fine"
+                                          :content
+                                          {:application/json
+                                           {:schema {:type "integer"
+                                                     :description "A number"}}}}}}}}}
+        [handler] (openapi->handlers openapi-json {:encodes ["application/json"]
+                                                   :decodes ["application/json"]})]
+    (testing "checks response status range schema"
+      (is (= (s/explain [{:status (s/constrained s/Int range-2XX)
+                          :body s/Int}])
+             (s/explain (:response-schemas handler)))))))
