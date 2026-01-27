@@ -218,21 +218,26 @@
       (is (= {:body {:foo s/Str :bar s/Num}}
              (:body-schema handler))))))
 
-(def range-2XX @#'martian.openapi/range-2XX)
-
 (deftest status-nXX-test
-  (let [openapi-json
-        {:paths {(keyword "/getfoo")
-                 {:get {:operationId "testit"
-                        :summary "For testing"
-                        :responses {:2XX {:description "Works fine"
-                                          :content
-                                          {:application/json
-                                           {:schema {:type "integer"
-                                                     :description "A number"}}}}}}}}}
-        [handler] (openapi->handlers openapi-json {:encodes ["application/json"]
-                                                   :decodes ["application/json"]})]
-    (testing "checks response status range schema"
-      (is (= (s/explain [{:status (s/constrained s/Int range-2XX)
-                          :body s/Int}])
-             (s/explain (:response-schemas handler)))))))
+  (let [oas-for (fn oas-for [n]
+                  {:paths {(keyword "/getfoo")
+                           {:get {:operationId "testit"
+                                  :summary "For testing"
+                                  :responses {(keyword (str n "XX"))
+                                              {:description "Works fine"
+                                               :content
+                                               {:application/json
+                                                {:schema {:type "integer"
+                                                          :description "A number"}}}}}}}}})]
+    (doseq [n [1 2 3 4 5]]
+      (let [openapi-json (oas-for n)
+            [handler] (openapi->handlers openapi-json {:encodes ["application/json"]
+                                                       :decodes ["application/json"]})
+            response-schemas (:response-schemas handler)
+            status-schema (:status (first response-schemas))
+            valid-statuses (repeatedly 3 #(+ (* n 100) (rand-int 100))) ; sample 3 ints in range
+            invalid-status (* (inc n) 100)]
+        (testing (str "checks response status range schema for " n "XX")
+          (doseq [status valid-statuses]
+            (is (s/validate status-schema status)))
+          (is (thrown? Throwable (s/validate status-schema invalid-status))))))))
