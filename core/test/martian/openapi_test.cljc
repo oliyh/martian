@@ -240,4 +240,6 @@
         (testing (str "checks response status range schema for " n "XX")
           (doseq [status valid-statuses]
             (is (s/validate status-schema status)))
-          (is (thrown? Throwable (s/validate status-schema invalid-status))))))))
+          (is (thrown? #?(:clj Throwable
+                          :cljs :default)
+                       (s/validate status-schema invalid-status))))))))
