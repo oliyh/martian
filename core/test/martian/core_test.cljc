@@ -331,12 +331,12 @@
   (let [add-default-headers-interceptor {:name ::add-default-headers
                                          :enter (fn [ctx]
                                                   (update-in ctx [:request :headers]
-                                                             assoc :x-api-key "ABC123"))}
+                                                             assoc :X-API-key "ABC123"))}
         m (martian/bootstrap "https://defaultheaders.com"
                              [{:route-name :get-item
                                :produces ["application/json"]
                                :consumes ["application/json"]
-                               :headers-schema {:x-api-key s/Str}
+                               :headers-schema {:X-API-key s/Str}
                                :path-parts ["/api/" :id]
                                :path-schema {:id s/Str}
                                :method :get}]
@@ -344,7 +344,7 @@
 
     (is (= {:method :get
             :url "https://defaultheaders.com/api/123"
-            :headers {"x-api-key" "ABC123"}}
+            :headers {"X-API-key" "ABC123"}}
            (martian/request-for m :get-item {:id "123"})))))
 
 (deftest any-body-test
@@ -426,16 +426,19 @@
 (deftest kebab-mapping-test
   (let [m (martian/bootstrap "https://camels.org"
                              [{:route-name :create-camel
-                                 :path-parts ["/camels/" :camelId]
-                                 :method :put
-                                 :path-schema {:camelId s/Int}
-                                 :query-schema {:camelVersion s/Int}
-                                 :body-schema {:Camel {:camelName s/Str
-                                                       :camelTrain {:leaderName s/Str
-                                                                    (s/optional-key :followerCamels) [{:followerName s/Str}]}
-                                                       :anyCamel s/Any}}
-                                 :headers-schema {(s/optional-key :camelToken) s/Str}
-                                 :form-schema {:camelHumps (s/maybe s/Int)}}])]
+                               :path-parts ["/camels/" :camelId]
+                               :method :put
+                               :path-schema {:camelId s/Int}
+                               :query-schema {:camelVersion s/Int}
+                               :body-schema {:Camel {:camelName s/Str
+                                                     :camelTrain {:leaderName s/Str
+                                                                  (s/optional-key :followerCamels) [{:followerName s/Str}]}
+                                                     :anyCamel s/Any}}
+                               :headers-schema {(s/optional-key "Content-Security-Policy") s/Str
+                                                (s/optional-key "WWW-Authenticate") s/Str
+                                                (s/optional-key "X-XSS-Protection") s/Str
+                                                (s/optional-key :camelToken) s/Str}
+                               :form-schema {:camelHumps (s/maybe s/Int)}}])]
 
     (is (= "https://camels.org/camels/1"
            (martian/url-for m :create-camel {:camel-id 1
@@ -446,27 +449,38 @@
                                              :camel-version 2}
                             {:include-query? true})))
 
-    (is (= {:path-schema {[] {:camel-id :camelId}},
-            :query-schema {[] {:camel-version :camelVersion}},
-            :body-schema {[] {:camel :Camel},
-                          [:camel] {:camel-name :camelName,
-                                    :camel-train :camelTrain,
-                                    :any-camel :anyCamel},
-                          [:camel :camel-train] {:leader-name :leaderName,
-                                                 :follower-camels :followerCamels},
-                          [:camel :camel-train :follower-camels] {:follower-name :followerName}},
-            :form-schema {[] {:camel-humps :camelHumps}},
-            :headers-schema {[] {:camel-token :camelToken}}}
-           (:parameter-aliases (martian/handler-for m :create-camel))))
+    (let [param-aliases (:parameter-aliases (martian/handler-for m :create-camel))]
+      (is (= {:camel-id :camelId}
+             (get-in param-aliases [:path-schema []])))
+      (is (= {:camel-version :camelVersion}
+             (get-in param-aliases [:query-schema []])))
+      (is (= {:camel :Camel}
+             (get-in param-aliases [:body-schema []])))
+      (is (= {:camel-name :camelName
+              :camel-train :camelTrain
+              :any-camel :anyCamel}
+             (get-in param-aliases [:body-schema [:camel]])))
+      (is (= {:leader-name :leaderName
+              :follower-camels :followerCamels}
+             (get-in param-aliases [:body-schema [:camel :camel-train]])))
+      (is (= {:follower-name :followerName}
+             (get-in param-aliases [:body-schema [:camel :camel-train :follower-camels]])))
+      (is (= {:camel-humps :camelHumps}
+             (get-in param-aliases [:form-schema []])))
+      (is (= {"content-security-policy" "Content-Security-Policy"
+              "www-authenticate" "WWW-Authenticate"
+              "x-xss-protection" "X-XSS-Protection"
+              :camel-token :camelToken}
+             (get-in param-aliases [:headers-schema []]))))
 
-    (is (= {:method :put,
-            :url "https://camels.org/camels/1",
-            :query-params {:camelVersion 2},
+    (is (= {:method :put
+            :url "https://camels.org/camels/1"
+            :query-params {:camelVersion 2}
             :body {:camelName "kebab"
                    :camelTrain {:leaderName "camel leader"
                                 :followerCamels [{:followerName "OCaml"}]}
-                   :anyCamel {:camel-train "choo choo"}},
-            :form-params {:camelHumps 2},
+                   :anyCamel {:camel-train "choo choo"}}
+            :form-params {:camelHumps 2}
             :headers {"camelToken" "cAmEl"}}
 
            ;; fully destructured
@@ -510,16 +524,19 @@
                                                          :anyCamel {:camel-train "choo choo"}}})))
 
     (testing "explore shows idiomatic kebab keys"
-      (is (= {:summary nil,
+      (is (= {:summary nil
               :parameters
-              {:camel-id                     s/Int,
-               :camel-version                s/Int,
-               :camel                        {:camel-name s/Str
-                                              :camel-train {:leader-name s/Str
-                                                            (s/optional-key :follower-camels) [{:follower-name s/Str}]}
-                                              :any-camel s/Any},
-               :camel-humps                  (s/maybe s/Int)
-               (s/optional-key :camel-token) s/Str},
+              {:camel-id s/Int
+               :camel-version s/Int
+               :camel {:camel-name s/Str
+                       :camel-train {:leader-name s/Str
+                                     (s/optional-key :follower-camels) [{:follower-name s/Str}]}
+                       :any-camel s/Any}
+               :camel-humps (s/maybe s/Int)
+               (s/optional-key "content-security-policy") s/Str
+               (s/optional-key "www-authenticate") s/Str
+               (s/optional-key "x-xss-protection") s/Str
+               (s/optional-key :camel-token) s/Str}
               :returns {}}
              (martian/explore m :create-camel))))))
 

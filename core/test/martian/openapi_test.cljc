@@ -217,3 +217,48 @@
     (testing "parses parameters"
       (is (= {:body {:foo s/Str :bar s/Num}}
              (:body-schema handler))))))
+
+(deftest reffed-requestbody-test
+  (let [openapi-json
+        {:paths {(keyword "/pets")
+                 {:post {:operationId "create-pet"
+                         :summary "Creates a pet"
+                         :requestBody {:$ref "#/components/requestBodies/PetBody"}}}}
+         :components {:requestBodies {:PetBody {:required true
+                                                :content {:application/json
+                                                          {:schema {:$ref "#/components/schemas/Pet"}}}}}
+                      :schemas {:Pet {:type "object"
+                                      :required ["name"]
+                                      :properties {:name {:type "string"}
+                                                   :age {:type "integer"}}}}}}
+        [handler] (openapi->handlers openapi-json {:encodes ["application/json"]
+                                                   :decodes ["application/json"]})]
+    (is (= {:body {:name s/Str
+                   (s/optional-key :age) s/Int}}
+           (:body-schema handler)))))
+
+(deftest status-nXX-test
+  (let [oas-for (fn oas-for [n]
+                  {:paths {(keyword "/getfoo")
+                           {:get {:operationId "testit"
+                                  :summary "For testing"
+                                  :responses {(keyword (str n "XX"))
+                                              {:description "Works fine"
+                                               :content
+                                               {:application/json
+                                                {:schema {:type "integer"
+                                                          :description "A number"}}}}}}}}})]
+    (doseq [n [1 2 3 4 5]]
+      (let [openapi-json (oas-for n)
+            [handler] (openapi->handlers openapi-json {:encodes ["application/json"]
+                                                       :decodes ["application/json"]})
+            response-schemas (:response-schemas handler)
+            status-schema (:status (first response-schemas))
+            valid-statuses (repeatedly 3 #(+ (* n 100) (rand-int 100))) ; sample 3 ints in range
+            invalid-status (* (inc n) 100)]
+        (testing (str "checks response status range schema for " n "XX")
+          (doseq [status valid-statuses]
+            (is (s/validate status-schema status)))
+          (is (thrown? #?(:clj Throwable
+                          :cljs :default)
+                       (s/validate status-schema invalid-status))))))))

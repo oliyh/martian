@@ -112,13 +112,37 @@
                  (openapi->schema (:schema param) components)}))
          parameters)))
 
+(defn- range-1XX
+  [n] (<= 100 n 199))
+(defn- range-2XX
+  [n] (<= 200 n 299))
+(defn- range-3XX
+  [n] (<= 300 n 399))
+(defn- range-4XX
+  [n] (<= 400 n 499))
+(defn- range-5XX
+  [n] (<= 500 n 599))
+
 (defn- process-responses [responses components content-types]
   (for [[status-code value] responses
         :let                [status-code (name status-code)
                              [json-schema content-type] (get-matching-schema value content-types "Content-Type")]]
-    {:status       (if (= status-code "default")
-                     s/Any
-                     (s/eq (if (number? status-code) status-code (parse-long (name status-code)))))
+    {:status       (cond (= status-code "default")
+                         s/Any
+
+                         (number? status-code)
+                         (s/eq status-code)
+
+                         (and (string? status-code) (re-matches #"[12345]XX" status-code))
+                         (s/constrained s/Int (case (first status-code)
+                                                \1 range-1XX
+                                                \2 range-2XX
+                                                \3 range-3XX
+                                                \4 range-4XX
+                                                \5 range-5XX))
+
+                         :else
+                         (s/eq (parse-long (name status-code))))
      :body         (and json-schema (openapi->schema json-schema components))
      :content-type content-type}))
 
@@ -189,7 +213,7 @@
            :let [parameters (->> (map resolve-ref (:parameters definition))
                                  (concat common-parameters)
                                  (group-by (comp keyword :in)))
-                 body       (process-body (:requestBody definition) components encodes)
+                 body       (process-body (resolve-ref (:requestBody definition)) components encodes)
                  responses  (-> (:responses definition)
                                 (update-vals resolve-ref)
                                 (process-responses components decodes))]]

@@ -6,7 +6,7 @@
             [lambdaisland.uri :refer [map->query-string]]
             [martian.interceptors :as interceptors]
             [martian.openapi :refer [openapi->handlers openapi-schema?]]
-            [martian.parameter-aliases :refer [parameter-aliases alias-schema]]
+            [martian.parameter-aliases :refer [registry alias-schema]]
             [martian.schema :as schema]
             [martian.spec :as mspec]
             [martian.swagger :refer [swagger->handlers]]
@@ -133,7 +133,7 @@
 
 (defn- collect-parameter-aliases [handler]
   (reduce (fn [aliases param-key]
-            (assoc aliases param-key (parameter-aliases (get handler param-key))))
+            (assoc aliases param-key (registry (get handler param-key))))
           {}
           parameter-schemas))
 
