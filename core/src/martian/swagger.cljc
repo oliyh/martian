@@ -1,11 +1,9 @@
 (ns martian.swagger
-  (:require [martian.openapi :refer [tokenise-path]]
-            [camel-snake-kebab.core :refer [->kebab-case-keyword]]
-            [clojure.string :as string]
+  (:require [clojure.string :as str]
             [clojure.walk :refer [keywordize-keys]]
+            [martian.openapi :refer [produce-route-name tokenise-path unique-route-name?]]
             [martian.schema :as schema]
-            [schema.core :as s]
-            [martian.utils :as utils]))
+            [schema.core :as s]))
 
 (defn resolve-swagger-params [ref-lookup swagger-params category]
   (->> swagger-params
@@ -37,39 +35,40 @@
   (for [[status response] swagger-responses
         :let [status-code (cond (number? status) status
                                 (= "default" (name status)) 'default
-                                :else (utils/string->int (name status)))]]
+                                :else (parse-long (name status)))]]
     {:status (s/eq status-code)
      :body (schema/make-schema ref-lookup (assoc (:schema response) :required true))}))
 
-(defn- ->handler
-  [swagger-map path-item-parameters url-pattern method swagger-definition]
-  (when-let [route-name (some-> (:operationId swagger-definition) ->kebab-case-keyword)]
-    (let [ref-lookup (select-keys swagger-map [:definitions :parameters])
-          path-parts (tokenise-path url-pattern)
-          uri (string/join (map str path-parts))
-          parameters (concat path-item-parameters (:parameters swagger-definition))]
-      {:path uri
-       :path-parts path-parts
-       :method method
-       :path-schema (path-schema ref-lookup parameters)
-       :query-schema (query-schema ref-lookup parameters)
-       :body-schema (body-schema ref-lookup parameters)
-       :form-schema (form-schema ref-lookup parameters)
-       :headers-schema (headers-schema ref-lookup parameters)
-       :response-schemas (response-schemas ref-lookup (:responses swagger-definition))
-       :produces (some :produces [swagger-definition swagger-map])
-       :consumes (some :consumes [swagger-definition swagger-map])
-       :summary (:summary swagger-definition)
-       :swagger-definition swagger-definition
-       ;; todo path constraints - required?
-       ;; :path-constraints {:id "(\\d+)"},
-       ;; {:in "path", :name "id", :description "", :required true, :type "string", :format "uuid"
-       :route-name route-name})))
-
-(defn swagger->handlers [swagger-json]
-  (let [swagger-spec (keywordize-keys swagger-json)]
-    (for [[url-pattern swagger-handlers] (:paths swagger-spec)
-          [method swagger-definition] swagger-handlers
-          :let [handler (->handler swagger-spec (:parameters swagger-handlers) url-pattern method swagger-definition)]
-          :when (some? handler)]
-      handler)))
+(defn swagger->handlers
+  ([swagger-json]
+   (swagger->handlers swagger-json nil))
+  ([swagger-json route-name-sources]
+   (let [swagger-spec (keywordize-keys swagger-json)
+         route-names (atom #{})]
+     (for [[url-pattern swagger-handlers] (:paths swagger-spec)
+           :let [common-parameters (:parameters swagger-handlers)]
+           [method definition] (dissoc swagger-handlers :parameters)
+           :let [route-name (produce-route-name route-name-sources url-pattern method definition)]
+           ;; NB: We only care about routes that have a unique name.
+           :when (and (some? route-name)
+                      (unique-route-name? route-name route-names))
+           :let [path-parts (tokenise-path url-pattern)
+                 ref-lookup (select-keys swagger-spec [:definitions :parameters])
+                 parameters (concat common-parameters (:parameters definition))]]
+       {:path               (str/join path-parts)
+        :path-parts         path-parts
+        ;; TODO: Also parse all path constraints — required?
+        ;; :path-constraints {:id "(\\d+)"},
+        ;; {:in "path", :name "id", :description "", :required true, :type "string", :format "uuid" ...}
+        :method             method
+        :path-schema        (path-schema ref-lookup parameters)
+        :query-schema       (query-schema ref-lookup parameters)
+        :body-schema        (body-schema ref-lookup parameters)
+        :form-schema        (form-schema ref-lookup parameters)
+        :headers-schema     (headers-schema ref-lookup parameters)
+        :response-schemas   (response-schemas ref-lookup (:responses definition))
+        :produces           (some :produces [definition swagger-spec])
+        :consumes           (some :consumes [definition swagger-spec])
+        :summary            (:summary definition)
+        :swagger-definition definition
+        :route-name         route-name}))))
