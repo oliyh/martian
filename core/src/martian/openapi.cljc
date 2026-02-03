@@ -178,7 +178,7 @@
                      (not= :options method))
           :let [parameters (group-by (comp keyword :in) (concat common-parameters
                                                                 (map resolve-ref (:parameters definition))))
-                body       (process-body (:requestBody definition) components (:encodes content-types))
+                body       (process-body (resolve-ref (:requestBody definition)) components (:encodes content-types))
                 responses  (process-responses (update-vals-future (:responses definition)
                                                                   resolve-ref)
                                               components (:decodes content-types))]]
