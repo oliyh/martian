@@ -13,6 +13,9 @@
 (def swagger-url "http://localhost:8888/swagger.json")
 (def openapi-url "http://localhost:8888/openapi.json")
 (def openapi-test-url "http://localhost:8888/openapi-test.json")
+(def openapi-test-relative-url-with-servers "/openapi-test.json")
+(def openapi-test-relative-url-no-servers "/openapi-relative-url-no-servers-test.json")
+(def openapi-test-relative-url-no-servers-leading-path "/api/openapi-relative-url-no-servers-test.json")
 (def openapi-coercions-url "http://localhost:8888/openapi-coercions.json")
 
 (deftest swagger-http-test
@@ -47,6 +50,22 @@
           (is (= "http://localhost:8888/v3.1"
                  (:api-root (<! (martian-http/bootstrap-openapi openapi-test-url {:server-url "/v3.1"}))))
               "check relative server url via opts")
+
+          (is (= "https://sandbox.example.com"
+                 (:api-root (<! (martian-http/bootstrap-openapi openapi-test-relative-url-with-servers))))
+              "check relative spec url with servers")
+
+          (is (= "https://example.com"
+                 (:api-root (<! (martian-http/bootstrap-openapi openapi-test-relative-url-with-servers {:server-url "https://example.com"}))))
+              "check relative spec url with server-url")
+
+          (is (= "" #_"/"
+                 (:api-root (<! (martian-http/bootstrap-openapi openapi-test-relative-url-no-servers))))
+              "check relative spec url without servers")
+
+          (is (= "" #_"/api"
+                 (:api-root (<! (martian-http/bootstrap-openapi openapi-test-relative-url-no-servers-leading-path))))
+              "check relative spec url without servers and leading path")
 
           (is (= "http://localhost:8888/openapi/v3"
                  (:api-root m)))
