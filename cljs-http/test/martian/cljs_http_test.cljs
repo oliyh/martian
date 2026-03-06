@@ -59,11 +59,11 @@
                  (:api-root (<! (martian-http/bootstrap-openapi openapi-test-relative-url-with-servers {:server-url "https://example.com"}))))
               "check relative spec url with server-url")
 
-          (is (= "" #_"/"
+          (is (= ""
                  (:api-root (<! (martian-http/bootstrap-openapi openapi-test-relative-url-no-servers))))
               "check relative spec url without servers")
 
-          (is (= "" #_"/api"
+          (is (= "/api"
                  (:api-root (<! (martian-http/bootstrap-openapi openapi-test-relative-url-no-servers-leading-path))))
               "check relative spec url without servers and leading path")
 

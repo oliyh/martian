@@ -296,7 +296,7 @@
           "relative servers entry, absolute spec URL"))
 
     (testing "OpenAPI — no servers, absolute spec URL: base is origin, no trailing slash"
-      (is (= "" #_ "http://localhost:8888"
+      (is (= "http://localhost:8888"
              (base-url "http://localhost:8888/spec.json" nil openapi-no-servers))))
 
     (testing "OpenAPI — no servers, relative spec URL at root: base is empty string"
@@ -305,7 +305,7 @@
           "root-level spec → empty string (paths start with /, so api-root + path stays valid)"))
 
     (testing "OpenAPI — no servers, relative spec URL with path prefix: base is parent path"
-      (is (= "" #_ "/api"
+      (is (= "/api"
              (base-url "/api/spec.json" nil openapi-no-servers))
           "spec in /api/ → /api, no trailing slash"))
 
