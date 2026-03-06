@@ -43,10 +43,10 @@
         api-root (or server-url first-server)]
     (if (openapi-schema? json)
       (if (str/blank? api-root)
-        ;; No servers declared: derive base from "directory" of the fetch URL
+        ;; No servers declared: derive base from "directory" of the spec URL
         (str/replace (str (uri/join url ".")) #"/$" "")
         (if (str/starts-with? api-root "/")
-          ;; Relative server path (e.g. "/v3"): resolve against the fetch URL
+          ;; Relative server path (e.g. "/v3"): resolve against the spec URL
           (str (uri/join url api-root))
           ;; Absolute api-root: return verbatim
           api-root))
