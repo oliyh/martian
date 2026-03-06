@@ -12,18 +12,49 @@
 (defn openapi-schema? [json]
   (boolean (some #(get json %) [:openapi "openapi"])))
 
-(defn base-url [url server-url json]
+(defn base-url
+  "Returns the API root URL derived from the spec URL, an optional
+  server override, and the parsed JSON spec.
+
+  Resolution order for OpenAPI (3.x) specs:
+
+  1. If `server-url` is provided and non-blank, it is used as-is when
+     absolute (e.g. \"https://example.com\"), or resolved against `url`
+     when relative (e.g. \"/v3\" → \"http://host/v3\").
+
+  2. Otherwise, `servers[0].url` from the spec is used, applying the
+     same absolute-vs-relative logic.
+
+  3. If neither is present (no `:servers` key in the spec), the base is
+     derived from the directory of `url` via RFC 3986 resolution:
+     - absolute `url`  → origin only, e.g. \"http://localhost:8888\"
+     - relative `url`  → parent path, e.g. \"/api/spec.json\" → \"/api\"
+     - top-level relative `url` (e.g. \"/spec.json\") → \"\" (empty string),
+       which is correct because OpenAPI paths begin with \"/\", so
+       api-root + path remains a valid relative URL.
+
+  For Swagger (2.x) specs, the base is always reconstructed as
+  scheme://host[:port] + basePath from the parsed `url`.
+
+  The return value never has a trailing slash."
+  [url server-url json]
   (let [first-server (get-in json [:servers 0 :url] "")
         {:keys [scheme host port]} (uri/uri url)
         api-root (or server-url first-server)]
-    (if (and (openapi-schema? json) (not (str/starts-with? api-root "/")))
-      api-root
+    (if (openapi-schema? json)
+      (if (str/blank? api-root)
+        ;; No servers declared: derive base from "directory" of the fetch URL
+        (str/replace (str (uri/join url ".")) #"/$" "")
+        (if (str/starts-with? api-root "/")
+          ;; Relative server path (e.g. "/v3"): resolve against the fetch URL
+          (str (uri/join url api-root))
+          ;; Absolute api-root: return verbatim
+          api-root))
+      ;; Swagger / non-OpenAPI: reconstruct origin + basePath
       (str scheme "://"
            host
            (when (not (str/blank? port)) (str ":" port))
-           (if (openapi-schema? json)
-             api-root
-             (get json :basePath ""))))))
+           (get json :basePath "")))))
 
 (defn- wrap-nullable [{:keys [nullable]} schema]
   (if nullable
