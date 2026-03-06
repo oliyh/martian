@@ -1,6 +1,6 @@
 (ns martian.openapi-test
   (:require [clojure.test :refer [deftest is testing]]
-            [martian.openapi :refer [openapi->handlers]]
+            [martian.openapi :refer [base-url openapi->handlers]]
             [martian.test-helpers #?@(:clj  [:refer [json-resource yaml-resource]]
                                       :cljs [:refer-macros [json-resource yaml-resource]])]
             [schema-tools.core :as st]
@@ -262,3 +262,53 @@
           (is (thrown? #?(:clj Throwable
                           :cljs :default)
                        (s/validate status-schema invalid-status))))))))
+
+(deftest base-url-test
+  (let [openapi-abs-server {:openapi "3.1.0" :servers [{:url "https://sandbox.example.com"}]}
+        openapi-rel-server {:openapi "3.1.0" :servers [{:url "/v3"}]}
+        openapi-no-servers {:openapi "3.1.0"}
+        swagger-json       {:swagger "2.0"   :basePath "/v2"}]
+
+    (testing "OpenAPI — absolute servers[0].url wins regardless of spec URL"
+      (is (= "https://sandbox.example.com"
+             (base-url "http://localhost:8888/spec.json" nil openapi-abs-server))
+          "absolute spec URL")
+      (is (= "https://sandbox.example.com"
+             (base-url "/spec.json" nil openapi-abs-server))
+          "relative spec URL"))
+
+    (testing "OpenAPI — explicit server-url overrides everything"
+      (is (= "https://example.com"
+             (base-url "http://localhost:8888/spec.json" "https://example.com" openapi-abs-server))
+          "absolute server-url, absolute spec URL")
+      (is (= "https://example.com"
+             (base-url "/spec.json" "https://example.com" openapi-abs-server))
+          "absolute server-url, relative spec URL"))
+
+    (testing "OpenAPI — relative server-url resolved against absolute spec URL"
+      (is (= "http://localhost:8888/v3.1"
+             (base-url "http://localhost:8888/spec.json" "/v3.1" openapi-abs-server))
+          "explicit relative server-url"))
+
+    (testing "OpenAPI — relative servers[0].url resolved against absolute spec URL"
+      (is (= "http://localhost:8888/v3"
+             (base-url "http://localhost:8888/spec.json" nil openapi-rel-server))
+          "relative servers entry, absolute spec URL"))
+
+    (testing "OpenAPI — no servers, absolute spec URL: base is origin, no trailing slash"
+      (is (= "" #_ "http://localhost:8888"
+             (base-url "http://localhost:8888/spec.json" nil openapi-no-servers))))
+
+    (testing "OpenAPI — no servers, relative spec URL at root: base is empty string"
+      (is (= ""
+             (base-url "/spec.json" nil openapi-no-servers))
+          "root-level spec → empty string (paths start with /, so api-root + path stays valid)"))
+
+    (testing "OpenAPI — no servers, relative spec URL with path prefix: base is parent path"
+      (is (= "" #_ "/api"
+             (base-url "/api/spec.json" nil openapi-no-servers))
+          "spec in /api/ → /api, no trailing slash"))
+
+    (testing "Swagger — absolute spec URL: origin + basePath"
+      (is (= "http://localhost:8888/v2"
+             (base-url "http://localhost:8888/swagger.json" nil swagger-json))))))
