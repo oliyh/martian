@@ -143,7 +143,31 @@
   #?(:clj  java.net.URI
      :cljs goog.Uri))
 
-(defn leaf-schema [{:keys [type enum format]}]
+(defn- min-max-schema
+  "Generate a schema for integer/number,
+  with the intersection of all the optional
+  min/max assertions."
+  [base-schema {:keys [minimum maximum exclusiveMinimum exclusiveMaximum] :as leaf}]
+  (cond (or (and minimum (not (number? minimum)))
+            (and maximum (not (number? maximum)))
+            (and exclusiveMinimum (not (number? exclusiveMinimum)))
+            (and exclusiveMaximum (not (number? exclusiveMaximum))))
+        (throw (ex-info "All values must be numbers" {:element leaf}))
+
+        (or (and maximum minimum (< maximum minimum))
+            (and maximum exclusiveMinimum (< maximum exclusiveMinimum))
+            (and exclusiveMaximum minimum (< exclusiveMaximum minimum))
+            (and exclusiveMaximum exclusiveMinimum (< exclusiveMaximum exclusiveMinimum)))
+        (throw (ex-info "Inconsistent minimums / maximums" {:element leaf}))
+
+        :else
+        (cond-> base-schema
+          minimum (s/constrained #(<= minimum %))
+          maximum (s/constrained #(<= % maximum))
+          exclusiveMinimum (s/constrained #(< exclusiveMinimum %))
+          exclusiveMaximum (s/constrained #(< % exclusiveMaximum)))))
+
+(defn leaf-schema [{:keys [type enum format] :as leaf}]
   (cond
     enum                 (apply s/enum enum)
     (= "string" type)    (case format
@@ -153,8 +177,8 @@
                            "uri" (s/cond-pre s/Str URI)
                            "uuid" (s/cond-pre s/Str s/Uuid)
                            s/Str)
-    (= "integer" type)   s/Int
-    (= "number" type)    s/Num
+    (= "integer" type)   (min-max-schema s/Int leaf)
+    (= "number" type)    (min-max-schema s/Num leaf)
     (= "boolean" type)   s/Bool
     (= "date-time" type) s/Inst
     :else                s/Any))
