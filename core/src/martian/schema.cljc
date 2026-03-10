@@ -161,11 +161,14 @@
         (throw (ex-info "Inconsistent minimums / maximums" {:element leaf}))
 
         :else
-        (cond-> base-schema
-          minimum (s/constrained #(<= minimum %))
-          maximum (s/constrained #(<= % maximum))
-          exclusiveMinimum (s/constrained #(< exclusiveMinimum %))
-          exclusiveMaximum (s/constrained #(< % exclusiveMaximum)))))
+        (let [preds (cond-> []
+                      minimum (conj #(<= minimum %))
+                      maximum (conj #(<= % maximum))
+                      exclusiveMinimum (conj #(< exclusiveMinimum %))
+                      exclusiveMaximum (conj #(< % exclusiveMaximum)))]
+          (if (seq preds)
+            (s/constrained base-schema (apply every-pred preds))
+            base-schema))))
 
 (defn leaf-schema [{:keys [type enum format] :as leaf}]
   (cond
