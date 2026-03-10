@@ -12,6 +12,9 @@
 (def swagger-url "http://localhost:8888/swagger.json")
 (def openapi-url "http://localhost:8888/openapi.json")
 (def openapi-test-url "http://localhost:8888/openapi-test.json")
+(def openapi-test-relative-url-with-servers "/openapi-test.json")
+(def openapi-test-relative-url-no-servers "/openapi-relative-url-no-servers-test.json")
+(def openapi-test-relative-url-no-servers-leading-path "/api/openapi-relative-url-no-servers-test.json")
 (def openapi-coercions-url "http://localhost:8888/openapi-coercions.json")
 
 (defn report-error-and-throw [err]
@@ -62,6 +65,30 @@
         (prom/then (fn [m]
                      (is (= "http://localhost:8888/v3.1"
                             (:api-root m)) "check relative server url via opts")))
+        (prom/catch report-error-and-throw))
+
+    (-> (martian-http/bootstrap-openapi openapi-test-relative-url-with-servers)
+        (prom/then (fn [m]
+                     (is (= "https://sandbox.example.com"
+                            (:api-root m)) "check relative spec url with servers")))
+        (prom/catch report-error-and-throw))
+
+    (-> (martian-http/bootstrap-openapi openapi-test-relative-url-with-servers {:server-url "https://example.com"})
+        (prom/then (fn [m]
+                     (is (= "https://example.com"
+                            (:api-root m)) "check relative spec url with server-url")))
+        (prom/catch report-error-and-throw))
+
+    (-> (martian-http/bootstrap-openapi openapi-test-relative-url-no-servers)
+        (prom/then (fn [m]
+                     (is (= ""
+                            (:api-root m)) "check relative spec url without servers")))
+        (prom/catch report-error-and-throw))
+
+    (-> (martian-http/bootstrap-openapi openapi-test-relative-url-no-servers-leading-path)
+        (prom/then (fn [m]
+                     (is (= "/api"
+                            (:api-root m)) "check relative spec url without servers and leading path")))
         (prom/catch report-error-and-throw))
 
     (-> (prom/let [m (martian-http/bootstrap-openapi openapi-url)]
