@@ -65,16 +65,19 @@
                       ;; maybe with a validation: strict|lax config option to control that behavior.
                       (when (= #{:properties} (set (keys schema))) "object"))
              "array"   [(openapi->schema (:items schema) components seen-set)]
-             "object"  (let [required? (set (:required schema))]
+             "object"  (let [required? (set (:required schema))
+                             {:keys [additionalProperties properties]} schema]
                          (if (or (contains? schema :properties)
-                                 (contains? schema :additionalProperties))
-                           (into {}
+                                 additionalProperties)
+                           (into (if additionalProperties
+                                   {s/Any s/Any}
+                                   {})
                                  (map (fn [[k v]]
                                         {(if (required? (name k))
                                            (keyword k)
                                            (s/optional-key (keyword k)))
                                          (openapi->schema v components seen-set)}))
-                                 (:properties schema))
+                                 properties)
                            {s/Any s/Any}))
              (schema/leaf-schema schema))))))
 
