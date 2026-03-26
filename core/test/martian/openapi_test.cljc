@@ -237,6 +237,42 @@
                    (s/optional-key :age) s/Int}}
            (:body-schema handler)))))
 
+(deftest additional-properties-test
+  (let [make-handler (fn [schema]
+                       (let [[handler] (openapi->handlers
+                                        {:paths {(keyword "/things")
+                                                 {:post {:operationId "create-thing"
+                                                         :summary "Creates things"
+                                                         :requestBody {:required true
+                                                                       :content {:application/json
+                                                                                 {:schema schema}}}}}}}
+                                        {:encodes ["application/json"]
+                                         :decodes ["application/json"]})]
+                         (:body-schema handler)))]
+
+    (testing "object with additionalProperties true and no defined properties allows any keys"
+      (is (= {:body {s/Any s/Any}}
+             (make-handler {:type "object"
+                            :additionalProperties true}))))
+
+    (testing "object with additionalProperties true and defined properties allows both specific and any keys"
+      (is (= {:body {:name s/Str
+                     (s/optional-key :age) s/Int
+                     s/Any s/Any}}
+             (make-handler {:type "object"
+                            :required ["name"]
+                            :properties {:name {:type "string"}
+                                         :age {:type "integer"}}
+                            :additionalProperties true}))))
+
+    (testing "object with only defined properties and no additionalProperties disallows extra keys"
+      (is (= {:body {:name s/Str
+                     (s/optional-key :age) s/Int}}
+             (make-handler {:type "object"
+                            :required ["name"]
+                            :properties {:name {:type "string"}
+                                         :age {:type "integer"}}}))))))
+
 (deftest status-nXX-test
   (let [oas-for (fn oas-for [n]
                   {:paths {(keyword "/getfoo")
