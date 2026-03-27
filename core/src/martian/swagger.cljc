@@ -1,7 +1,6 @@
 (ns martian.swagger
   (:require [clojure.string :as str]
             [clojure.walk :refer [keywordize-keys]]
-            [martian.backends.plumatic :as plumatic]
             [martian.openapi :refer [produce-route-name tokenise-path unique-route-name?]]
             [martian.schema :as schema]
             [martian.schema-backend :as sb]))
@@ -50,7 +49,7 @@
   ([swagger-json route-name-sources]
    (swagger->handlers swagger-json route-name-sources nil))
   ([swagger-json route-name-sources opts]
-   (let [backend      (or (:schema-backend opts) plumatic/backend)
+   (let [backend      (schema/get-backend opts)
          swagger-spec (keywordize-keys swagger-json)
          route-names  (atom #{})]
      (for [[url-pattern swagger-handlers] (:paths swagger-spec)

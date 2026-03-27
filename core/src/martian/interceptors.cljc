@@ -3,7 +3,6 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.walk :refer [keywordize-keys stringify-keys]]
-            [martian.backends.plumatic :as plumatic]
             [martian.encoders :as encoders]
             [martian.encoding :as encoding]
             [martian.schema :as schema]
@@ -12,7 +11,7 @@
             [tripod.context :as tc]))
 
 (defn- get-backend [opts]
-  (get opts :schema-backend plumatic/backend))
+  (schema/get-backend opts))
 
 #?(:bb
    ;; reflection issue in babashka -- TODO, submit patch upstream?

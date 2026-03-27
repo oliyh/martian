@@ -4,7 +4,6 @@
             [clojure.walk :refer [keywordize-keys]]
             [inflections.core :refer [parameterize singular]]
             [lambdaisland.uri :as uri]
-            [martian.backends.plumatic :as plumatic]
             [martian.log :as log]
             [martian.schema :as schema]
             [martian.schema-backend :as sb]
@@ -228,7 +227,7 @@
   ([openapi-json content-types route-name-sources]
    (openapi->handlers openapi-json content-types route-name-sources nil))
   ([openapi-json {:keys [encodes decodes] :as _content-types} route-name-sources opts]
-   (let [backend      (or (:schema-backend opts) plumatic/backend)
+   (let [backend      (schema/get-backend opts)
          openapi-spec (keywordize-keys openapi-json)
          resolve-ref  (schema/resolve-ref-fn openapi-spec)
          components   (:components openapi-spec)

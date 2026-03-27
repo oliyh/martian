@@ -21,6 +21,11 @@
   "The default coercion matcher used by the Plumatic backend."
   plumatic/default-coercion-matcher)
 
+(defn get-backend
+  "Returns the schema backend from opts, defaulting to the Plumatic backend."
+  [opts]
+  (get opts :schema-backend plumatic/backend))
+
 (defn leaf-schema
   "Returns a Plumatic schema for the given OpenAPI property descriptor."
   [property]
