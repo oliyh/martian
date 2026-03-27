@@ -222,8 +222,8 @@
                    (let [content-types (-> interceptors
                                            (or default-interceptors)
                                            (interceptors/supported-content-types))]
-                     (openapi->handlers json content-types route-name-sources))
-                   (swagger->handlers json route-name-sources))]
+                     (openapi->handlers json content-types route-name-sources opts))
+                   (swagger->handlers json route-name-sources opts))]
     (build-instance api-root handlers opts)))
 
 (def

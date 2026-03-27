@@ -1,113 +1,52 @@
 (ns martian.schema
-  (:require #?(:clj [schema.core :as s]
-               :cljs [schema.core :as s :refer [AnythingSchema Maybe EnumSchema EqSchema]])
-            #?(:cljs [goog.Uri])
-            [schema.coerce :as sc]
-            [schema-tools.core :as st]
-            [schema-tools.coerce :as stc]
-            [clojure.string :as string]
-            [martian.parameter-aliases :refer [unalias-data]])
-  #?(:clj (:import [schema.core AnythingSchema Maybe EnumSchema EqSchema OptionalKey])))
+  (:require [clojure.string :as string]
+            [martian.schema-backend :as sb]
+            [martian.backends.plumatic :as plumatic]
+            [martian.parameter-aliases :refer [unalias-data]]))
 
-(def format->separator
-  {"csv"   ","
-   "ssv"   " "
-   "tsv"   "\t"
-   "pipes" "|"})
+;; ---------------------------------------------------------------------------
+;; Backward-compatible re-exports from the Plumatic backend.
+;; These allow existing code that imports martian.schema to keep working.
+;; ---------------------------------------------------------------------------
 
-(defn seq->string [coll-fmt]
-  (when-some [separator (get format->separator coll-fmt)]
-    (fn [coll]
-      (string/join separator coll))))
+(def Binary
+  "Schema for binary data."
+  plumatic/Binary)
 
-(defn format-coll-coercion-matcher [schema]
-  (when-some [coll-fmt (:collection-format (meta schema))]
-    (seq->string coll-fmt)))
-
-(defn keyword->string [x]
-  (if (keyword? x) (name x) x))
-
-(def +extra-string-coercions+
-  {s/Str keyword->string})
-
-(defn string-enum-matcher [schema]
-  (when (or (and (instance? EnumSchema schema)
-                 (every? string? (.-vs ^EnumSchema schema)))
-            (and (instance? EqSchema schema)
-                 (string? (.-v ^EqSchema schema))))
-    keyword->string))
+(def URI
+  "Schema for URI values."
+  plumatic/URI)
 
 (def default-coercion-matcher
-  (stc/or-matcher sc/string-coercion-matcher
-                  format-coll-coercion-matcher
-                  +extra-string-coercions+
-                  string-enum-matcher))
+  "The default coercion matcher used by the Plumatic backend."
+  plumatic/default-coercion-matcher)
 
-(defn build-coercion-matcher
-  [{:keys [coercion-matcher use-defaults?]
-    :or   {coercion-matcher default-coercion-matcher}}]
-  (when (nil? coercion-matcher)
-    (throw (ex-info "Coercion matcher must be a unary fn of schema" {})))
-  (if use-defaults?
-    (stc/or-matcher stc/default-matcher coercion-matcher)
-    coercion-matcher))
+(defn get-backend
+  "Returns the schema backend from opts, defaulting to the Plumatic backend."
+  [opts]
+  (get opts :schema-backend plumatic/backend))
 
-(defn ->map-matcher
-  "Builds a version of `stc/map-filter-matcher` that is optional and takes
-   into account a custom `coercion-matcher` that may/not happen afterwards."
-  [coercion-matcher]
-  (fn [schema]
-    (let [f (stc/map-filter-matcher schema)
-          g (coercion-matcher schema)]
-      (fn [x]
-        (cond-> x
-                (some? f) (f)
-                (some? g) (g))))))
+(defn leaf-schema
+  "Returns a Plumatic schema for the given OpenAPI property descriptor."
+  [property]
+  (sb/leaf-schema plumatic/backend property))
 
-(defn- from-maybe [s]
-  (if (instance? Maybe s)
-    (:schema s)
-    s))
+(defn wrap-default
+  "Wraps schema with a default value from property's :default key."
+  [property schema]
+  (sb/with-default-value plumatic/backend property schema))
 
 (defn coerce-data
-  "Extracts the data referred to by the schema's keys and coerces it"
+  "Extracts the data referred to by the schema's keys and coerces it."
   ([schema data]
    (coerce-data schema data nil))
-  ([schema data {:keys [parameter-aliases] :as opts}]
-   (let [matcher (build-coercion-matcher opts)]
-     (when-let [s (from-maybe schema)]
-       (cond
-         (instance? AnythingSchema s)
-         ((sc/coercer! schema matcher) data)
+  ([schema data opts]
+   (sb/coerce-data plumatic/backend schema data opts)))
 
-         (map? s)
-         (let [map-matcher (->map-matcher matcher)]
-           (stc/coerce (unalias-data parameter-aliases data) s map-matcher))
-
-         (coll? s) ;; primitives, arrays, arrays of maps
-         ((sc/coercer! schema matcher)
-          (map #(if (map? %)
-                  (unalias-data parameter-aliases %)
-                  %)
-               data))
-
-         :else
-         ((sc/coercer! schema matcher) data))))))
-
-(declare make-schema)
-
-(defn schemas-for-parameters
-  "Given a collection of swagger parameters returns a schema map"
-  [ref-lookup parameters]
-  (->> parameters
-       (map (fn [{:keys [name required required?] :as param}]
-              {(cond-> (keyword name)
-                 (not (or required?
-                          (and (boolean? required) required)
-                          (and (string? required) (= "true" required))))
-                 s/optional-key)
-               (make-schema ref-lookup param)}))
-       (into {})))
+;; ---------------------------------------------------------------------------
+;; Spec-parsing utilities — no schema backend coupling.
+;; These work with the raw OpenAPI/Swagger spec format.
+;; ---------------------------------------------------------------------------
 
 (defn lookup-ref
   [ref ref-lookup]
@@ -131,50 +70,9 @@
      ref-object)))
 
 (defn resolve-ref-fn
-  "returns a function that receives an object and resolves it using resolve-ref-object"
+  "Returns a function that receives an object and resolves it using resolve-ref-object."
   [ref-lookup]
   (fn [obj] (resolve-ref-object obj ref-lookup)))
-
-(def Binary
-  #?(:clj  s/Any ; postpone to multipart coercion
-     :cljs js/File))
-
-(def URI
-  #?(:clj  java.net.URI
-     :cljs goog.Uri))
-
-(defn leaf-schema [{:keys [type enum format]}]
-  (cond
-    enum                 (apply s/enum enum)
-    (= "string" type)    (case format
-                           "binary" (s/cond-pre s/Str Binary)
-                           "date-time" (s/cond-pre s/Str s/Inst)
-                           "int-or-string" (s/cond-pre s/Str s/Int)
-                           "uri" (s/cond-pre s/Str URI)
-                           "uuid" (s/cond-pre s/Str s/Uuid)
-                           s/Str)
-    (= "integer" type)   s/Int
-    (= "number" type)    s/Num
-    (= "boolean" type)   s/Bool
-    (= "date-time" type) s/Inst
-    :else                s/Any))
-
-(defn wrap-default [{:keys [default]} schema]
-  (if (some? default)
-    (let [default
-          ;patch for `inf` as a default value
-          (if (and (= schema s/Int) (= default "inf"))
-            #?(:clj Long/MAX_VALUE
-               :cljs js/Number.MAX_SAFE_INTEGER)
-            default)]
-      (st/default schema default))
-    schema))
-
-(defn- schema-type [ref-lookup {:keys [type $ref] :as param}]
-  (let [schema (if (or (= "object" type) $ref)
-                 (make-schema ref-lookup param)
-                 (leaf-schema param))]
-    (wrap-default param schema)))
 
 (def ^:dynamic *visited-refs* #{})
 
@@ -188,60 +86,90 @@
                                     (contains? (set required) (name parameter-name))))))
        properties))
 
-(defn- make-object-schema [ref-lookup {:keys [additionalProperties] :as schema}]
+;; ---------------------------------------------------------------------------
+;; Schema construction — walking OpenAPI/Swagger specs via the backend.
+;; The backend parameter defaults to plumatic/backend for backward compat.
+;; These functions are mutually recursive; declare them upfront.
+;; ---------------------------------------------------------------------------
+
+(declare make-schema schemas-for-parameters)
+
+(defn- schema-type [ref-lookup {:keys [type $ref] :as param} backend]
+  (let [schema (if (or (= "object" type) $ref)
+                 (make-schema ref-lookup param backend)
+                 (sb/leaf-schema backend param))]
+    (sb/with-default-value backend param schema)))
+
+(defn- make-object-schema [ref-lookup {:keys [additionalProperties] :as schema} backend]
   ;; It's possible for an 'object' to omit properties and
   ;; additionalProperties. If this is the case - anything is allowed.
   (if (or (contains? schema :properties)
           (contains? schema :additionalProperties))
-    (cond-> (schemas-for-parameters ref-lookup (denormalise-object-properties schema))
-      additionalProperties (assoc s/Any s/Any))
-    {s/Any s/Any}))
+    (cond-> (schemas-for-parameters ref-lookup (denormalise-object-properties schema) backend)
+      additionalProperties (assoc (sb/any-schema backend) (sb/any-schema backend)))
+    {(sb/any-schema backend) (sb/any-schema backend)}))
 
-(defn- wrap-collection-format [array-schema collection-format]
-  (if (and collection-format (not= "multi" collection-format) (= [s/Str] array-schema))
-    (vary-meta (st/schema s/Str) assoc :collection-format collection-format)
-    array-schema))
+(defn schemas-for-parameters
+  "Given a collection of swagger parameters returns a schema map."
+  ([ref-lookup parameters]
+   (schemas-for-parameters ref-lookup parameters plumatic/backend))
+  ([ref-lookup parameters backend]
+   (->> parameters
+        (map (fn [{:keys [name required required?] :as param}]
+               (let [k (keyword name)
+                     schema-k (if (not (or required?
+                                           (and (boolean? required) required)
+                                           (and (string? required) (= "true" required))))
+                                (sb/optional-key backend k)
+                                k)]
+                 {schema-k (make-schema ref-lookup param backend)})))
+        (into {}))))
 
 (defn make-schema
-  "Takes a swagger parameter and returns a schema"
-  [ref-lookup {:keys [required required? type schema $ref items] :as param}]
-  (if (let [ref (or $ref (:$ref schema))]
-        (and ref (contains? *visited-refs* ref)))
-    s/Any ;; avoid potential recursive loops
+  "Takes a swagger parameter and returns a schema via the given backend.
+   Defaults to the Plumatic backend for backward compatibility."
+  ([ref-lookup param]
+   (make-schema ref-lookup param plumatic/backend))
+  ([ref-lookup {:keys [required required? type schema $ref items] :as param} backend]
+   (if (let [ref (or $ref (:$ref schema))]
+         (and ref (contains? *visited-refs* ref)))
+     (sb/any-schema backend) ;; avoid potential recursive loops
 
-    (cond
-      $ref
-      (binding [*visited-refs* (conj *visited-refs* $ref)]
-        (make-schema ref-lookup (-> (dissoc param :$ref)
-                                    (merge (resolve-ref-object param ref-lookup)))))
+     (cond
+       $ref
+       (binding [*visited-refs* (conj *visited-refs* $ref)]
+         (make-schema ref-lookup (-> (dissoc param :$ref)
+                                     (merge (resolve-ref-object param ref-lookup)))
+                      backend))
 
-      (:$ref schema)
-      (binding [*visited-refs* (conj *visited-refs* (:$ref schema))]
-        (make-schema ref-lookup (-> (dissoc param :schema)
-                                    (merge (resolve-ref-object schema ref-lookup)))))
+       (:$ref schema)
+       (binding [*visited-refs* (conj *visited-refs* (:$ref schema))]
+         (make-schema ref-lookup (-> (dissoc param :schema)
+                                     (merge (resolve-ref-object schema ref-lookup)))
+                      backend))
 
-      :else
-      (cond-> (cond
-                (= "array" type)
-                [(schema-type ref-lookup (assoc items :required true))]
+       :else
+       (let [base-schema (cond
+                           (= "array" type)
+                           [(schema-type ref-lookup (assoc items :required true) backend)]
 
-                (= "array" (:type schema))
-                [(schema-type ref-lookup (assoc (:items schema) :required true))]
+                           (= "array" (:type schema))
+                           [(schema-type ref-lookup (assoc (:items schema) :required true) backend)]
 
-                (= "object" type)
-                (make-object-schema ref-lookup param)
+                           (= "object" type)
+                           (make-object-schema ref-lookup param backend)
 
-                (= "object" (:type schema))
-                (make-object-schema ref-lookup schema)
+                           (= "object" (:type schema))
+                           (make-object-schema ref-lookup schema backend)
 
-                :else
-                (schema-type ref-lookup param))
-        (and (or (not required)
-                 ;;(= "object" type) ;; todo work out something better here
-                 )
-             (not required?)
-             (not= "array" type) (not= "array" (:type schema)))
-        s/maybe
-
-        (and (= "array" type) (:collectionFormat param))
-        (wrap-collection-format (:collectionFormat param))))))
+                           :else
+                           (schema-type ref-lookup param backend))
+             maybe-wrapped (if (and (not required)
+                                    (not required?)
+                                    (not= "array" type)
+                                    (not= "array" (:type schema)))
+                             (sb/maybe-schema backend base-schema)
+                             base-schema)]
+         (if (and (= "array" type) (:collectionFormat param))
+           (sb/wrap-collection-format-schema backend maybe-wrapped (:collectionFormat param))
+           maybe-wrapped))))))
