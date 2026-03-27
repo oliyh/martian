@@ -3,12 +3,16 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.walk :refer [keywordize-keys stringify-keys]]
+            [martian.backends.plumatic :as plumatic]
             [martian.encoders :as encoders]
             [martian.encoding :as encoding]
             [martian.schema :as schema]
+            [martian.schema-backend :as sb]
             [martian.utils :as utils]
-            [schema.core :as s]
             [tripod.context :as tc]))
+
+(defn- get-backend [opts]
+  (get opts :schema-backend plumatic/backend))
 
 #?(:bb
    ;; reflection issue in babashka -- TODO, submit patch upstream?
@@ -53,10 +57,11 @@
             (update ctx :request create-only :url (url-for (:route-name handler) params)))})
 
 (defn coerce-data [{:keys [parameter-aliases] :as handler} schema-key params opts]
-  (let [coerce-opts (-> opts
+  (let [backend (get-backend opts)
+        coerce-opts (-> opts
                         (select-keys [:coercion-matcher :use-defaults?])
                         (assoc :parameter-aliases (get parameter-aliases schema-key)))]
-    (schema/coerce-data (get handler schema-key) params coerce-opts)))
+    (sb/coerce-data backend (get handler schema-key) params coerce-opts)))
 
 (def keywordize-params
   {:name ::keywordize-params
@@ -74,7 +79,8 @@
   {:name ::body-params
    :enter (fn [{:keys [params handler opts] :as ctx}]
             (if-let [[body-key] (first (:body-schema handler))]
-              (let [body-key (s/explicit-schema-key body-key)
+              (let [backend    (get-backend opts)
+                    body-key   (sb/unwrap-key backend body-key)
                     body-params (or (:martian.core/body params)
                                     (get params body-key)
                                     (get params (->kebab-case-keyword body-key))
@@ -180,17 +186,18 @@
   ([] (validate-response-body {:strict? false}))
   ([{:keys [strict?]}]
    {:name ::validate-response
-    :leave (fn [{:keys [handler response] :as ctx}]
-             (if-let [body-schema (some (fn [schema]
-                                          (when-not (s/check (:status schema) (:status response))
-                                            (:body schema)))
-                                        (:response-schemas handler))]
-               (s/validate body-schema (:body response))
-               (when strict?
-                 (throw (ex-info (str "No response body schema found for status " (:status response))
-                                 {:response response
-                                  :response-schemas (:response-schemas handler)}))))
-             ctx)}))
+    :leave (fn [{:keys [handler response opts] :as ctx}]
+             (let [backend (get-backend opts)]
+               (if-let [body-schema (some (fn [schema]
+                                            (when-not (sb/check-schema backend (:status schema) (:status response))
+                                              (:body schema)))
+                                          (:response-schemas handler))]
+                 (sb/validate-schema backend body-schema (:body response))
+                 (when strict?
+                   (throw (ex-info (str "No response body schema found for status " (:status response))
+                                   {:response response
+                                    :response-schemas (:response-schemas handler)}))))
+               ctx))}))
 
 (def prepare-content-types
   (comp vec distinct #(into % ["text/plain" "application/octet-stream"])))
