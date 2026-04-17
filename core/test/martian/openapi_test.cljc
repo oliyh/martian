@@ -348,3 +348,102 @@
     (testing "Swagger — absolute spec URL: origin + basePath"
       (is (= "http://localhost:8888/v2"
              (base-url "http://localhost:8888/swagger.json" nil swagger-json))))))
+
+(defn- schema-for
+  "Helper to create and extract schema,
+  after merging in the OAS `schema-addition`."
+  [schema-addition]
+  (let [base-spec {:openapi "3.1.0"
+                   :paths {(keyword "/getnone")
+                           {:get {:operationId "testit"
+                                  :summary "For testing"
+                                  :parameters [{:in "path"
+                                                :name "id"
+                                                :schema {:type "number"}
+                                                :required true}]
+                                  :responses {(keyword "204") {:description "OK"}}}}}}
+        oas (update-in base-spec
+                       [:paths (keyword "/getnone") :get :parameters 0 :schema]
+                       merge
+                       schema-addition)
+        [handler] (openapi->handlers oas {:encodes ["application/json"]
+                                          :decodes ["application/json"]})
+        path-schema (:path-schema handler)]
+    (:id path-schema)))
+
+(deftest bounds-test
+
+  (testing "both minimum and exclusiveMinimum — exclusive wins when equal"
+    (let [s (schema-for {:minimum 5 :exclusiveMinimum 5})
+          v (comp nil? (s/checker s))]
+      ;; x >=5 AND x >5  ==> x >5
+      (is (false? (v 5)))
+      (is (true?  (v 5.1)))
+      (is (false? (v 4.999)))))
+
+  (testing "both minimum and exclusiveMinimum — inclusive is stricter"
+    (let [s (schema-for {:minimum 5 :exclusiveMinimum 3})
+          v (comp nil? (s/checker s))]
+      ;; x >=5 AND x >3  ==> x >=5
+      (is (false? (v 4)))
+      (is (true?  (v 5)))
+      (is (true?  (v 5.0001)))
+      (is (false? (v 4.999)))))
+
+  (testing "both minimum and exclusiveMinimum — exclusive is stricter"
+    (let [s (schema-for {:minimum 5 :exclusiveMinimum 7})
+          v (comp nil? (s/checker s))]
+      ;; x >=5 AND x >7  ==> x >7
+      (is (false? (v 7)))
+      (is (true?  (v 7.0001)))
+      (is (false? (v 6.999)))
+      (is (false? (v 5)))))
+
+  (testing "symmetric for upper bounds"
+    (let [s (schema-for {:maximum 10 :exclusiveMaximum 10})
+          v (comp nil? (s/checker s))]
+      ;; <=10 AND <10  ==> <10
+      (is (false? (v 10)))
+      (is (true?  (v 9.999)))
+      (is (false? (v 10.001))))
+
+    (let [s (schema-for {:maximum 10 :exclusiveMaximum 15})
+          v (comp nil? (s/checker s))]
+      ;; <=10 AND <15  ==> <=10
+      (is (true?  (v 10)))
+      (is (true?  (v 9)))
+      (is (false? (v 11))))
+
+    (let [s (schema-for {:maximum 10 :exclusiveMaximum 8})
+          v (comp nil? (s/checker s))]
+      ;; <=10 AND <8  ==> <8
+      (is (false? (v 8)))
+      (is (true?  (v 7.999)))
+      (is (false? (v 8.001)))))
+
+  (testing "all four bounds together"
+    (let [s (schema-for {:minimum 2 :exclusiveMinimum 1
+                :maximum 10 :exclusiveMaximum 12})
+          v (comp nil? (s/checker s))]
+      ;; x>=2 AND x>1 AND x<=10 AND x<12  ==> x>=2 AND x<=10
+      (is (true?  (v 2)))
+      (is (true?  (v 10)))
+      (is (false? (v 1.5)))
+      (is (false? (v 10.5)))))
+
+  (testing "conflicting bounds"
+    (is (thrown? #?(:clj Throwable
+                    :cljs :default)
+                 (schema-for {:minimum 10 :maximum 2})))
+    (is (thrown? #?(:clj Throwable
+                    :cljs :default)
+                 (schema-for {:exclusiveMinimum 10 :exclusiveMaximum 2}))))
+
+  (testing "invalid data"
+    (is (thrown? #?(:clj Throwable
+                    :cljs :default)
+                 (schema-for {:minimum "a string"})))
+    (is (thrown? #?(:clj Throwable
+                    :cljs :default)
+                 (schema-for {:exclusiveMinimum {:a 1}}))))
+  )
