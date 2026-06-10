@@ -1,6 +1,5 @@
 (ns martian.spec
-  (:require [clojure.spec.alpha :as s]
-            [schema.core :as schema]))
+  (:require [clojure.spec.alpha :as s]))
 
 (s/def ::api-root string?)
 
@@ -8,7 +7,9 @@
 (s/def ::route-name keyword?)
 (s/def ::path-parts (s/coll-of (s/or :literal string? :arg keyword?)))
 
-(s/def ::input-schema (s/nilable (s/and map? #(satisfies? schema/Schema %))))
+;; NB: The schema representation is owned by the schema backend (e.g. a map
+;;     for Plumatic Schema, a vector form for Malli), so no shape is imposed.
+(s/def ::input-schema any?)
 
 (s/def ::path-schema ::input-schema)
 (s/def ::query-schema ::input-schema)
