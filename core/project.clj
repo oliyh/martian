@@ -18,6 +18,7 @@
                  [org.clojure/spec.alpha "0.5.238"]
                  [prismatic/schema "1.4.1"]
                  [metosin/schema-tools "0.13.1"]
+                 [metosin/malli "0.20.1"]
                  [metosin/spec-tools "0.10.7"
                   :exclusions [com.fasterxml.jackson.core/jackson-databind]]
 

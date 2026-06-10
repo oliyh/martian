@@ -58,7 +58,7 @@
 (defn coerce-data [{:keys [parameter-aliases] :as handler} schema-key params opts]
   (let [backend (get-backend opts)
         coerce-opts (-> opts
-                        (select-keys [:coercion-matcher :use-defaults?])
+                        (select-keys [:coercion-matcher :transformer :use-defaults?])
                         (assoc :parameter-aliases (get parameter-aliases schema-key)))]
     (sb/coerce-data backend (get handler schema-key) params coerce-opts)))
 

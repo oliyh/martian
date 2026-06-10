@@ -8,6 +8,7 @@
    schema backends without changing how they use Martian."
   (:require [martian.core :as martian]
             [martian.interceptors :as interceptors]
+            [martian.backends.malli :as malli]
             [martian.backends.plumatic :as plumatic]
             #?(:clj [clojure.test :refer [deftest testing is]]
                :cljs [cljs.test :refer-macros [deftest testing is]])))
@@ -16,7 +17,8 @@
    (def Throwable js/Error))
 
 (def backends
-  {"plumatic" plumatic/backend})
+  {"plumatic" plumatic/backend
+   "malli"    malli/backend})
 
 ;; ---------------------------------------------------------------------------
 ;; Swagger (2.x) spec
@@ -252,7 +254,10 @@
                 [:all-pets nil]
                 [:create-pet nil]
                 [:create-orders nil]]
-               (martian/explore m)))))))
+               (martian/explore m)))
+
+        (testing "returns are keyed by response status"
+          (is (= [200] (keys (:returns (martian/explore m :load-pet))))))))))
 
 ;; ---------------------------------------------------------------------------
 ;; OpenAPI (3.x) spec
