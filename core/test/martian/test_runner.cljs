@@ -1,5 +1,7 @@
 (ns martian.test-runner
   (:require [figwheel.main.testing :refer-macros [run-tests-async]]
+            [martian.backends.acceptance-test]
+            [martian.backends.malli-test]
             [martian.core-test]
             [martian.interceptors-test]
             [martian.openapi-test]
