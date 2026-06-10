@@ -8,6 +8,7 @@
             [martian.openapi :refer [openapi->handlers openapi-schema?]]
             [martian.parameter-aliases :refer [registry alias-schema]]
             [martian.schema :as schema]
+            [martian.schema-backend :as sb]
             [martian.spec :as mspec]
             [martian.swagger :refer [swagger->handlers]]
             [tripod.context :as tc]))
@@ -131,17 +132,18 @@
 (def ^:private parameter-schemas
   [:path-schema :query-schema :body-schema :form-schema :headers-schema])
 
-(defn- collect-parameter-aliases [handler]
+(defn- collect-parameter-aliases [backend handler]
   (reduce (fn [aliases param-key]
-            (assoc aliases param-key (registry (get handler param-key))))
+            (assoc aliases param-key (registry backend (get handler param-key))))
           {}
           parameter-schemas))
 
-(defn- collect-parameters [{:keys [parameter-aliases] :as handler}]
-  (reduce (fn [params param-key]
-            (merge params (alias-schema (get parameter-aliases param-key) (get handler param-key))))
-          {}
-          parameter-schemas))
+(defn- collect-parameters [backend {:keys [parameter-aliases] :as handler}]
+  (sb/merge-map-schemas backend
+                        (keep (fn [param-key]
+                                (some->> (get handler param-key)
+                                         (alias-schema backend (get parameter-aliases param-key))))
+                              parameter-schemas)))
 
 (declare explore)
 
@@ -166,7 +168,7 @@
   ([martian route-name]
    (when-let [{:keys [summary deprecated?] :as handler} (handler-for martian route-name)]
      (-> {:summary summary
-          :parameters (collect-parameters handler)
+          :parameters (collect-parameters (schema/get-backend (:opts (resolve-instance martian))) handler)
           :returns (->> (:response-schemas handler)
                         (map (juxt (comp :v :status) :body))
                         (into {}))}
@@ -177,15 +179,16 @@
     (throw (ex-info "Invalid handlers" {:handlers invalid-handlers})))
   handlers)
 
-(defn- enrich-handler [handler]
+(defn- enrich-handler [backend handler]
   (try
-    (assoc handler :parameter-aliases (collect-parameter-aliases handler))
+    (assoc handler :parameter-aliases (collect-parameter-aliases backend handler))
     (catch #?(:clj Exception :cljs js/Error) ex
       (assoc handler :exception ex))))
 
 (defn- build-instance
   [api-root handlers {:keys [interceptors validate-handlers?] :as opts}]
-  (let [enriched-handlers (cond-> (mapv enrich-handler handlers)
+  (let [backend (schema/get-backend opts)
+        enriched-handlers (cond-> (mapv (partial enrich-handler backend) handlers)
                                   validate-handlers? (validate-all-handlers!))]
     (->Martian api-root
                enriched-handlers

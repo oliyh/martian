@@ -46,6 +46,20 @@
     "Returns the plain keys of a map schema in entry order, ignoring generic
      keys (e.g. the catch-all key of an open map). Returns nil if schema is
      not a map schema.")
+  (merge-map-schemas [backend schemas]
+    "Merges several map schemas into a single map schema, with the entries
+     of later schemas winning.")
+
+  ;; Parameter aliases (idiomatic kebab-case keys)
+  (key-paths [backend schema]
+    "Returns a sequence of key paths (vectors of plain keys) covering the
+     schema itself (the [] path) and every map entry reachable within it.")
+  (aliases-at [backend schema idiomatic-path]
+    "Returns a map of idiomatic (kebab-case) keys to original keys for the
+     map level at idiomatic-path within schema, or nil when there are none.")
+  (alias-schema [backend aliases schema]
+    "Returns schema with the keys of it and its subschemas renamed to their
+     idiomatic (kebab-case) forms using the given aliases registry.")
 
   ;; Runtime operations
   (coerce-data [backend schema data opts]

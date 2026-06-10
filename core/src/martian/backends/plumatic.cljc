@@ -7,10 +7,10 @@
             [schema.coerce :as sc]
             [schema-tools.core :as st]
             [schema-tools.coerce :as stc]
+            [clojure.set :refer [rename-keys]]
             [clojure.string :as string]
-            [martian.parameter-aliases :refer [unalias-data]]
             [martian.schema-backend :as sb]
-            [martian.schema-tools :as mst])
+            [martian.schema-tools :as mst :refer [unalias-data]])
   #?(:clj (:import [schema.core AnythingSchema Maybe EnumSchema EqSchema])))
 
 (def Binary
@@ -135,6 +135,29 @@
     (when (map? schema)
       (not-empty
        (into [] (keep #(when (mst/concrete-key? %) (mst/explicit-key %))) (keys schema)))))
+
+  (merge-map-schemas [_ schemas]
+    (reduce merge {} schemas))
+
+  (key-paths [_ schema]
+    (mst/key-seqs schema))
+
+  (aliases-at [_ schema idiomatic-path]
+    (mst/compute-aliases-at schema idiomatic-path))
+
+  (alias-schema [_ aliases schema]
+    (mst/prewalk-with-path
+     (fn [path subschema]
+       (if (map? subschema)
+         (let [kmap (reduce-kv (fn [kmap idiomatic original]
+                                 (assoc kmap
+                                        original idiomatic
+                                        (s/optional-key original) (s/optional-key idiomatic)))
+                               {}
+                               (get aliases (mst/idiomatic-path path)))]
+           (rename-keys subschema kmap))
+         subschema))
+     schema))
 
   (coerce-data [_ schema data {:keys [parameter-aliases] :as opts}]
     (let [matcher (build-coercion-matcher opts)]

@@ -1,5 +1,6 @@
 (ns martian.schema-tools
   (:require [camel-snake-kebab.core :refer [->kebab-case]]
+            [clojure.set :refer [rename-keys]]
             [schema.core :as s]
             [schema-tools.impl]))
 
@@ -368,3 +369,22 @@
                    (fn [_path form] form)
                    path
                    (f path form))))
+
+(defn idiomatic-path
+  "Converts a path of original schema keys into its idiomatic form."
+  [path]
+  (vec (keep ->idiomatic path)))
+
+(defn unalias-data
+  "Given a (possibly, deeply nested) `data` structure, returns it with all its
+   keys renamed from \"idiomatic\" (aliases) using the given parameter aliases
+   `registry`."
+  [registry data]
+  (if registry
+    (prewalk-with-path
+      (fn [path x]
+        (if (map? x)
+          (rename-keys x (get registry (idiomatic-path path)))
+          x))
+      data)
+    data))

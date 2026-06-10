@@ -1,8 +1,7 @@
 (ns martian.schema
   (:require [clojure.string :as string]
             [martian.schema-backend :as sb]
-            [martian.backends.plumatic :as plumatic]
-            [martian.parameter-aliases :refer [unalias-data]]))
+            [martian.backends.plumatic :as plumatic]))
 
 ;; ---------------------------------------------------------------------------
 ;; Backward-compatible re-exports from the Plumatic backend.
