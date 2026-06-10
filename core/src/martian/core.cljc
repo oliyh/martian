@@ -197,6 +197,15 @@
                   :handlers (spec/coll-of ::mspec/handler)
                   :opts ::mspec/opts))
 
+(defn- keywordize-opts
+  "Keywordizes option keys, preserving values that must not be walked, such as
+   a `:schema-backend` record which `keywordize-keys` would turn into a plain
+   map."
+  [opts]
+  (let [schema-backend (or (get opts :schema-backend) (get opts "schema-backend"))]
+    (cond-> (keywordize-keys (dissoc opts :schema-backend "schema-backend"))
+      schema-backend (assoc :schema-backend schema-backend))))
+
 (defn bootstrap-openapi
   "Creates a Martian instance from an OpenAPI/Swagger spec based on the `json`
    schema provided.
@@ -217,7 +226,7 @@
                              - any fn of 'url-pattern', 'method', 'definition';
                              defaults to `[:operationId]`."
   [api-root json & [opts]]
-  (let [{:keys [interceptors route-name-sources] :as opts} (keywordize-keys opts)
+  (let [{:keys [interceptors route-name-sources] :as opts} (keywordize-opts opts)
         handlers (if (openapi-schema? json)
                    (let [content-types (-> interceptors
                                            (or default-interceptors)
