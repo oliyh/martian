@@ -49,6 +49,8 @@
   (merge-map-schemas [backend schemas]
     "Merges several map schemas into a single map schema, with the entries
      of later schemas winning.")
+  (eq-schema-value [backend schema]
+    "Returns the value matched by an eq-schema, or nil if schema is not one.")
 
   ;; Parameter aliases (idiomatic kebab-case keys)
   (key-paths [backend schema]

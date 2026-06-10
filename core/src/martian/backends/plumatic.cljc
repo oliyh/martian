@@ -139,6 +139,10 @@
   (merge-map-schemas [_ schemas]
     (reduce merge {} schemas))
 
+  (eq-schema-value [_ schema]
+    (when (instance? EqSchema schema)
+      (.-v ^EqSchema schema)))
+
   (key-paths [_ schema]
     (mst/key-seqs schema))
 

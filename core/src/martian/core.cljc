@@ -167,12 +167,13 @@
      (navize-routes martian routes)))
   ([martian route-name]
    (when-let [{:keys [summary deprecated?] :as handler} (handler-for martian route-name)]
-     (-> {:summary summary
-          :parameters (collect-parameters (schema/get-backend (:opts (resolve-instance martian))) handler)
-          :returns (->> (:response-schemas handler)
-                        (map (juxt (comp :v :status) :body))
-                        (into {}))}
-         (cond-> deprecated? (assoc :deprecated? true))))))
+     (let [backend (schema/get-backend (:opts (resolve-instance martian)))]
+       (-> {:summary summary
+            :parameters (collect-parameters backend handler)
+            :returns (->> (:response-schemas handler)
+                          (map (juxt (comp (partial sb/eq-schema-value backend) :status) :body))
+                          (into {}))}
+           (cond-> deprecated? (assoc :deprecated? true)))))))
 
 (defn- validate-all-handlers! [handlers]
   (when-let [invalid-handlers (not-empty (filter :exception handlers))]
