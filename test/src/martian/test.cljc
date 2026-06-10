@@ -1,42 +1,43 @@
 (ns martian.test
   (:require [martian.core :as martian]
             [martian.interceptors :as interceptors]
-            [schema-generators.generators :as g]
+            [martian.schema :as schema]
+            [martian.test.generators :as generators]
             [clojure.test.check.generators :as tcg]
             #?(:clj [tripod.context :as tc])
             #?(:cljs [cljs.core.async :as a])))
 
-(defn- status-range [from to]
+(defn- status-range [backend from to]
   (fn [{:keys [status]}]
-    (<= from (g/generate status) to)))
+    (<= from (generators/generate backend status) to)))
 
-(defn- filter-response-schema [response-type response-schemas]
+(defn- filter-response-schema [backend response-type response-schemas]
   (let [filter-fn (get {:random (constantly true)
-                        :success (status-range 200 399)
-                        :error (status-range 400 599)}
+                        :success (status-range backend 200 399)
+                        :error (status-range backend 400 599)}
                        response-type)]
     (filter filter-fn response-schemas)))
 
-(defn- make-generator [response-type response-schemas]
+(defn- make-generator [backend response-type response-schemas]
   (some->> response-schemas
-           (filter-response-schema response-type)
-           (map g/generator)
+           (filter-response-schema backend response-type)
+           (map (partial generators/response-generator backend))
            (tcg/one-of)))
 
-(defn- make-response [response-type response-schemas]
-  (some-> (make-generator response-type response-schemas)
+(defn- make-response [backend response-type response-schemas]
+  (some-> (make-generator backend response-type response-schemas)
           (tcg/generate)))
 
 (defn generate-responses [response-types]
   {:name ::generate-responses
-   :leave (fn [{:keys [handler] :as ctx}]
+   :leave (fn [{:keys [handler opts] :as ctx}]
             (let [response-type (get response-types (:route-name handler) :random)]
-              (assoc ctx :response (make-response response-type (:response-schemas handler)))))})
+              (assoc ctx :response (make-response (schema/get-backend opts) response-type (:response-schemas handler)))))})
 
 (defn always-generate-response [response-type]
   {:name ::always-generate-response
-   :leave (fn [{:keys [handler] :as ctx}]
-            (assoc ctx :response (make-response response-type (:response-schemas handler))))})
+   :leave (fn [{:keys [handler opts] :as ctx}]
+            (assoc ctx :response (make-response (schema/get-backend opts) response-type (:response-schemas handler))))})
 
 (def generate-response (always-generate-response :random))
 
@@ -56,9 +57,17 @@
    :leave (fn [ctx]
             (assoc ctx :response (response-fn ctx)))})
 
+(defn- resolve-instance [m]
+  (cond
+    (map? m) m
+    (var? m) (deref m)
+    (fn? m) (m)
+    :else m))
+
 (defn response-generator [martian route-name]
-  (let [{:keys [response-schemas]} (martian/handler-for martian route-name)]
-    (make-generator :random response-schemas)))
+  (let [backend (schema/get-backend (:opts (resolve-instance martian)))
+        {:keys [response-schemas]} (martian/handler-for martian route-name)]
+    (make-generator backend :random response-schemas)))
 
 #?(:clj
    (def httpkit-responder

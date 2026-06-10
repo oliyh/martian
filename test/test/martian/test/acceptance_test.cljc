@@ -6,6 +6,7 @@
    every backend registered in `backends` must pass them unchanged."
   (:require [martian.core :as martian]
             [martian.test :as martian-test]
+            [martian.backends.malli :as malli]
             [martian.backends.plumatic :as plumatic]
             [martian.schema-backend :as sb]
             [clojure.test.check.generators :as tcg]
@@ -13,7 +14,8 @@
                :cljs [cljs.test :refer-macros [deftest testing is]])))
 
 (def backends
-  {"plumatic" plumatic/backend})
+  {"plumatic" plumatic/backend
+   "malli"    malli/backend})
 
 (def swagger-definition
   {:paths {(keyword "/pets/{id}") {:get {:operationId "load-pet"

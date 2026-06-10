@@ -103,6 +103,7 @@ error messages or `ex-data`, it will need updating.
 - Parameter defaults with `:use-defaults? true`
 - The `martian.interceptors/validate-response-body` interceptor
 - The default interceptor stacks of all HTTP client modules
+- `martian-test` response stubbing, including responses generated from response schemas
 
 The contract is enforced by an acceptance test battery (`martian.backends.acceptance-test`) that
 runs the same specs through every backend and asserts identical results.
@@ -111,7 +112,5 @@ runs the same specs through every backend and asserts identical results.
 
 - The Plumatic Schema libraries remain dependencies of the Martian core, so switching backends does
   not remove them from your classpath.
-- `martian-test`'s response generation is built on Plumatic schema generators and currently
-  requires the default backend.
 - The `martian.schema` namespace's compatibility functions (`leaf-schema`, `coerce-data`, etc.)
   always use the Plumatic backend; backend-aware code should use `martian.schema-backend` instead.
