@@ -100,30 +100,33 @@
                  (sb/leaf-schema backend param))]
     (sb/with-default-value backend param schema)))
 
+(defn- parameter-entries
+  "Turns a collection of swagger parameters into map schema entries."
+  [ref-lookup parameters backend]
+  (map (fn [{:keys [name required required?] :as param}]
+         {:key (keyword name)
+          :required? (boolean (or required?
+                                  (true? required)
+                                  (= "true" required)))
+          :schema (make-schema ref-lookup param backend)})
+       parameters))
+
 (defn- make-object-schema [ref-lookup {:keys [additionalProperties] :as schema} backend]
   ;; It's possible for an 'object' to omit properties and
   ;; additionalProperties. If this is the case - anything is allowed.
   (if (or (contains? schema :properties)
           (contains? schema :additionalProperties))
-    (cond-> (schemas-for-parameters ref-lookup (denormalise-object-properties schema) backend)
-      additionalProperties (assoc (sb/any-schema backend) (sb/any-schema backend)))
-    {(sb/any-schema backend) (sb/any-schema backend)}))
+    (sb/map-schema backend
+                   (parameter-entries ref-lookup (denormalise-object-properties schema) backend)
+                   {:open? (boolean additionalProperties)})
+    (sb/map-schema backend [] {:open? true})))
 
 (defn schemas-for-parameters
   "Given a collection of swagger parameters returns a schema map."
   ([ref-lookup parameters]
    (schemas-for-parameters ref-lookup parameters plumatic/backend))
   ([ref-lookup parameters backend]
-   (->> parameters
-        (map (fn [{:keys [name required required?] :as param}]
-               (let [k (keyword name)
-                     schema-k (if (not (or required?
-                                           (and (boolean? required) required)
-                                           (and (string? required) (= "true" required))))
-                                (sb/optional-key backend k)
-                                k)]
-                 {schema-k (make-schema ref-lookup param backend)})))
-        (into {}))))
+   (sb/map-schema backend (parameter-entries ref-lookup parameters backend) {})))
 
 (defn make-schema
   "Takes a swagger parameter and returns a schema via the given backend.
@@ -151,10 +154,10 @@
        :else
        (let [base-schema (cond
                            (= "array" type)
-                           [(schema-type ref-lookup (assoc items :required true) backend)]
+                           (sb/seq-schema backend (schema-type ref-lookup (assoc items :required true) backend))
 
                            (= "array" (:type schema))
-                           [(schema-type ref-lookup (assoc (:items schema) :required true) backend)]
+                           (sb/seq-schema backend (schema-type ref-lookup (assoc (:items schema) :required true) backend))
 
                            (= "object" type)
                            (make-object-schema ref-lookup param backend)

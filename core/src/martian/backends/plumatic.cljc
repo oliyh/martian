@@ -9,7 +9,8 @@
             [schema-tools.coerce :as stc]
             [clojure.string :as string]
             [martian.parameter-aliases :refer [unalias-data]]
-            [martian.schema-backend :as sb])
+            [martian.schema-backend :as sb]
+            [martian.schema-tools :as mst])
   #?(:clj (:import [schema.core AnythingSchema Maybe EnumSchema EqSchema])))
 
 (def Binary
@@ -100,11 +101,15 @@
 
   (int-schema [_] s/Int)
 
+  (map-schema [_ entries {:keys [open?]}]
+    (into (if open? {s/Any s/Any} {})
+          (map (fn [{:keys [key required? schema]}]
+                 [(if required? key (s/optional-key key)) schema]))
+          entries))
+
+  (seq-schema [_ item-schema] [item-schema])
+
   (maybe-schema [_ s] (s/maybe s))
-
-  (optional-key [_ k] (s/optional-key k))
-
-  (unwrap-key [_ k] (s/explicit-schema-key k))
 
   (eq-schema [_ value] (s/eq value))
 
@@ -125,6 +130,11 @@
              (= [s/Str] array-schema))
       (vary-meta (st/schema s/Str) assoc :collection-format collection-format)
       array-schema))
+
+  (map-schema-keys [_ schema]
+    (when (map? schema)
+      (not-empty
+       (into [] (keep #(when (mst/concrete-key? %) (mst/explicit-key %))) (keys schema)))))
 
   (coerce-data [_ schema data {:keys [parameter-aliases] :as opts}]
     (let [matcher (build-coercion-matcher opts)]

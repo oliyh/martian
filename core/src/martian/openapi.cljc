@@ -89,20 +89,19 @@
                       ;; and I think it would be reasonable for a code generator to assume this,
                       ;; maybe with a validation: strict|lax config option to control that behavior.
                       (when (= #{:properties} (set (keys schema))) "object"))
-             "array"  [(openapi->schema (:items schema) components backend seen-set)]
+             "array"  (sb/seq-schema backend (openapi->schema (:items schema) components backend seen-set))
              "object" (let [required? (set (:required schema))
-                            {:keys [additionalProperties properties]} schema
-                            any (sb/any-schema backend)]
+                            {:keys [additionalProperties properties]} schema]
                         (if (or (contains? schema :properties)
                                 additionalProperties)
-                          (into (if additionalProperties {any any} {})
-                                (map (fn [[k v]]
-                                       {(if (required? (name k))
-                                          (keyword k)
-                                          (sb/optional-key backend (keyword k)))
-                                        (openapi->schema v components backend seen-set)}))
-                                properties)
-                          {any any}))
+                          (sb/map-schema backend
+                                         (map (fn [[k v]]
+                                                {:key (keyword k)
+                                                 :required? (boolean (required? (name k)))
+                                                 :schema (openapi->schema v components backend seen-set)})
+                                              properties)
+                                         {:open? (boolean additionalProperties)})
+                          (sb/map-schema backend [] {:open? true})))
              (sb/leaf-schema backend schema))))))
 
 (defn- warn-on-no-matching-content-type
@@ -124,20 +123,22 @@
 
 (defn- process-body [body components content-types backend]
   (when-let [[json-schema content-type] (get-matching-schema body content-types "Accept")]
-    (let [required (:required body)]
-      {:schema       {(if required :body (sb/optional-key backend :body))
-                      (openapi->schema json-schema components backend)}
-       :content-type content-type})))
+    {:schema       (sb/map-schema backend
+                                  [{:key :body
+                                    :required? (boolean (:required body))
+                                    :schema (openapi->schema json-schema components backend)}]
+                                  {})
+     :content-type content-type}))
 
 (defn- process-parameters [parameters components backend]
-  (not-empty
-   (into {}
-         (map (fn [param]
-                {(if (:required param)
-                   (keyword (:name param))
-                   (sb/optional-key backend (keyword (:name param))))
-                 (openapi->schema (:schema param) components backend)}))
-         parameters)))
+  (when (seq parameters)
+    (sb/map-schema backend
+                   (map (fn [param]
+                          {:key (keyword (:name param))
+                           :required? (boolean (:required param))
+                           :schema (openapi->schema (:schema param) components backend)})
+                        parameters)
+                   {})))
 
 (defn- range-1XX [n] (<= 100 n 199))
 (defn- range-2XX [n] (<= 200 n 299))

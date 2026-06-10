@@ -77,10 +77,8 @@
 (def set-body-params
   {:name ::body-params
    :enter (fn [{:keys [params handler opts] :as ctx}]
-            (if-let [[body-key] (first (:body-schema handler))]
-              (let [backend    (get-backend opts)
-                    body-key   (sb/unwrap-key backend body-key)
-                    body-params (or (:martian.core/body params)
+            (if-let [body-key (first (sb/map-schema-keys (get-backend opts) (:body-schema handler)))]
+              (let [body-params (or (:martian.core/body params)
                                     (get params body-key)
                                     (get params (->kebab-case-keyword body-key))
                                     params)]

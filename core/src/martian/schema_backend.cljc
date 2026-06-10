@@ -13,11 +13,19 @@
   (int-schema [backend]
     "Returns the integer schema (equivalent to s/Int). Used in range constraints.")
 
-  ;; Schema combinators
+  ;; Schema construction — composites
+  (map-schema [backend entries opts]
+    "Returns a map schema for the given entries, each a map of:
+     - :key       — a plain keyword key
+     - :required? — whether the key must be present
+     - :schema    — the value schema
+     opts may contain:
+     - :open?     — when true, the map accepts arbitrary additional keys
+                    (OpenAPI 'additionalProperties').")
+  (seq-schema [backend item-schema]
+    "Returns a schema for a homogeneous sequence of item-schema values.")
   (maybe-schema [backend s]
     "Wraps schema s as optional/nullable (equivalent to s/maybe).")
-  (optional-key [backend k]
-    "Wraps key k as an optional map key (equivalent to s/optional-key).")
   (eq-schema [backend value]
     "Returns a schema that matches exactly value (equivalent to s/eq).")
   (constrained-schema [backend s pred]
@@ -33,10 +41,11 @@
     "Wraps an array schema to handle a specific collection format string
      (e.g. 'csv', 'ssv'). Returns array-schema unchanged if not applicable.")
 
-  ;; Key inspection
-  (unwrap-key [backend k]
-    "Unwraps an optional/required key wrapper to return the plain key.
-     Equivalent to s/explicit-schema-key for Plumatic Schema.")
+  ;; Schema inspection
+  (map-schema-keys [backend schema]
+    "Returns the plain keys of a map schema in entry order, ignoring generic
+     keys (e.g. the catch-all key of an open map). Returns nil if schema is
+     not a map schema.")
 
   ;; Runtime operations
   (coerce-data [backend schema data opts]
