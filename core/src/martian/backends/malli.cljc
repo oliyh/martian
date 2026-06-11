@@ -1,5 +1,6 @@
 (ns martian.backends.malli
-  "Malli backend for Martian. Schemas are represented as Malli vector forms,
+  "Malli backend for Martian. Schemas are represented as Malli schemas (most
+   often vector forms such as [:map ...], but also plain keywords like :string),
    so handler schemas remain plain, readable data.
 
    Select it by passing `:schema-backend martian.backends.malli/backend` in
@@ -10,8 +11,8 @@
             [malli.error :as me]
             [malli.transform :as mt]
             [malli.util :as mu]
-            [martian.schema-backend :as sb]
-            [martian.schema-tools :as mst :refer [unalias-data]]))
+            [martian.parameter-keys :as pk :refer [unalias-data]]
+            [martian.schema-backend :as sb]))
 
 (def binary-schema
   "Schema for binary data — deferred to multipart coercion on JVM, js/File in ClojureScript."
@@ -24,110 +25,41 @@
      :cljs [:fn {:error/message "should be a goog.Uri"} #(instance? goog.Uri %)]))
 
 ;; ---------------------------------------------------------------------------
-;; Form inspection helpers
+;; Schema introspection helpers
 ;; ---------------------------------------------------------------------------
+;;
+;; These lean on Malli's own introspection API (`m/schema`, `m/type`,
+;; `m/children`, `m/walk`, `mu/subschemas`) rather than picking Malli vector
+;; forms apart by hand, so they keep working for every schema type uniformly.
 
-(def ^:private transparent-containers
-  "Container types whose child schemas describe values at the same data path
-   as the container itself."
-  #{:maybe :or :and :sequential :vector :set :tuple})
+(defn- map-schema? [schema]
+  (= :map (m/type schema)))
 
-(defn- form-properties [form]
-  (when (map? (second form)) (second form)))
-
-(defn- form-head [form]
-  (subvec form 0 (if (form-properties form) 2 1)))
-
-(defn- form-children [form]
-  (if (form-properties form) (nnext form) (next form)))
-
-(defn- map-form? [form]
-  (and (vector? form) (= :map (first form))))
-
-(defn- container-form? [form]
-  (and (vector? form) (contains? transparent-containers (first form))))
-
-(defn- map-form-entries
-  "Returns [key value-schema] pairs for the concrete entries of a :map form,
+(defn- map-entries
+  "Returns [key child-schema] pairs for the concrete entries of a :map schema,
    ignoring the ::m/default catch-all entry of open maps."
-  [form]
-  (for [entry (form-children form)
-        :when (and (vector? entry) (not= ::m/default (first entry)))]
-    [(first entry) (peek entry)]))
+  [schema]
+  (for [[k _properties child] (m/children schema)
+        :when (not= ::m/default k)]
+    [k child]))
 
-;; ---------------------------------------------------------------------------
-;; Parameter aliases — walking Malli forms
-;; ---------------------------------------------------------------------------
-
-(defn- form-key-paths [form path include-self?]
-  (cond
-    (map-form? form)
-    (concat (when include-self? [path])
-            (mapcat (fn [[k child]]
-                      (let [path' (conj path k)]
-                        (cons path' (form-key-paths child path' false))))
-                    (map-form-entries form)))
-
-    (container-form? form)
-    (concat (when include-self? [path])
-            (mapcat #(form-key-paths % path false) (form-children form)))
-
-    :else
-    (when include-self? [path])))
+(defn- plain-key-path
+  "Drops Malli's sequence-element markers (and tuple indices) from an `:in`
+   path, leaving a path of plain map keys."
+  [in]
+  (into [] (remove #(or (= ::m/in %) (integer? %))) in))
 
 (defn- entry-aliases
   "Returns a map of idiomatic keys to original keys for the immediate entries
-   of the given :map form, or nil when there are none."
-  [form]
+   of the given :map schema, or nil when there are none."
+  [schema]
   (not-empty
    (into {}
-         (keep (fn [[k _]]
-                 (when-some [idiomatic-key (mst/->idiomatic k)]
+         (keep (fn [[k _child]]
+                 (when-some [idiomatic-key (pk/->idiomatic k)]
                    (when (not= idiomatic-key k)
                      [idiomatic-key k]))))
-         (map-form-entries form))))
-
-(defn- form-aliases-at [form idiomatic-path]
-  (cond
-    (map-form? form)
-    (if (empty? idiomatic-path)
-      (entry-aliases form)
-      (let [seg (first idiomatic-path)]
-        (some (fn [[k child]]
-                (when (= seg (mst/->idiomatic k))
-                  (form-aliases-at child (rest idiomatic-path))))
-              (map-form-entries form))))
-
-    (container-form? form)
-    (not-empty (apply merge (keep #(form-aliases-at % idiomatic-path) (form-children form))))
-
-    :else nil))
-
-(defn- alias-form
-  "Renames the :map entry keys of the given form (and its subforms) to their
-   idiomatic counterparts using the given aliases registry."
-  [aliases path form]
-  (cond
-    (map-form? form)
-    (let [kmap (into {}
-                     (map (fn [[idiomatic-key original-key]] [original-key idiomatic-key]))
-                     (get aliases (mst/idiomatic-path path)))]
-      (into (form-head form)
-            (map (fn [entry]
-                   (if (and (vector? entry) (not= ::m/default (first entry)))
-                     (let [k (first entry)]
-                       (-> entry
-                           (assoc 0 (get kmap k k))
-                           (assoc (dec (count entry)) (alias-form aliases (conj path k) (peek entry)))))
-                     entry)))
-            (form-children form)))
-
-    (container-form? form)
-    (into (form-head form)
-          (map #(alias-form aliases path %))
-          (form-children form))
-
-    :else form))
+         (map-entries schema))))
 
 ;; ---------------------------------------------------------------------------
 ;; Coercion
@@ -201,6 +133,10 @@
   (int-schema [_] :int)
 
   (map-schema [_ entries {:keys [open?]}]
+    ;; Malli maps are open for validation already, but the default transformer
+    ;; strips undeclared keys on coercion. An open map (OpenAPI's
+    ;; `additionalProperties`) adds a ::m/default catch-all entry so those keys
+    ;; survive coercion instead of being stripped.
     (-> [:map]
         (into (map (fn [{:keys [key required? schema]}]
                      (if required?
@@ -234,8 +170,10 @@
       array-schema))
 
   (map-schema-keys [_ schema]
-    (when (map-form? schema)
-      (not-empty (mapv first (map-form-entries schema)))))
+    (when (some? schema)
+      (let [s (m/schema schema)]
+        (when (map-schema? s)
+          (not-empty (mapv first (map-entries s)))))))
 
   (merge-map-schemas [_ schemas]
     (or (some-> (reduce mu/merge nil schemas) (m/form))
@@ -246,13 +184,34 @@
       (peek schema)))
 
   (key-paths [_ schema]
-    (vec (distinct (form-key-paths schema [] true))))
+    (into [] (comp (map (comp plain-key-path :in)) (distinct))
+          (mu/subschemas (m/schema schema))))
 
   (aliases-at [_ schema idiomatic-path]
-    (form-aliases-at schema idiomatic-path))
+    (let [idiomatic-path (vec idiomatic-path)]
+      (not-empty
+       (reduce (fn [acc {:keys [in schema]}]
+                 (if (and (map-schema? schema)
+                          (= idiomatic-path (pk/idiomatic-path in)))
+                   (merge acc (entry-aliases schema))
+                   acc))
+               {}
+               (mu/subschemas (m/schema schema))))))
 
   (alias-schema [_ aliases schema]
-    (alias-form aliases [] schema))
+    (m/walk (m/schema schema)
+            (fn [s path children _opts]
+              (if (map-schema? s)
+                (let [kmap (reduce-kv (fn [kmap idiomatic-key original-key]
+                                        (assoc kmap original-key idiomatic-key))
+                                      {}
+                                      (get aliases (pk/idiomatic-path path)))]
+                  (into [:map]
+                        (map (fn [[k properties child]]
+                               (let [k (get kmap k k)]
+                                 (if properties [k properties child] [k child]))))
+                        children))
+                (m/form (m/-set-children s children))))))
 
   (coerce-data [_ schema data {:keys [parameter-aliases] :as opts}]
     (when schema

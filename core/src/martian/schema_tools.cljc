@@ -1,6 +1,8 @@
 (ns martian.schema-tools
-  (:require [camel-snake-kebab.core :refer [->kebab-case]]
-            [clojure.set :refer [rename-keys]]
+  "Plumatic Schema-specific parameter alias machinery. The backend-agnostic key
+   and data helpers live in `martian.parameter-keys`, which this namespace builds
+   on (and re-exports for backward compatibility)."
+  (:require [martian.parameter-keys :as pk]
             [schema.core :as s]
             [schema-tools.impl]))
 
@@ -12,14 +14,24 @@
   [k]
   (or (keyword? k) (s/specific-key? k) (string? k)))
 
-(defn- can-be-renamed? [k]
-  ;; NB: See `camel-snake-kebab.internals.alter-name` ns.
-  (or (and (keyword? k) (not (namespace k))) (string? k)))
+(defn ->idiomatic
+  "Returns the idiomatic (kebab-case) form of the schema key `k`, after first
+   unwrapping any required/optional wrapper, or `nil` when `k` is not renamable."
+  [k]
+  (some-> (explicit-key k) (pk/->idiomatic)))
 
-(defn ->idiomatic [k]
-  (when-some [k' (explicit-key k)]
-    (when (can-be-renamed? k')
-      (->kebab-case k'))))
+(defn idiomatic-path
+  "Like `martian.parameter-keys/idiomatic-path` but first unwraps any required/
+   optional schema key (Plumatic Schema paths may contain such wrappers)."
+  [path]
+  (vec (keep ->idiomatic path)))
+
+;; Re-exported backend-agnostic helpers (now owned by `martian.parameter-keys`).
+;; These operate on plain data/keys, so the neutral implementations apply as-is.
+(def walk-with-path pk/walk-with-path)
+(def postwalk-with-path pk/postwalk-with-path)
+(def prewalk-with-path pk/prewalk-with-path)
+(def unalias-data pk/unalias-data)
 
 (defn map-entry-aliases
   "Returns a map of idiomatic keys to original explicit keys for the immediate
@@ -332,59 +344,3 @@
   [schema idiomatic-path]
   (-aliases-at schema idiomatic-path))
 
-(defn walk-with-path
-  "Similar to the `schema-tools.walk/walk` except it keeps track of the `path`
-   through the data structure as it goes, calling `inner` and `outer` with two
-   args: the `path` and the `form`. It also does not preserve any metadata."
-  ([inner outer form] (walk-with-path inner outer [] form))
-  ([inner outer path form]
-   (cond
-     (map-entry? form)
-     (outer path [(inner path (key form))
-                  (inner (conj path (key form)) (val form))])
-     (record? form)
-     (outer path (reduce (fn [r x] (conj r (inner path x))) form form))
-     (list? form)
-     (outer path (apply list (map #(inner path %) form)))
-     (seq? form)
-     (outer path (doall (map #(inner path %) form)))
-     (coll? form)
-     (outer path (into (empty form) (map #(inner path %) form)))
-     :else (outer path form))))
-
-(defn postwalk-with-path
-  ([f form]
-   (postwalk-with-path f [] form))
-  ([f path form]
-   (walk-with-path (fn [path form] (postwalk-with-path f path form))
-                   f
-                   path
-                   form)))
-
-(defn prewalk-with-path
-  ([f form]
-   (prewalk-with-path f [] form))
-  ([f path form]
-   (walk-with-path (fn [path form] (prewalk-with-path f path form))
-                   (fn [_path form] form)
-                   path
-                   (f path form))))
-
-(defn idiomatic-path
-  "Converts a path of original schema keys into its idiomatic form."
-  [path]
-  (vec (keep ->idiomatic path)))
-
-(defn unalias-data
-  "Given a (possibly, deeply nested) `data` structure, returns it with all its
-   keys renamed from \"idiomatic\" (aliases) using the given parameter aliases
-   `registry`."
-  [registry data]
-  (if registry
-    (prewalk-with-path
-      (fn [path x]
-        (if (map? x)
-          (rename-keys x (get registry (idiomatic-path path)))
-          x))
-      data)
-    data))

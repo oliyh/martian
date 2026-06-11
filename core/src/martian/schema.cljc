@@ -105,7 +105,7 @@
   (map (fn [{:keys [name required required?] :as param}]
          {:key (keyword name)
           :required? (boolean (or required?
-                                  (true? required)
+                                  (= true required)
                                   (= "true" required)))
           :schema (make-schema ref-lookup param backend)})
        parameters))
