@@ -1,7 +1,7 @@
 (ns martian.parameter-aliases
   (:require [martian.backends.plumatic :as plumatic]
-            [martian.schema-backend :as sb]
-            [martian.schema-tools :as schema-tools]))
+            [martian.parameter-keys :as parameter-keys]
+            [martian.schema-backend :as sb]))
 
 (defn- aliases-at
   "Internal helper. Given a `backend`, a `schema`, a path-local `cache` (atom),
@@ -59,11 +59,14 @@
   ([schema]
    (aliases-hash-map plumatic/backend schema))
   ([backend schema]
+   ;; `key-paths` yields plain keys for every backend, so the backend-neutral
+   ;; `parameter-keys` helpers apply directly — no need to unwrap Plumatic's
+   ;; optional/required key wrappers here.
    (reduce (fn [acc path]
              (let [leaf (peek path)
-                   idiomatic-key (some-> leaf (schema-tools/->idiomatic))]
+                   idiomatic-key (some-> leaf (parameter-keys/->idiomatic))]
                (if (and idiomatic-key (not= leaf idiomatic-key))
-                 (update acc (schema-tools/idiomatic-path (pop path)) assoc idiomatic-key leaf)
+                 (update acc (parameter-keys/idiomatic-path (pop path)) assoc idiomatic-key leaf)
                  acc)))
            {}
            (sb/key-paths backend schema))))
@@ -101,7 +104,7 @@
    keys renamed from \"idiomatic\" (aliases) using the given parameter aliases
    `registry`."
   [registry data]
-  (schema-tools/unalias-data registry data))
+  (parameter-keys/unalias-data registry data))
 
 (defn alias-schema
   "Given a (possibly, deeply nested) `schema`, renames all keys (in it and its

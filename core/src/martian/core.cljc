@@ -5,6 +5,7 @@
             [clojure.walk :refer [keywordize-keys]]
             [lambdaisland.uri :refer [map->query-string]]
             [martian.interceptors :as interceptors]
+            [martian.backends :as backends]
             [martian.openapi :refer [openapi->handlers openapi-schema?]]
             [martian.parameter-aliases :refer [registry alias-schema]]
             [martian.schema :as schema]
@@ -167,7 +168,7 @@
      (navize-routes martian routes)))
   ([martian route-name]
    (when-let [{:keys [summary deprecated?] :as handler} (handler-for martian route-name)]
-     (let [backend (schema/get-backend (:opts (resolve-instance martian)))]
+     (let [backend (backends/get-backend (:opts (resolve-instance martian)))]
        (-> {:summary summary
             :parameters (collect-parameters backend handler)
             :returns (->> (:response-schemas handler)
@@ -188,7 +189,7 @@
 
 (defn- build-instance
   [api-root handlers {:keys [interceptors validate-handlers?] :as opts}]
-  (let [backend (schema/get-backend opts)
+  (let [backend (backends/get-backend opts)
         enriched-handlers (cond-> (mapv (partial enrich-handler backend) handlers)
                                   validate-handlers? (validate-all-handlers!))]
     (->Martian api-root
@@ -220,8 +221,19 @@
                              defaults to the `default-interceptors`;
    - `:validate-handlers?` — if true, will enable early validation of handlers,
                              failing fast in case of errors; false by default;
+   - `:schema-backend`     — the schema backend used to build parameter schemas
+                             and to coerce and validate data; defaults to the
+                             Plumatic Schema backend. Pass the Malli backend
+                             (`martian.backends.malli/backend`) to use Malli;
    - `:coercion-matcher`   — a unary fn of schema used for parameters coercion;
-                             defaults to the `default-coercion-matcher`;
+                             defaults to the `default-coercion-matcher`. Applies
+                             to the Plumatic backend only — under the Malli
+                             backend use the `:transformer` option instead;
+   - `:transformer`        — a Malli transformer used for parameters coercion;
+                             defaults to the Malli backend's `default-transformer`.
+                             Applies to the Malli backend only — under the
+                             Plumatic backend use the `:coercion-matcher` option
+                             instead;
    - `:use-defaults?`      — if true, will read 'default' directives from the
                              OpenAPI/Swagger spec; false by default;
    - `:route-name-sources` — a vector of route name sources; supported sources:
@@ -249,8 +261,19 @@
                              defaults to the `default-interceptors`;
    - `:validate-handlers?` — if true, will enable early validation of handlers,
                              failing fast in case of errors; false by default;
+   - `:schema-backend`     — the schema backend used to build parameter schemas
+                             and to coerce and validate data; defaults to the
+                             Plumatic Schema backend. Pass the Malli backend
+                             (`martian.backends.malli/backend`) to use Malli;
    - `:coercion-matcher`   — a unary fn of schema used for parameters coercion;
-                             defaults to the `default-coercion-matcher`;
+                             defaults to the `default-coercion-matcher`. Applies
+                             to the Plumatic backend only — under the Malli
+                             backend use the `:transformer` option instead;
+   - `:transformer`        — a Malli transformer used for parameters coercion;
+                             defaults to the Malli backend's `default-transformer`.
+                             Applies to the Malli backend only — under the
+                             Plumatic backend use the `:coercion-matcher` option
+                             instead;
    - `:use-defaults?`      — if true, will read 'default' directives from the
                              OpenAPI/Swagger spec; false by default;
    - `:route-name-sources` — a vector of route name sources; supported sources:
@@ -271,8 +294,19 @@
                              defaults to the `default-interceptors`;
    - `:validate-handlers?` — if true, will enable early validation of handlers,
                              failing fast in case of errors; false by default;
+   - `:schema-backend`     — the schema backend used to build parameter schemas
+                             and to coerce and validate data; defaults to the
+                             Plumatic Schema backend. Pass the Malli backend
+                             (`martian.backends.malli/backend`) to use Malli;
    - `:coercion-matcher`   — a unary fn of schema used for parameters coercion;
-                             defaults to the `default-coercion-matcher`;
+                             defaults to the `default-coercion-matcher`. Applies
+                             to the Plumatic backend only — under the Malli
+                             backend use the `:transformer` option instead;
+   - `:transformer`        — a Malli transformer used for parameters coercion;
+                             defaults to the Malli backend's `default-transformer`.
+                             Applies to the Malli backend only — under the
+                             Plumatic backend use the `:coercion-matcher` option
+                             instead;
    - `:produces`           — a coll of media (content) types used as a global
                              default value for the handler's `:produces` key;
    - `:consumes`           — a coll of media (content) types used as a global

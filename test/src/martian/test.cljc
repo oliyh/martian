@@ -1,7 +1,7 @@
 (ns martian.test
-  (:require [martian.core :as martian]
+  (:require [martian.backends :as backends]
+            [martian.core :as martian]
             [martian.interceptors :as interceptors]
-            [martian.schema :as schema]
             [martian.test.generators :as generators]
             [clojure.test.check.generators :as tcg]
             #?(:clj [tripod.context :as tc])
@@ -32,12 +32,12 @@
   {:name ::generate-responses
    :leave (fn [{:keys [handler opts] :as ctx}]
             (let [response-type (get response-types (:route-name handler) :random)]
-              (assoc ctx :response (make-response (schema/get-backend opts) response-type (:response-schemas handler)))))})
+              (assoc ctx :response (make-response (backends/get-backend opts) response-type (:response-schemas handler)))))})
 
 (defn always-generate-response [response-type]
   {:name ::always-generate-response
    :leave (fn [{:keys [handler opts] :as ctx}]
-            (assoc ctx :response (make-response (schema/get-backend opts) response-type (:response-schemas handler))))})
+            (assoc ctx :response (make-response (backends/get-backend opts) response-type (:response-schemas handler))))})
 
 (def generate-response (always-generate-response :random))
 
@@ -65,7 +65,7 @@
     :else m))
 
 (defn response-generator [martian route-name]
-  (let [backend (schema/get-backend (:opts (resolve-instance martian)))
+  (let [backend (backends/get-backend (:opts (resolve-instance martian)))
         {:keys [response-schemas]} (martian/handler-for martian route-name)]
     (make-generator backend :random response-schemas)))
 

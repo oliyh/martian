@@ -50,7 +50,7 @@ Minor coverage gaps (see L5) but no behavioural divergence found.
 
 ## HIGH
 
-### H1 — The public `bootstrap-*` docstrings don't mention `:schema-backend` or `:transformer` (API discoverability)
+### H1 — The public `bootstrap-*` docstrings don't mention `:schema-backend` or `:transformer` (API discoverability) — ✅ Done
 
 `core.cljc` bootstrap docstrings still list only `:coercion-matcher` as the coercion knob,
 presented as if universal. The entire value of this branch — choosing a backend — is
@@ -68,7 +68,7 @@ in prose docs.
 
 ## MEDIUM
 
-### M1 — `aliases-hash-map` is backend-generic but reaches into Plumatic's `schema-tools` (decomplection leak)
+### M1 — `aliases-hash-map` is backend-generic but reaches into Plumatic's `schema-tools` (decomplection leak) — ✅ Done
 
 `parameter_aliases.cljc` (the Babashka registry path) takes a `backend`, calls
 `sb/key-paths backend`, but then idiomatizes with `schema-tools/->idiomatic` and
@@ -105,17 +105,21 @@ contract just to satisfy status-code plumbing.
 
 ## LOW
 
-- **L1 — Trivial private wrapper.** `interceptors.cljc` `(defn- get-backend [opts]
+- **L1 — Trivial private wrapper. ✅ Done** `interceptors.cljc` `(defn- get-backend [opts]
   (schema/get-backend opts))` adds a name but no behaviour; it's called 4×. Inline
-  `schema/get-backend` and drop it.
-- **L2 — `unalias-data` imported from two namespaces.** The Plumatic backend pulls it from
+  `schema/get-backend` and drop it. — Wrapper removed; call sites now use
+  `backends/get-backend` directly (see L3).
+- **L2 — `unalias-data` imported from two namespaces. ✅ Done** The Plumatic backend pulls it from
   `martian.schema-tools`, the Malli backend from `martian.parameter-keys` — same function,
   re-exported. Point both at `parameter-keys` so the shared, backend-neutral helper has one
-  obvious home.
-- **L3 — `schema/get-backend` lives in `martian.schema`.** It's about *opts*, not schemas,
+  obvious home. — Plumatic now refers `unalias-data` from `martian.parameter-keys`.
+- **L3 — `schema/get-backend` lives in `martian.schema`. ✅ Done** It's about *opts*, not schemas,
   yet reading it forces every caller (`core`, `interceptors`, `swagger`, `openapi`, `test`)
   through `martian.schema` (→ Plumatic). Harmless since Plumatic is the default, but a
   neutral home (e.g. the `schema-backend` ns) would keep the dependency direction cleaner.
+  — Moved to a new backend-neutral `martian.backends` ns (the `schema-backend` ns itself
+  can't host it — Plumatic requires it, which would cycle); `martian.schema/get-backend`
+  kept as a re-export for backward compatibility.
 - **L4 — `::input-schema` spec loosened to `any?`** (`spec.cljc`). Reasonable (representation
   is backend-owned) but it drops all validation. If you want to keep some teeth, the backend
   could expose a `schema?` predicate; otherwise the added comment is sufficient.

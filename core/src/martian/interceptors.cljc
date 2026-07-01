@@ -3,15 +3,12 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.walk :refer [keywordize-keys stringify-keys]]
+            [martian.backends :as backends]
             [martian.encoders :as encoders]
             [martian.encoding :as encoding]
-            [martian.schema :as schema]
             [martian.schema-backend :as sb]
             [martian.utils :as utils]
             [tripod.context :as tc]))
-
-(defn- get-backend [opts]
-  (schema/get-backend opts))
 
 #?(:bb
    ;; reflection issue in babashka -- TODO, submit patch upstream?
@@ -56,7 +53,7 @@
             (update ctx :request create-only :url (url-for (:route-name handler) params)))})
 
 (defn coerce-data [{:keys [parameter-aliases] :as handler} schema-key params opts]
-  (let [backend (get-backend opts)
+  (let [backend (backends/get-backend opts)
         coerce-opts (-> opts
                         (select-keys [:coercion-matcher :transformer :use-defaults?])
                         (assoc :parameter-aliases (get parameter-aliases schema-key)))]
@@ -77,7 +74,7 @@
 (def set-body-params
   {:name ::body-params
    :enter (fn [{:keys [params handler opts] :as ctx}]
-            (if-let [body-key (first (sb/map-schema-keys (get-backend opts) (:body-schema handler)))]
+            (if-let [body-key (first (sb/map-schema-keys (backends/get-backend opts) (:body-schema handler)))]
               (let [body-params (or (:martian.core/body params)
                                     (get params body-key)
                                     (get params (->kebab-case-keyword body-key))
@@ -184,7 +181,7 @@
   ([{:keys [strict?]}]
    {:name ::validate-response
     :leave (fn [{:keys [handler response opts] :as ctx}]
-             (let [backend (get-backend opts)]
+             (let [backend (backends/get-backend opts)]
                (if-let [body-schema (some (fn [schema]
                                             (when-not (sb/check-schema backend (:status schema) (:status response))
                                               (:body schema)))

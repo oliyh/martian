@@ -9,8 +9,9 @@
             [schema-tools.coerce :as stc]
             [clojure.set :refer [rename-keys]]
             [clojure.string :as string]
+            [martian.parameter-keys :refer [unalias-data]]
             [martian.schema-backend :as sb]
-            [martian.schema-tools :as mst :refer [unalias-data]])
+            [martian.schema-tools :as mst])
   #?(:clj (:import [schema.core AnythingSchema Maybe EnumSchema EqSchema])))
 
 (def Binary

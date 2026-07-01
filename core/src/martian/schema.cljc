@@ -1,5 +1,6 @@
 (ns martian.schema
   (:require [clojure.string :as string]
+            [martian.backends :as backends]
             [martian.schema-backend :as sb]
             [martian.backends.plumatic :as plumatic]))
 
@@ -20,10 +21,10 @@
   "The default coercion matcher used by the Plumatic backend."
   plumatic/default-coercion-matcher)
 
-(defn get-backend
-  "Returns the schema backend from opts, defaulting to the Plumatic backend."
-  [opts]
-  (get opts :schema-backend plumatic/backend))
+(def get-backend
+  "Returns the schema backend from opts, defaulting to the Plumatic backend.
+   Re-exported from `martian.backends` for backward compatibility."
+  backends/get-backend)
 
 (defn leaf-schema
   "Returns a Plumatic schema for the given OpenAPI property descriptor."
