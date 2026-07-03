@@ -10,6 +10,9 @@
             [martian.interceptors :as interceptors]
             [martian.backends.malli :as malli]
             [martian.backends.plumatic :as plumatic]
+            [clojure.string :as string]
+            [schema.core :as s]
+            [malli.transform :as mt]
             #?(:clj [clojure.test :refer [deftest testing is]]
                :cljs [cljs.test :refer-macros [deftest testing is]])))
 
@@ -279,7 +282,13 @@
                                                            :schema {:type "boolean"}}]
                                              :requestBody {:required true
                                                            :content {any-content-type {:schema {:$ref "#/components/schemas/Animal"}}}}
-                                             :responses {:2XX {:content {any-content-type {:schema {:$ref "#/components/schemas/Animal"}}}}}}}}
+                                             :responses {:2XX {:content {any-content-type {:schema {:$ref "#/components/schemas/Animal"}}}}}}}
+           (keyword "/animals/register") {:post {:operationId "register-animal"
+                                                 :requestBody {:required true
+                                                               :content {any-content-type {:schema {:$ref "#/components/schemas/Registration"}}}}
+                                                 :responses {:2XX {:content {any-content-type {:schema {:type "string"}}}}}}}
+           (keyword "/health")       {:get {:operationId "health-check"
+                                            :responses {:default {:content {any-content-type {:schema {:$ref "#/components/schemas/Status"}}}}}}}}
    :components {:schemas {:Animal {:type "object"
                                    :required ["name"]
                                    :properties {:name {:type "string"}
@@ -287,7 +296,15 @@
                                                 :age {:type "integer"
                                                       :nullable true}
                                                 :meta {:type "object"
-                                                       :additionalProperties true}}}}}})
+                                                       :additionalProperties true}}}
+                         :Registration {:type "object"
+                                        :required ["name" "tier"]
+                                        :properties {:name {:type "string"}
+                                                     :tier {:type "string"
+                                                            :default "basic"}}}
+                         :Status {:type "object"
+                                  :required ["message"]
+                                  :properties {:message {:type "string"}}}}}})
 
 (defn- openapi-martian [backend & [opts]]
   (martian/bootstrap-openapi "https://api.org" openapi-definition
@@ -320,17 +337,74 @@
           (is (thrown? Throwable
                        (martian/request-for m :create-animal {:body {:good-boy true}}))))))))
 
+(deftest openapi-defaults-test
+  (doseq [[backend-name backend] backends]
+    (testing (str backend-name " backend")
+      (let [m (openapi-martian backend {:use-defaults? true})]
+        (testing "fills in default values for missing required keys"
+          (is (= {:method :post
+                  :url "https://api.org/animals/register"
+                  :body {:name "fido"
+                         :tier "basic"}}
+                 (martian/request-for m :register-animal {:body {:name "fido"}}))))))))
+
+(defn- validating-openapi-martian [backend response]
+  (openapi-martian backend
+                   {:interceptors (concat martian/default-interceptors
+                                          [(interceptors/validate-response-body {:strict? true})
+                                           (stub-response response)])}))
+
 (deftest openapi-response-validation-test
   (doseq [[backend-name backend] backends]
     (testing (str backend-name " backend")
       (testing "response statuses match range schemas like 2XX"
         (let [response {:status 201
                         :body {:name "fido"}}
-              m (openapi-martian backend
-                                 {:interceptors (concat martian/default-interceptors
-                                                        [(interceptors/validate-response-body {:strict? true})
-                                                         (stub-response response)])})]
-          (is (= response (martian/response-for m :create-animal {:body {:name "fido"}}))))))))
+              m (validating-openapi-martian backend response)]
+          (is (= response (martian/response-for m :create-animal {:body {:name "fido"}})))))
+
+      (testing "the `default` response status matches any status code"
+        (let [response {:status 503
+                        :body {:message "unhealthy"}}
+              m (validating-openapi-martian backend response)]
+          (is (= response (martian/response-for m :health-check {})))))
+
+      (testing "the `default` response body is still validated against its schema"
+        (let [m (validating-openapi-martian backend {:status 503
+                                                     :body {:not "a status"}})]
+          (is (thrown? Throwable (martian/response-for m :health-check {}))))))))
+
+;; ---------------------------------------------------------------------------
+;; Custom coercion equivalence: Plumatic's `:coercion-matcher` and Malli's
+;; `:transformer` are differently-shaped knobs for the same job. Configured to
+;; do the same thing (uppercase every string leaf value) they must produce
+;; identical requests.
+;; ---------------------------------------------------------------------------
+
+(def custom-coercion-opts
+  "Each knob layers 'uppercase every string' on top of the backend's default
+   coercion, so extra-key stripping and aliasing still apply identically."
+  {"plumatic" {:coercion-matcher (fn [schema]
+                                   (when-some [dcm (plumatic/default-coercion-matcher schema)]
+                                     (if (= schema s/Str)
+                                       (comp string/upper-case dcm)
+                                       dcm)))}
+   "malli"    {:transformer (mt/transformer
+                             malli/default-transformer
+                             {:decoders {:string string/upper-case}})}})
+
+(deftest custom-coercion-equivalence-test
+  (doseq [[backend-name backend] backends]
+    (testing (str backend-name " backend")
+      (let [m (swagger-martian backend (custom-coercion-opts backend-name))]
+        (testing "the custom coercion knob uppercases string form and header values"
+          (is (= {:method :put
+                  :url "https://api.org/pets/5"
+                  :form-params {:name "NIGEL"}
+                  :headers {"X-AuthToken" "ABC-123"}}
+                 (martian/request-for m :update-pet {:id 5
+                                                     :name "nigel"
+                                                     :x-auth-token "abc-123"}))))))))
 
 (deftest validate-handlers-test
   (doseq [[backend-name backend] backends]

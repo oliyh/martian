@@ -44,7 +44,8 @@ Verified equivalent within the tested surface, and the tests are genuinely thoro
   otherwise walk the backend *record* into a plain map and silently destroy it. Good
   defensive design.
 
-Minor coverage gaps (see L5) but no behavioural divergence found.
+Minor coverage gaps (see L5) — now closed; closing them did surface one behavioural
+divergence around optional-key defaults, documented in L5.
 
 ---
 
@@ -63,6 +64,42 @@ to the bootstrap docstrings, and note that `:coercion-matcher` is Plumatic-only 
 `:transformer` is the Malli equivalent. This directly serves the "just as clean to use
 Malli" goal — the two backends should be equally discoverable at the API surface, not just
 in prose docs.
+
+### H2 — Divergence: missing *optional* keys with a `default` behave differently across backends (correctness) — ☐ Follow-up
+
+Surfaced while closing L5. With `:use-defaults? true`, for a key that is **optional** *and*
+carries a `:default`, the two backends disagree when that key is absent from the input:
+
+- **Plumatic throws** `Could not coerce value to schema: {… disallowed-key}` (the
+  schema-tools `default-matcher` inserts the key, then the map coercion rejects it).
+- **Malli silently omits** the key (its `default-value-transformer` only fills the default
+  when the key is present with a `nil` value, not when it is absent).
+
+Defaults on **required** keys behave identically (both fill), which is why neither the
+Swagger battery (defaulted `city` is required) nor the manual probes caught it. This is the
+one place the backends observably differ, so it directly undercuts the branch's "behaves
+identically" contract — hence HIGH.
+
+Repro:
+```clojure
+;; Registration-style schema where `tier` is OPTIONAL and defaults to "basic"
+(martian/request-for m :register-animal {:body {:name "fido"}})
+;; Plumatic: throws disallowed-key
+;; Malli:    {:name "fido"}   (no :tier)
+```
+
+Not fixed here — it's a schema-tools sharp edge rather than a defect in the abstraction, and
+the fix belongs in the Plumatic backend, not the shared code. Options for the follow-up:
+1. **Make Plumatic tolerant** (recommended): teach `coerce-data` / the map matcher to skip
+   the default for a missing optional key, matching Malli's omit-and-move-on behaviour.
+2. **Make both fill** the optional default (Malli via a transformer tweak, Plumatic via the
+   maybe-wrapping the Swagger path already does) — more surprising, changes today's output.
+3. **Document the sharp edge** and assert current behaviour per-backend if reconciliation is
+   deemed out of scope.
+
+Whichever we pick, add a cross-backend acceptance case for *optional*-key defaults so the
+chosen contract is locked in (the current `openapi-defaults-test` deliberately uses a
+required key to stay green).
 
 ---
 
@@ -123,10 +160,21 @@ contract just to satisfy status-code plumbing.
 - **L4 — `::input-schema` spec loosened to `any?`** (`spec.cljc`). Reasonable (representation
   is backend-owned) but it drops all validation. If you want to keep some teeth, the backend
   could expose a `schema?` predicate; otherwise the added comment is sufficient.
-- **L5 — Coverage gaps in the acceptance battery.** OpenAPI path isn't exercised with
+- **L5 — Coverage gaps in the acceptance battery. ✅ Done** OpenAPI path isn't exercised with
   `:use-defaults? true` (only Swagger is), and the `default` response status isn't asserted.
-  Both backends behaved identically in manual probes, so this is about locking it in, not a
-  suspected bug.
+  Added `openapi-defaults-test` (a `register-animal` op whose required `tier` field carries a
+  default — filled identically by both backends), extended `openapi-response-validation-test`
+  to assert the `default` status matches an arbitrary code (`503`) via a `health-check` op and
+  still validates the body against its schema, and added `custom-coercion-equivalence-test`
+  (see below). Whilst locking this in, a **genuine divergence** surfaced that the manual
+  probes missed — optional-key defaults behave differently across backends. Promoted to its
+  own follow-up finding, **H2**.
+- **L5b — transformer / coercion-matcher equivalence. ✅ Done** Added
+  `custom-coercion-equivalence-test`: Plumatic's `:coercion-matcher` and Malli's
+  `:transformer` are differently-shaped knobs, each configured to layer "uppercase every
+  string leaf" on top of the backend default (so stripping and aliasing still apply). Both
+  produce byte-identical requests, locking in that the two customisation surfaces are
+  interchangeable.
 - **L6 — Malli recompiles schema forms per coercion.** `coerce-data` calls `m/coerce` on the
   stored *form* each request. Keeping forms (not compiled schemas) is the right call for
   readable `explore` output — and Plumatic's `sc/coercer!` also rebuilds per call, so it's
@@ -155,5 +203,6 @@ Strong. Highlights worth preserving:
 
 Net: the abstraction is at the right altitude, correctness is verified and enforced by
 tests, and the residual issues are mostly discoverability and a couple of coupling seams —
-all cheap to close. The single most valuable follow-up is **H1** (surface `:schema-backend`
-in the public docstrings) so Malli is as discoverable as it is usable.
+all cheap to close. With **H1** now done, the single most valuable open follow-up is **H2**
+(reconcile optional-key defaults) — it's the only place the two backends observably diverge,
+which is precisely the contract this branch exists to uphold.
