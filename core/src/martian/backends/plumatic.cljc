@@ -7,6 +7,7 @@
             [schema.coerce :as sc]
             [schema-tools.core :as st]
             [schema-tools.coerce :as stc]
+            [schema-tools.impl :as sti]
             [clojure.set :refer [rename-keys]]
             [clojure.string :as string]
             [martian.parameter-keys :refer [unalias-data]]
@@ -58,13 +59,38 @@
                   +extra-string-coercions+
                   string-enum-matcher))
 
+(defn- default-key-matcher
+  "Like `schema-tools.coerce/default-key-matcher`, but only fills defaults for
+   required keys. A missing optional key is left absent even when it carries a
+   `:default`, matching the Malli backend.
+
+   The stock matcher keys its default map by the raw schema key, so an optional
+   key leaks into the data as its `(s/optional-key k)` wrapper — which the map
+   coercion then rejects as a disallowed key. Skipping optional keys sidesteps
+   that and gives both backends the same 'optional keys are only defaulted when
+   supplied' contract."
+  [schema]
+  (when (and (map? schema) (not (record? schema)))
+    (let [defaults (reduce-kv (fn [acc k v]
+                                (if (and (sti/default? v) (not (s/optional-key? k)))
+                                  (assoc acc k (:value v))
+                                  acc))
+                              {}
+                              schema)]
+      (when (seq defaults)
+        (fn [x] (merge defaults x))))))
+
+(defn- default-matcher [schema]
+  (or (default-key-matcher schema)
+      (stc/default-value-matcher schema)))
+
 (defn- build-coercion-matcher
   [{:keys [coercion-matcher use-defaults?]
     :or   {coercion-matcher default-coercion-matcher}}]
   (when (nil? coercion-matcher)
     (throw (ex-info "Coercion matcher must be a unary fn of schema" {})))
   (if use-defaults?
-    (stc/or-matcher stc/default-matcher coercion-matcher)
+    (stc/or-matcher default-matcher coercion-matcher)
     coercion-matcher))
 
 (defn- ->map-matcher

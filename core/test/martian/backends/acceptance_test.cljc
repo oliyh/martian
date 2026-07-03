@@ -301,7 +301,9 @@
                                         :required ["name" "tier"]
                                         :properties {:name {:type "string"}
                                                      :tier {:type "string"
-                                                            :default "basic"}}}
+                                                            :default "basic"}
+                                                     :referrer {:type "string"
+                                                                :default "organic"}}}
                          :Status {:type "object"
                                   :required ["message"]
                                   :properties {:message {:type "string"}}}}}})
@@ -342,11 +344,22 @@
     (testing (str backend-name " backend")
       (let [m (openapi-martian backend {:use-defaults? true})]
         (testing "fills in default values for missing required keys"
+          ;; `tier` is required with a default, so it is filled; `referrer` is
+          ;; optional with a default, so it is omitted — both backends agree.
           (is (= {:method :post
                   :url "https://api.org/animals/register"
                   :body {:name "fido"
                          :tier "basic"}}
-                 (martian/request-for m :register-animal {:body {:name "fido"}}))))))))
+                 (martian/request-for m :register-animal {:body {:name "fido"}}))))
+
+        (testing "does not fill defaults for missing optional keys"
+          (is (= {:name "fido" :tier "basic"}
+                 (:body (martian/request-for m :register-animal {:body {:name "fido"}})))))
+
+        (testing "an optional key's default is still honoured once the key is supplied"
+          (is (= {:name "fido" :tier "pro" :referrer "organic"}
+                 (:body (martian/request-for m :register-animal
+                                             {:body {:name "fido" :tier "pro" :referrer nil}})))))))))
 
 (defn- validating-openapi-martian [backend response]
   (openapi-martian backend

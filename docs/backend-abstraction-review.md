@@ -44,8 +44,9 @@ Verified equivalent within the tested surface, and the tests are genuinely thoro
   otherwise walk the backend *record* into a plain map and silently destroy it. Good
   defensive design.
 
-Minor coverage gaps (see L5) — now closed; closing them did surface one behavioural
-divergence around optional-key defaults, documented in L5.
+Minor coverage gaps (see L5) — now closed; closing them surfaced one behavioural
+divergence around optional-key defaults (H2), now reconciled so both backends omit a
+missing optional-key default.
 
 ---
 
@@ -65,41 +66,47 @@ to the bootstrap docstrings, and note that `:coercion-matcher` is Plumatic-only 
 Malli" goal — the two backends should be equally discoverable at the API surface, not just
 in prose docs.
 
-### H2 — Divergence: missing *optional* keys with a `default` behave differently across backends (correctness) — ☐ Follow-up
+### H2 — Divergence: missing *optional* keys with a `default` behave differently across backends (correctness) — ✅ Done
 
 Surfaced while closing L5. With `:use-defaults? true`, for a key that is **optional** *and*
-carries a `:default`, the two backends disagree when that key is absent from the input:
+carries a `:default`, the two backends disagreed when that key was absent from the input:
 
-- **Plumatic throws** `Could not coerce value to schema: {… disallowed-key}` (the
-  schema-tools `default-matcher` inserts the key, then the map coercion rejects it).
-- **Malli silently omits** the key (its `default-value-transformer` only fills the default
+- **Plumatic threw** `Could not coerce value to schema: {… disallowed-key}`. Root cause:
+  schema-tools' `default-key-matcher` builds its default map keyed by the *raw* schema key,
+  so an optional key leaked into the data as its `(s/optional-key k)` wrapper, which the map
+  coercion then rejected as a disallowed key.
+- **Malli silently omitted** the key (its `default-value-transformer` only fills the default
   when the key is present with a `nil` value, not when it is absent).
 
-Defaults on **required** keys behave identically (both fill), which is why neither the
-Swagger battery (defaulted `city` is required) nor the manual probes caught it. This is the
-one place the backends observably differ, so it directly undercuts the branch's "behaves
+Defaults on **required** keys behaved identically (both fill), which is why neither the
+Swagger battery (defaulted `city` is required) nor the manual probes caught it. This was the
+one place the backends observably differed, so it directly undercut the branch's "behaves
 identically" contract — hence HIGH.
 
-Repro:
+**Resolution — both omit (Option 1).** The chosen contract is *"an optional key is only
+defaulted when the client supplies it"*: a missing optional key is left absent on both
+backends, even when it carries a `:default`. Required-key defaults still fill on both, and an
+optional key present with `nil` still resolves to its default on both. The fix is confined to
+the Plumatic backend (`backends/plumatic.cljc`): a local `default-key-matcher` replaces
+`stc/default-matcher`'s key-adding half, skipping `s/optional-key?` entries (the value half,
+`stc/default-value-matcher`, is retained for the present-`nil` case). Malli was already
+compliant and is unchanged.
+
+Verified across backends:
 ```clojure
-;; Registration-style schema where `tier` is OPTIONAL and defaults to "basic"
+;; Registration schema, tier OPTIONAL with :default "basic"
 (martian/request-for m :register-animal {:body {:name "fido"}})
-;; Plumatic: throws disallowed-key
-;; Malli:    {:name "fido"}   (no :tier)
+;;=> {:name "fido"}                      ; both backends omit :tier
+;; tier REQUIRED with :default "basic"
+;;=> {:name "fido" :tier "basic"}        ; both backends fill
+;; tier OPTIONAL, supplied as nil
+;;=> {:name "fido" :tier "basic"}        ; both backends fill
 ```
 
-Not fixed here — it's a schema-tools sharp edge rather than a defect in the abstraction, and
-the fix belongs in the Plumatic backend, not the shared code. Options for the follow-up:
-1. **Make Plumatic tolerant** (recommended): teach `coerce-data` / the map matcher to skip
-   the default for a missing optional key, matching Malli's omit-and-move-on behaviour.
-2. **Make both fill** the optional default (Malli via a transformer tweak, Plumatic via the
-   maybe-wrapping the Swagger path already does) — more surprising, changes today's output.
-3. **Document the sharp edge** and assert current behaviour per-backend if reconciliation is
-   deemed out of scope.
-
-Whichever we pick, add a cross-backend acceptance case for *optional*-key defaults so the
-chosen contract is locked in (the current `openapi-defaults-test` deliberately uses a
-required key to stay green).
+Locked in by `openapi-defaults-test` in the cross-backend battery: the `Registration` op now
+carries both a required-with-default key (`tier`, filled) and an optional-with-default key
+(`referrer`, omitted), with a further case asserting the optional default is honoured once the
+key is supplied as `nil`.
 
 ---
 
@@ -203,6 +210,7 @@ Strong. Highlights worth preserving:
 
 Net: the abstraction is at the right altitude, correctness is verified and enforced by
 tests, and the residual issues are mostly discoverability and a couple of coupling seams —
-all cheap to close. With **H1** now done, the single most valuable open follow-up is **H2**
-(reconcile optional-key defaults) — it's the only place the two backends observably diverge,
-which is precisely the contract this branch exists to uphold.
+all cheap to close. With **H1** and **H2** now done — the latter being the only place the two
+backends observably diverged — both backends behave identically across the tested surface,
+which is precisely the contract this branch exists to uphold. The remaining open items (M2,
+M3, L4) are design/simplicity judgement calls, not correctness defects.
