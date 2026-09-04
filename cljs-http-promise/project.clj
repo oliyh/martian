@@ -7,6 +7,12 @@
   :parent-project {:path "../project.clj"
                    :inherit [:managed-dependencies]}
   :dependencies [[com.github.oliyh/martian]
+                 ;; NB: this is NOT a self-dependency, despite appearances - it is a
+                 ;; separate library at https://github.com/oliyh/cljs-http-promise,
+                 ;; a fork of cljs-http that returns promises instead of core.async
+                 ;; channels. It provides the `cljs-http.client` namespace (used
+                 ;; below) plus `promesa`, both of which this project needs and
+                 ;; neither of which are declared anywhere else.
                  [com.github.oliyh/cljs-http-promise "0.1.47"]
                  [org.clojure/core.async]]
   :profiles {:provided {:dependencies [[org.clojure/clojure]
