@@ -62,6 +62,7 @@ same way, ensuring that your response handling code is also correct. Examples ar
       - [Global interceptors](#global-interceptors)
       - [Per route interceptors](#per-route-interceptors)
     - [Custom coercion matcher](#custom-coercion-matcher)
+    - [Schema backends](#schema-backends)
     - [Built-in encoders options](#built-in-encoders-options)
     - [Custom media types](#custom-media-types)
     - [HTTP client-specific options](#http-client-specific-options)
@@ -625,6 +626,26 @@ coercion:
                         :LastName  s/Str}}}]
   {:coercion-matcher stc/json-coercion-matcher})
 ```
+
+The coercion matcher is specific to the default (Plumatic Schema) backend — see
+[Schema backends](#schema-backends) for the Malli equivalent.
+
+### Schema backends
+
+Parameter validation and coercion is delegated to a pluggable schema backend. The default backend uses
+[Plumatic Schema](https://github.com/plumatic/schema); a [Malli](https://github.com/metosin/malli) backend
+is also available:
+
+```clojure
+(require '[martian.backends.malli :as malli])
+
+(martian/bootstrap-openapi "https://api.org" openapi-spec
+                           {:schema-backend malli/backend})
+```
+
+Both backends produce identical Martian behaviour for the same OpenAPI/Swagger spec. See the
+[guide for migrating from Plumatic Schema to Malli](docs/migrating-to-malli.md) for what changes
+in schema representation and custom coercion.
 
 ### Built-in encoders options
 
