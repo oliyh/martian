@@ -1,7 +1,8 @@
 (ns martian.schema-tools
   (:require [camel-snake-kebab.core :refer [->kebab-case]]
             [schema.core :as s]
-            [schema-tools.impl]))
+            [schema-tools.impl])
+  #?(:cljs (:require-macros [martian.schema-tools])))
 
 (defn explicit-key [k]
   (if (s/specific-key? k) (s/explicit-schema-key k) k))
@@ -62,14 +63,15 @@
    along a single path."
   3)
 
-(defmacro with-recursion-guard [rec-target form]
-  `(when ~rec-target
-     (let [n# (get @*seen-recursion* ~rec-target 0)]
-       (when (< n# *max-recursions-per-target*)
-         (vswap! *seen-recursion* update ~rec-target (fnil inc 0))
-         (let [res# ~form]
-           (vswap! *seen-recursion* update ~rec-target #(max 0 (dec %)))
-           res#)))))
+#(:clj
+  (defmacro with-recursion-guard [rec-target form]
+    `(when ~rec-target
+       (let [n# (get @*seen-recursion* ~rec-target 0)]
+         (when (< n# *max-recursions-per-target*)
+           (vswap! *seen-recursion* update ~rec-target (fnil inc 0))
+           (let [res# ~form]
+             (vswap! *seen-recursion* update ~rec-target (fn [x] (max 0 (dec x))))
+             res#))))))
 
 (defprotocol PathAliases
   "Internal traversal API used to locate alias maps inside Prismatic schemas."
