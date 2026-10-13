@@ -35,6 +35,25 @@
 (def schema-b {:BAZ s/Str
                :Quu (s/recursive #'schema-a)})
 
+(def tree
+  (s/cond-pre
+    s/Str
+    [(s/recursive #'tree)]
+    (s/conditional
+      #(= "foo" (:type %))
+      {:type (s/eq "foo")
+       :child (s/recursive #'tree)}
+
+      #(= "bar" (:type %))
+      {:type (s/eq "bar")
+       :child (s/recursive #'tree)}
+
+      :else
+      {:type (s/eq "baz")
+       :child (s/recursive #'tree)
+       :quu_quux s/Int
+       :fizz_buzz s/Str})))
+
 (deftest registry-test
   (testing "produces idiomatic aliases for all keys in a schema"
     (testing "map schemas (with all sorts of keys)"
@@ -537,7 +556,26 @@
                                                 :bar {:baz "b1"
                                                       :quu {:foo "a2"
                                                             :bar {:baz "b2"
-                                                                  :quu nil}}}})))))
+                                                                  :quu nil}}}}))))
+
+    ;; NB: On Babashka, the registry is built upfront and expands a recursive
+    ;;     schema 3 times at most, so it can't get to the keys this deep yet.
+    #?(:bb nil
+       :default
+       (testing "recursive union schemas with an array of themselves"
+         (let [nest (fn [tree]
+                      (reduce (fn [tree type]
+                                ["a" {:type type :child tree}])
+                              [tree]
+                              ["foo" "bar" "foo" "bar" "foo" "bar"]))]
+           (is (= (nest {:type "baz"
+                         :child "b"
+                         :quu_quux 1
+                         :fizz_buzz "c"})
+                  (unalias-data (registry tree) (nest {:type "baz"
+                                                       :child "b"
+                                                       :quu-quux 1
+                                                       :fizz-buzz "c"}))))))))
 
   (testing "non-keyword keys"
     (is (= {"fooBar" "a"
