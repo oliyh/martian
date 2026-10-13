@@ -558,24 +558,20 @@
                                                             :bar {:baz "b2"
                                                                   :quu nil}}}}))))
 
-    ;; NB: On Babashka, the registry is built upfront and expands a recursive
-    ;;     schema 3 times at most, so it can't get to the keys this deep yet.
-    #?(:bb nil
-       :default
-       (testing "recursive union schemas with an array of themselves"
-         (let [nest (fn [tree]
-                      (reduce (fn [tree type]
-                                ["a" {:type type :child tree}])
-                              [tree]
-                              ["foo" "bar" "foo" "bar" "foo" "bar"]))]
-           (is (= (nest {:type "baz"
-                         :child "b"
-                         :quu_quux 1
-                         :fizz_buzz "c"})
-                  (unalias-data (registry tree) (nest {:type "baz"
-                                                       :child "b"
-                                                       :quu-quux 1
-                                                       :fizz-buzz "c"}))))))))
+    (testing "recursive union schemas with an array of themselves"
+      (let [nest (fn [tree]
+                   (reduce (fn [tree type]
+                             ["a" {:type type :child tree}])
+                           [tree]
+                           ["foo" "bar" "foo" "bar" "foo" "bar"]))]
+        (is (= (nest {:type "baz"
+                      :child "b"
+                      :quu_quux 1
+                      :fizz_buzz "c"})
+               (unalias-data (registry tree) (nest {:type "baz"
+                                                    :child "b"
+                                                    :quu-quux 1
+                                                    :fizz-buzz "c"})))))))
 
   (testing "non-keyword keys"
     (is (= {"fooBar" "a"

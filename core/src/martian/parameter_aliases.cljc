@@ -25,7 +25,15 @@
           (swap! cache assoc path' m')
           m'))))
 
-#?(:bb nil
+#?(:bb
+   ;; NB: On Babashka, `deftype` implements protocols only and `reify` takes
+   ;;     a single interface, so its registry is a bare `ILookup` instance.
+   (defn ->LazyRegistry [schema cache interner]
+     (reify clojure.lang.ILookup
+       (valAt [_ k]
+         (aliases-at schema cache interner k))
+       (valAt [_ k not-found]
+         (or (aliases-at schema cache interner k) not-found))))
 
    :clj
    (deftype LazyRegistry [schema cache interner]
@@ -51,43 +59,21 @@
 (defn- idiomatic-path [path]
   (vec (keep schema-tools/->idiomatic path)))
 
-(defn aliases-hash-map
-  "Eagerly computes the registry as a data structure for the given `schema`.
-
-   Produces a plain hash map with idiomatic keys (aliases) mappings per path
-   in a (possibly, deeply nested) `schema` for all its unqualified keys.
-
-   The result is then used with `alias-schema` and `unalias-data` functions."
-  [schema]
-  (reduce (fn [acc path]
-            (let [leaf (peek path)
-                  idiomatic-key (some-> leaf (schema-tools/->idiomatic))]
-              (if (and idiomatic-key (not= leaf idiomatic-key))
-                (update acc (idiomatic-path (pop path)) assoc idiomatic-key leaf)
-                acc)))
-          {}
-          (schema-tools/key-seqs schema)))
-
 (defn registry
   "Builds a lookupable registry of parameter alias maps for the given `schema`.
 
-  - On JVM/CLJS:
-    Returns an instance of a lazy registry.
+   Returns an instance of a lazy registry.
 
-    Aliases are computed on demand (via `compute-aliases-at`), so materializing
-    massive alias maps upfront is avoided. Per-path results are memoized within
-    the registry. Identical alias maps are shared to cut memory usage.
+   Aliases are computed on demand (via `compute-aliases-at`), so materializing
+   massive alias maps upfront is avoided. Per-path results are memoized within
+   the registry. Identical alias maps are shared to cut memory usage.
 
-    A returned value implements `ILookup` and is indexed by \"idiomatic paths\".
-    Looking up a path gives an alias map for that level, mapping idiomatic keys
-    (kebab-case, unqualified) to their original schema keys.
-
-  - On Babashka:
-    Returns a plain hash map registry that is computed eagerly via `key-seqs`."
+   A returned value implements `ILookup` and is indexed by \"idiomatic paths\".
+   Looking up a path gives an alias map for that level, mapping idiomatic keys
+   (kebab-case, unqualified) to their original schema keys."
   [schema]
   (when schema
-    #?(:bb      (aliases-hash-map schema)
-       :default (new LazyRegistry schema (atom {}) (atom {})))))
+    (->LazyRegistry schema (atom {}) (atom {}))))
 
 ;; TODO: An alias for backward compatibility. Remove later on.
 (def parameter-aliases registry)
