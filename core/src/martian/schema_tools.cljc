@@ -62,6 +62,11 @@
    along a single path."
   3)
 
+(def ^{:dynamic true :private true} *visited-recursions*
+  "Visit guard for `s/recursive` schema targets, each paired with the path it
+   is visited at. Bound in `compute-aliases-at` fn."
+  nil)
+
 (defmacro with-recursion-guard [rec-target form]
   `(when ~rec-target
      (let [n# (get @*seen-recursion* ~rec-target 0)]
@@ -211,11 +216,20 @@
               (-paths inner-schema (conj path :derefable) true)
               (-paths inner-schema path false)))))))
   (-aliases-at [schema path]
-    (let [inner-schema @(:derefable schema)]
-      (cond
-        (empty? path)               (-aliases-at inner-schema [])
-        (= :derefable (first path)) (-aliases-at inner-schema (rest path))
-        :else                       (-aliases-at inner-schema path))))
+    ;; NB: A target is often reached at the same path again, e.g. by each of
+    ;;     the union branches that wrap it, or by a vector of itself. A visit
+    ;;     like that can only add the aliases of the first one, so it's left
+    ;;     out, which also keeps the lookup from looping where a cycle never
+    ;;     goes through a map key.
+    (let [target (:derefable schema)
+          visit [target (vec path)]]
+      (when-not (some-> *visited-recursions* deref (contains? visit))
+        (some-> *visited-recursions* (vswap! conj visit))
+        (let [inner-schema @target]
+          (cond
+            (empty? path)               (-aliases-at inner-schema [])
+            (= :derefable (first path)) (-aliases-at inner-schema (rest path))
+            :else                       (-aliases-at inner-schema path))))))
 
   ;; Multi-variant unions
 
@@ -292,14 +306,17 @@
         (= :value  (first path)) (-aliases-at inner-schema (rest path))
         :else                    (-aliases-at inner-schema path))))
 
+  ;; NB: The params are named apart on purpose: on Babashka, an `Object` impl
+  ;;     with its params all named `_` gets its calls sent to another impl.
+
   #?(:clj Object :cljs default)
-  (-paths [_ path include-self?]
+  (-paths [_schema path include-self?]
     (when include-self? (list path)))
-  (-aliases-at [_ _] nil)
+  (-aliases-at [_schema _path] nil)
 
   nil
-  (-paths [_ _ _] nil)
-  (-aliases-at [_ _] nil))
+  (-paths [_schema _path _include-self?] nil)
+  (-aliases-at [_schema _path] nil))
 
 (defn key-seqs
   "Returns a vec of unique key paths (key seqs) for `schema` and all subschemas
@@ -326,10 +343,14 @@
      merged from its element schemas.
    - Inner schemas hops are understood. Structural hops introduced by wrapper
      or union schemas are recognized (e.g. `:schema`, `:schemas`, etc.).
+   - Recursive schemas are expanded once per path. Each `s/recursive` target
+     is followed once at any given path, so the lookup stays linear and ends
+     even if a schema reaches itself without a map key, e.g. via a vector.
    - Non-map endpoints yield `nil`. If the `idiomatic-path` doesn't land on a
      map (or there are no aliasable keys), the function returns `nil`."
   [schema idiomatic-path]
-  (-aliases-at schema idiomatic-path))
+  (binding [*visited-recursions* (volatile! #{})]
+    (-aliases-at schema idiomatic-path)))
 
 (defn walk-with-path
   "Similar to the `schema-tools.walk/walk` except it keeps track of the `path`
