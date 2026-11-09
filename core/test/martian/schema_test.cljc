@@ -528,3 +528,22 @@
                                    (s/optional-key :pods) any?}
                         (s/optional-key :duration) any?}}
                 schema))))
+
+(deftest objects-with-own-required-keys-test
+  (let [object {:type "object"
+                :required ["x"]
+                :properties {:x {:type "string"}}}]
+    (is (= {:req {:x s/Str}
+            (s/optional-key :opt) (s/maybe {:x s/Str})
+            (s/optional-key :items) [{:x s/Str}]}
+           (schema/make-schema
+            {}
+            {:name "body"
+             :in "body"
+             :required true
+             :schema {:type "object"
+                      :required ["req"]
+                      :properties {:req object
+                                   :opt object
+                                   :items {:type "array"
+                                           :items object}}}})))))

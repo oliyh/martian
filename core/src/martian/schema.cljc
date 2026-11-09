@@ -223,10 +223,10 @@
       :else
       (cond-> (cond
                 (= "array" type)
-                [(schema-type ref-lookup (assoc items :required true))]
+                [(schema-type ref-lookup (assoc items :required? true))]
 
                 (= "array" (:type schema))
-                [(schema-type ref-lookup (assoc (:items schema) :required true))]
+                [(schema-type ref-lookup (assoc (:items schema) :required? true))]
 
                 (= "object" type)
                 (make-object-schema ref-lookup param)
@@ -236,11 +236,11 @@
 
                 :else
                 (schema-type ref-lookup param))
-        (and (or (not required)
-                 ;;(= "object" type) ;; todo work out something better here
-                 )
-             (not required?)
-             (not= "array" type) (not= "array" (:type schema)))
+        (and (if (contains? param :required?)
+               (not required?)
+               (not required))
+             (not= "array" type)
+             (not= "array" (:type schema)))
         s/maybe
 
         (and (= "array" type) (:collectionFormat param))
