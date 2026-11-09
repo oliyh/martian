@@ -65,6 +65,13 @@
              (s/optional-key :BAR) s/Str
              (s/required-key :Baz) s/Str})))
 
+    (testing "map schemas with more than 8 entries"
+      (is (= {:foo-bar :fooBar}
+             (get (registry {:fooBar s/Str
+                             :a s/Str :b s/Str :c s/Str :d s/Str
+                             :e s/Str :f s/Str :g s/Str :h s/Str})
+                  []))))
+
     (testing "nested map and vector schemas"
       (is (=aliases
             {[] {:foo-bar :fooBar
