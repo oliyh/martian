@@ -1,6 +1,7 @@
 (ns martian.parameter-aliases-test
   (:require [clojure.string :as str]
             [martian.parameter-aliases :refer [registry unalias-data alias-schema]]
+            [martian.schema-tools :as schema-tools]
             [schema-tools.core :as st]
             [schema.core :as s]
             #?(:clj  [clojure.test :refer [deftest testing is]]
@@ -344,7 +345,19 @@
           {s/Keyword {:fooBar s/Str}}))
     (is (=aliases
           {}
-          (st/any-keys)))))
+          (st/any-keys))))
+
+  (testing "computes each path once, even one without aliases"
+    (let [calls (atom 0)
+          compute-aliases-at schema-tools/compute-aliases-at
+          reg (registry {:foo {:barBaz s/Str}})]
+      (with-redefs [schema-tools/compute-aliases-at (fn [schema path]
+                                                      (swap! calls inc)
+                                                      (compute-aliases-at schema path))]
+        (dotimes [_ 3]
+          (get reg [])
+          (get reg [:foo])))
+      (is (= 2 @calls)))))
 
 (deftest unalias-data-test
   (testing "renames idiomatic keys back to original"

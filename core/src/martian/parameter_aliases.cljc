@@ -15,15 +15,16 @@
    - Returns `nil` when there are no aliases at the given path."
   [schema cache interner path]
   (let [path' (if (vector? path) path (vec path))]
-    (or (get @cache path')
-        (let [m (schema-tools/compute-aliases-at schema path')
-              m' (when m
-                   (or (get @interner m)
-                       (-> interner
-                           (swap! #(if (contains? % m) % (assoc % m m)))
-                           (get m))))]
-          (swap! cache assoc path' m')
-          m'))))
+    (if-some [[_ m'] (find @cache path')]
+      m'
+      (let [m (schema-tools/compute-aliases-at schema path')
+            m' (when m
+                 (or (get @interner m)
+                     (-> interner
+                         (swap! #(if (contains? % m) % (assoc % m m)))
+                         (get m))))]
+        (swap! cache assoc path' m')
+        m'))))
 
 #?(:bb
    ;; NB: On Babashka, `deftype` implements protocols only and `reify` takes
