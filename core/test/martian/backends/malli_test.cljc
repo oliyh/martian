@@ -254,10 +254,6 @@
            [:foo {:optional true} [:maybe [:map [:dooDar {:optional true} [:maybe :string]]]]]
            [:tags [:sequential [:map [:tagName :string]]]]]]
 
-    (testing "key paths cover all map levels"
-      (is (= [[] [:fooBar] [:foo] [:foo :dooDar] [:tags] [:tags :tagName]]
-             (sb/key-paths backend s))))
-
     (testing "aliases are computed per idiomatic path"
       (is (= {:foo-bar :fooBar} (sb/aliases-at backend s [])))
       (is (= {:doo-dar :dooDar} (sb/aliases-at backend s [:foo])))

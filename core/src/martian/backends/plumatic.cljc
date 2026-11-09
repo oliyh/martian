@@ -170,9 +170,6 @@
     (when (instance? EqSchema schema)
       (.-v ^EqSchema schema)))
 
-  (key-paths [_ schema]
-    (mst/key-seqs schema))
-
   (aliases-at [_ schema idiomatic-path]
     (mst/compute-aliases-at schema idiomatic-path))
 

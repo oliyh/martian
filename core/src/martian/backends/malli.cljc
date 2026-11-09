@@ -43,12 +43,6 @@
         :when (not= ::m/default k)]
     [k child]))
 
-(defn- plain-key-path
-  "Drops Malli's sequence-element markers (and tuple indices) from an `:in`
-   path, leaving a path of plain map keys."
-  [in]
-  (into [] (remove #(or (= ::m/in %) (integer? %))) in))
-
 (defn- entry-aliases
   "Returns a map of idiomatic keys to original keys for the immediate entries
    of the given :map schema, or nil when there are none."
@@ -182,10 +176,6 @@
   (eq-schema-value [_ schema]
     (when (and (vector? schema) (= := (first schema)))
       (peek schema)))
-
-  (key-paths [_ schema]
-    (into [] (comp (map (comp plain-key-path :in)) (distinct))
-          (mu/subschemas (m/schema schema))))
 
   (aliases-at [_ schema idiomatic-path]
     (let [idiomatic-path (vec idiomatic-path)]

@@ -5,6 +5,34 @@
             #?(:clj  [clojure.test :refer [deftest testing is]]
                :cljs [cljs.test :refer-macros [deftest testing is]])))
 
+;; NB: A tree is a string, a vector of trees, or one of the nodes that wrap
+;;     a tree in turn. A node tree is made of the nodes alone.
+
+(defn node [child-schema]
+  (s/conditional
+    #(= "foo" (:type %))
+    {:type (s/eq "foo")
+     :child child-schema}
+
+    #(= "bar" (:type %))
+    {:type (s/eq "bar")
+     :child child-schema}
+
+    :else
+    {:type (s/eq "baz")
+     :child child-schema
+     :quu_quux s/Int
+     :fizz_buzz s/Str}))
+
+(def node-tree
+  (node (s/recursive #'node-tree)))
+
+(def tree
+  (s/cond-pre
+    s/Str
+    [(s/recursive #'tree)]
+    (node (s/recursive #'tree))))
+
 (deftest compute-aliases-at-test
   (testing "basic usage"
     (let [schema {:fooBar s/Str
@@ -64,7 +92,33 @@
                 [])))
     (is (nil? (schema-tools/compute-aliases-at
                 (st/any-keys)
-                [])))))
+                []))))
+
+  (testing "recursive union schemas"
+    (let [calls (atom 0)
+          map-entry-aliases schema-tools/map-entry-aliases
+          aliases (with-redefs [schema-tools/map-entry-aliases
+                                (fn [ms]
+                                  (swap! calls inc)
+                                  (map-entry-aliases ms))]
+                    (schema-tools/compute-aliases-at
+                      node-tree
+                      [:child :child :child :child]))]
+      (is (= {:quu-quux :quu_quux
+              :fizz-buzz :fizz_buzz}
+             aliases))
+      (is (= 3 @calls)
+          "Must take each map schema once, not once per route through the union")))
+
+  (testing "recursive union schemas with an array of themselves"
+    (is (= {:quu-quux :quu_quux
+            :fizz-buzz :fizz_buzz}
+           (schema-tools/compute-aliases-at tree [])))
+    (is (= {:quu-quux :quu_quux
+            :fizz-buzz :fizz_buzz}
+           (schema-tools/compute-aliases-at
+             tree [:child :child :child :child :child :child])))
+    (is (nil? (schema-tools/compute-aliases-at tree [:no-such-key])))))
 
 (deftest prewalk-with-path-test
   (testing "map schemas (with all sorts of keys)"
