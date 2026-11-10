@@ -202,6 +202,20 @@
     (vary-meta (st/schema s/Str) assoc :collection-format collection-format)
     array-schema))
 
+(defn- required-flag?
+  "Whether a parameter's own `required` value marks it as required. It's `true`
+   or the string \"true\"; on an object schema, `required` lists its keys."
+  [required]
+  (or (true? required) (= "true" required)))
+
+(defn- keep-own-required
+  "Keeps the `param`'s own `required` flag as `required?`, since merging in its
+   `$ref` target replaces `required` with the target's list of required keys."
+  [param]
+  (cond-> param
+    (and (contains? param :required) (not (contains? param :required?)))
+    (assoc :required? (required-flag? (:required param)))))
+
 (defn make-schema
   "Takes a swagger parameter and returns a schema"
   [ref-lookup {:keys [required required? type schema $ref items] :as param}]
@@ -213,11 +227,13 @@
       $ref
       (binding [*visited-refs* (conj *visited-refs* $ref)]
         (make-schema ref-lookup (-> (dissoc param :$ref)
+                                    (keep-own-required)
                                     (merge (resolve-ref-object param ref-lookup)))))
 
       (:$ref schema)
       (binding [*visited-refs* (conj *visited-refs* (:$ref schema))]
         (make-schema ref-lookup (-> (dissoc param :schema)
+                                    (keep-own-required)
                                     (merge (resolve-ref-object schema ref-lookup)))))
 
       :else
@@ -238,7 +254,7 @@
                 (schema-type ref-lookup param))
         (and (if (contains? param :required?)
                (not required?)
-               (not required))
+               (not (required-flag? required)))
              (not= "array" type)
              (not= "array" (:type schema)))
         s/maybe

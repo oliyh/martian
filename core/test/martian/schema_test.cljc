@@ -307,6 +307,12 @@
                                              :required false
                                              :type "integer"}])))
 
+  (is (= {(s/optional-key :id) (s/maybe s/Int)}
+         (schema/schemas-for-parameters {} [{:name "id"
+                                             :in "path"
+                                             :required "false"
+                                             :type "integer"}])))
+
   (let [body-param {:name "pet"
                     :in "body"
                     :required false
@@ -324,7 +330,20 @@
             (s/maybe {(s/optional-key :id) (s/maybe s/Int)
                       :name s/Str
                       (s/optional-key :tags) [s/Str]})}
-           (schema/schemas-for-parameters {:definitions definitions} [body-param])))))
+           (schema/schemas-for-parameters {:definitions definitions} [body-param]))))
+
+  (let [definitions {:Owner {:type "object"
+                             :required ["name"]
+                             :properties {:name {:type "string"}}}}
+        owner-param (fn [required]
+                      {:name "owner"
+                       :in "body"
+                       :required required
+                       :schema {:$ref "#/definitions/Owner"}})]
+    (is (= {(s/optional-key :owner) (s/maybe {:name s/Str})}
+           (schema/schemas-for-parameters {:definitions definitions} [(owner-param false)])))
+    (is (= {:owner {:name s/Str}}
+           (schema/schemas-for-parameters {:definitions definitions} [(owner-param true)])))))
 
 (deftest keys-test
   (testing "default params"
