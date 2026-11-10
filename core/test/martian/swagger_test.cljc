@@ -108,6 +108,11 @@
                                                    :properties {:name {:type "string"}
                                                                 :age {:type "integer"}
                                                                 :type {:type "string"}}}}
+                                    :201 {:description "The pet created"
+                                          :schema {:type "object"
+                                                   :required ["name"]
+                                                   :properties {:name {:type "string"}
+                                                                :age {:type "integer"}}}}
                                     :400 {:schema {:type "string"}}
                                     :404 {:schema {:type "string"}}}}}}}
         [handler] (swagger/swagger->handlers swagger-json)]
@@ -115,6 +120,9 @@
              :body {(s/optional-key :name) (s/maybe s/Str),
                     (s/optional-key :age) (s/maybe s/Int),
                     (s/optional-key :type) (s/maybe s/Str)}}
+            {:status (s/eq 201),
+             :body {:name s/Str,
+                    (s/optional-key :age) (s/maybe s/Int)}}
             {:status (s/eq 400)
              :body s/Str}
             {:status (s/eq 404)

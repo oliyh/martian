@@ -37,7 +37,7 @@
                                 (= "default" (name status)) 'default
                                 :else (parse-long (name status)))]]
     {:status (s/eq status-code)
-     :body (schema/make-schema ref-lookup (assoc (:schema response) :required true))}))
+     :body (schema/make-schema ref-lookup (assoc (:schema response) :required? true))}))
 
 (defn swagger->handlers
   ([swagger-json]
