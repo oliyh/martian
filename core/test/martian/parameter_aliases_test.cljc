@@ -14,10 +14,10 @@
         (map (fn [path] [path (get registry path)]))
         (keys expected)))
 
-(defmacro =aliases
+(defn =aliases
   [expected schema]
-  `(let [reg# (registry ~schema)]
-     (= ~expected (select-aliases-from-registry reg# ~expected))))
+  (let [reg (registry schema)]
+    (= expected (select-aliases-from-registry reg expected))))
 
 (defn not-blank? [s]
   (not (str/blank? s)))
