@@ -343,7 +343,11 @@
     (is (= {(s/optional-key :owner) (s/maybe {:name s/Str})}
            (schema/schemas-for-parameters {:definitions definitions} [(owner-param false)])))
     (is (= {:owner {:name s/Str}}
-           (schema/schemas-for-parameters {:definitions definitions} [(owner-param true)])))))
+           (schema/schemas-for-parameters {:definitions definitions} [(owner-param true)])))
+    (testing "a parameter without its own `required` is optional, whatever its $ref target requires"
+      (is (= {(s/optional-key :owner) (s/maybe {:name s/Str})}
+             (schema/schemas-for-parameters {:definitions definitions}
+                                            [(dissoc (owner-param nil) :required)]))))))
 
 (deftest keys-test
   (testing "default params"
