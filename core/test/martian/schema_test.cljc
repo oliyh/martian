@@ -313,6 +313,14 @@
                                              :required "false"
                                              :type "integer"}])))
 
+  (is (= {(s/optional-key :id) (s/maybe s/Int)}
+         (schema/make-schema {} {:name "body"
+                                 :in "body"
+                                 :required true
+                                 :schema {:type "object"
+                                          :properties {:id {:type "integer"
+                                                            :required "false"}}}})))
+
   (let [body-param {:name "pet"
                     :in "body"
                     :required false

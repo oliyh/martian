@@ -76,21 +76,21 @@
 
 (def ^:dynamic *visited-refs* #{})
 
-(defn- denormalise-object-properties [{:keys [required properties] :as s}]
-  (map (fn [[parameter-name param]]
-         (assoc param
-                :name parameter-name
-                :required? (or (when-not (= "object" (:type param))
-                                 (:required param))
-                               (and (coll? required)
-                                    (contains? (set required) (name parameter-name))))))
-       properties))
-
 (defn- required-flag?
   "Whether a parameter's own `required` value marks it as required. It's `true`
    or the string \"true\"; on an object schema, `required` lists its keys."
   [required]
   (or (true? required) (= "true" required)))
+
+(defn- denormalise-object-properties [{:keys [required properties] :as s}]
+  (map (fn [[parameter-name param]]
+         (assoc param
+                :name parameter-name
+                :required? (or (when-not (= "object" (:type param))
+                                 (required-flag? (:required param)))
+                               (and (coll? required)
+                                    (contains? (set required) (name parameter-name))))))
+       properties))
 
 (defn- keep-own-required
   "Keeps the `param`'s own `required` flag as `required?`, since merging in its
