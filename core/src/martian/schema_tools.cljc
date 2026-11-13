@@ -89,17 +89,24 @@
   [path inner-schemas]
   (not-empty (apply merge (keep #(-aliases-at % path) inner-schemas))))
 
+(defn- map-aliases-at [schema path]
+  (if (empty? path)
+    (map-entry-aliases schema)
+    (let [seg (first path)]
+      (when (or (keyword? seg) (string? seg))
+        (when-some [child (child-by-idiomatic schema seg)]
+          (-aliases-at child (rest path)))))))
+
 (extend-protocol PathAliases
 
   #?(:clj  clojure.lang.APersistentMap
      :cljs cljs.core.PersistentArrayMap)
   (-aliases-at [schema path]
-    (if (empty? path)
-      (map-entry-aliases schema)
-      (let [seg (first path)]
-        (when (or (keyword? seg) (string? seg))
-          (when-some [child (child-by-idiomatic schema seg)]
-            (-aliases-at child (rest path)))))))
+    (map-aliases-at schema path))
+
+  #?(:cljs cljs.core.PersistentHashMap)
+  #?(:cljs (-aliases-at [schema path]
+             (map-aliases-at schema path)))
 
   ;; Vector schemas are transparent
   #?(:clj  clojure.lang.APersistentVector

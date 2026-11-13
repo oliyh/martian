@@ -1,6 +1,7 @@
 (ns martian.parameter-aliases-test
   (:require [clojure.string :as str]
             [martian.parameter-aliases :refer [registry unalias-data alias-schema]]
+            [martian.schema-tools :as schema-tools]
             [schema-tools.core :as st]
             [schema.core :as s]
             #?(:clj  [clojure.test :refer [deftest testing is]]
@@ -14,10 +15,10 @@
         (map (fn [path] [path (get registry path)]))
         (keys expected)))
 
-(defmacro =aliases
+(defn =aliases
   [expected schema]
-  `(let [reg# (registry ~schema)]
-     (= ~expected (select-aliases-from-registry reg# ~expected))))
+  (let [reg (registry schema)]
+    (= expected (select-aliases-from-registry reg expected))))
 
 (defn not-blank? [s]
   (not (str/blank? s)))
@@ -64,6 +65,13 @@
             {:fooBar s/Str
              (s/optional-key :BAR) s/Str
              (s/required-key :Baz) s/Str})))
+
+    (testing "map schemas with more than 8 entries"
+      (is (= {:foo-bar :fooBar}
+             (get (registry {:fooBar s/Str
+                             :a s/Str :b s/Str :c s/Str :d s/Str
+                             :e s/Str :f s/Str :g s/Str :h s/Str})
+                  []))))
 
     (testing "nested map and vector schemas"
       (is (=aliases
@@ -337,7 +345,19 @@
           {s/Keyword {:fooBar s/Str}}))
     (is (=aliases
           {}
-          (st/any-keys)))))
+          (st/any-keys))))
+
+  (testing "computes each path once, even one without aliases"
+    (let [calls (atom 0)
+          compute-aliases-at schema-tools/compute-aliases-at
+          reg (registry {:foo {:barBaz s/Str}})]
+      (with-redefs [schema-tools/compute-aliases-at (fn [schema path]
+                                                      (swap! calls inc)
+                                                      (compute-aliases-at schema path))]
+        (dotimes [_ 3]
+          (get reg [])
+          (get reg [:foo])))
+      (is (= 2 @calls)))))
 
 (deftest unalias-data-test
   (testing "renames idiomatic keys back to original"
