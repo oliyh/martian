@@ -129,7 +129,7 @@
                         :content-map {:binary (slurp tmp-file)}}}
                 @(martian/response-for m :upload-data {:binary tmp-file-is})))))
       (testing "byte array"
-        (let [byte-arr (String/.getBytes "Clojure!")]
+        (let [byte-arr (.getBytes "Clojure!")]
           (is (match?
                 {:multipart [{:name "binary" :content byte-arr}]
                  :headers without-content-type?}
@@ -194,7 +194,7 @@
 
     (testing "custom types:"
       (testing "ByteBuffer"
-        (let [byte-arr (String/.getBytes "Clojure!")
+        (let [byte-arr (.getBytes "Clojure!")
               byte-buf (ByteBuffer/wrap byte-arr)]
           (is (match?
                 {:multipart [{:name "custom" :content byte-buf}]
