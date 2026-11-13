@@ -86,6 +86,20 @@
                                     (contains? (set required) (name parameter-name))))))
        properties))
 
+(defn- required-flag?
+  "Whether a parameter's own `required` value marks it as required. It's `true`
+   or the string \"true\"; on an object schema, `required` lists its keys."
+  [required]
+  (or (true? required) (= "true" required)))
+
+(defn- keep-own-required
+  "Keeps the `param`'s own `required` flag as `required?`, since merging in its
+   `$ref` target replaces `required` with the target's list of required keys."
+  [param]
+  (cond-> param
+    (and (contains? param :required) (not (contains? param :required?)))
+    (assoc :required? (required-flag? (:required param)))))
+
 ;; ---------------------------------------------------------------------------
 ;; Schema construction — walking OpenAPI/Swagger specs via the backend.
 ;; The backend parameter defaults to plumatic/backend for backward compat.
@@ -105,9 +119,7 @@
   [ref-lookup parameters backend]
   (map (fn [{:keys [name required required?] :as param}]
          {:key (keyword name)
-          :required? (boolean (or required?
-                                  (= true required)
-                                  (= "true" required)))
+          :required? (boolean (or required? (required-flag? required)))
           :schema (make-schema ref-lookup param backend)})
        parameters))
 
@@ -127,20 +139,6 @@
    (schemas-for-parameters ref-lookup parameters plumatic/backend))
   ([ref-lookup parameters backend]
    (sb/map-schema backend (parameter-entries ref-lookup parameters backend) {})))
-
-(defn- required-flag?
-  "Whether a parameter's own `required` value marks it as required. It's `true`
-   or the string \"true\"; on an object schema, `required` lists its keys."
-  [required]
-  (or (true? required) (= "true" required)))
-
-(defn- keep-own-required
-  "Keeps the `param`'s own `required` flag as `required?`, since merging in its
-   `$ref` target replaces `required` with the target's list of required keys."
-  [param]
-  (cond-> param
-    (and (contains? param :required) (not (contains? param :required?)))
-    (assoc :required? (required-flag? (:required param)))))
 
 (defn make-schema
   "Takes a swagger parameter and returns a schema via the given backend.
