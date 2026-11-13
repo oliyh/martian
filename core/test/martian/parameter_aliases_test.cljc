@@ -1,6 +1,7 @@
 (ns martian.parameter-aliases-test
   (:require [clojure.string :as str]
             [martian.parameter-aliases :refer [registry unalias-data alias-schema]]
+            [martian.schema-tools :as schema-tools]
             [schema-tools.core :as st]
             [schema.core :as s]
             #?(:clj  [clojure.test :refer [deftest testing is]]
@@ -14,10 +15,10 @@
         (map (fn [path] [path (get registry path)]))
         (keys expected)))
 
-(defmacro =aliases
+(defn =aliases
   [expected schema]
-  `(let [reg# (registry ~schema)]
-     (= ~expected (select-aliases-from-registry reg# ~expected))))
+  (let [reg (registry schema)]
+    (= expected (select-aliases-from-registry reg expected))))
 
 (defn not-blank? [s]
   (not (str/blank? s)))
@@ -35,6 +36,25 @@
 (def schema-b {:BAZ s/Str
                :Quu (s/recursive #'schema-a)})
 
+(def tree
+  (s/cond-pre
+    s/Str
+    [(s/recursive #'tree)]
+    (s/conditional
+      #(= "foo" (:type %))
+      {:type (s/eq "foo")
+       :child (s/recursive #'tree)}
+
+      #(= "bar" (:type %))
+      {:type (s/eq "bar")
+       :child (s/recursive #'tree)}
+
+      :else
+      {:type (s/eq "baz")
+       :child (s/recursive #'tree)
+       :quu_quux s/Int
+       :fizz_buzz s/Str})))
+
 (deftest registry-test
   (testing "produces idiomatic aliases for all keys in a schema"
     (testing "map schemas (with all sorts of keys)"
@@ -45,6 +65,13 @@
             {:fooBar s/Str
              (s/optional-key :BAR) s/Str
              (s/required-key :Baz) s/Str})))
+
+    (testing "map schemas with more than 8 entries"
+      (is (= {:foo-bar :fooBar}
+             (get (registry {:fooBar s/Str
+                             :a s/Str :b s/Str :c s/Str :d s/Str
+                             :e s/Str :f s/Str :g s/Str :h s/Str})
+                  []))))
 
     (testing "nested map and vector schemas"
       (is (=aliases
@@ -318,7 +345,19 @@
           {s/Keyword {:fooBar s/Str}}))
     (is (=aliases
           {}
-          (st/any-keys)))))
+          (st/any-keys))))
+
+  (testing "computes each path once, even one without aliases"
+    (let [calls (atom 0)
+          compute-aliases-at schema-tools/compute-aliases-at
+          reg (registry {:foo {:barBaz s/Str}})]
+      (with-redefs [schema-tools/compute-aliases-at (fn [schema path]
+                                                      (swap! calls inc)
+                                                      (compute-aliases-at schema path))]
+        (dotimes [_ 3]
+          (get reg [])
+          (get reg [:foo])))
+      (is (= 2 @calls)))))
 
 (deftest unalias-data-test
   (testing "renames idiomatic keys back to original"
@@ -537,7 +576,22 @@
                                                 :bar {:baz "b1"
                                                       :quu {:foo "a2"
                                                             :bar {:baz "b2"
-                                                                  :quu nil}}}})))))
+                                                                  :quu nil}}}}))))
+
+    (testing "recursive union schemas with an array of themselves"
+      (let [nest (fn [tree]
+                   (reduce (fn [tree type]
+                             ["a" {:type type :child tree}])
+                           [tree]
+                           ["foo" "bar" "foo" "bar" "foo" "bar"]))]
+        (is (= (nest {:type "baz"
+                      :child "b"
+                      :quu_quux 1
+                      :fizz_buzz "c"})
+               (unalias-data (registry tree) (nest {:type "baz"
+                                                    :child "b"
+                                                    :quu-quux 1
+                                                    :fizz-buzz "c"})))))))
 
   (testing "non-keyword keys"
     (is (= {"fooBar" "a"

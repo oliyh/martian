@@ -76,15 +76,29 @@
 
 (def ^:dynamic *visited-refs* #{})
 
+(defn- required-flag?
+  "Whether a parameter's own `required` value marks it as required. It's `true`
+   or the string \"true\"; on an object schema, `required` lists its keys."
+  [required]
+  (or (true? required) (= "true" required)))
+
 (defn- denormalise-object-properties [{:keys [required properties] :as s}]
   (map (fn [[parameter-name param]]
          (assoc param
                 :name parameter-name
                 :required? (or (when-not (= "object" (:type param))
-                                 (:required param))
+                                 (required-flag? (:required param)))
                                (and (coll? required)
                                     (contains? (set required) (name parameter-name))))))
        properties))
+
+(defn- keep-own-required
+  "Keeps the `param`'s own `required` flag as `required?`, since merging in its
+   `$ref` target replaces `required` with the target's list of required keys."
+  [param]
+  (cond-> param
+    (and (contains? param :required) (not (contains? param :required?)))
+    (assoc :required? (required-flag? (:required param)))))
 
 ;; ---------------------------------------------------------------------------
 ;; Schema construction — walking OpenAPI/Swagger specs via the backend.
@@ -105,9 +119,7 @@
   [ref-lookup parameters backend]
   (map (fn [{:keys [name required required?] :as param}]
          {:key (keyword name)
-          :required? (boolean (or required?
-                                  (= true required)
-                                  (= "true" required)))
+          :required? (boolean (or required? (required-flag? required)))
           :schema (make-schema ref-lookup param backend)})
        parameters))
 
@@ -142,22 +154,24 @@
        $ref
        (binding [*visited-refs* (conj *visited-refs* $ref)]
          (make-schema ref-lookup (-> (dissoc param :$ref)
+                                     (keep-own-required)
                                      (merge (resolve-ref-object param ref-lookup)))
                       backend))
 
        (:$ref schema)
        (binding [*visited-refs* (conj *visited-refs* (:$ref schema))]
          (make-schema ref-lookup (-> (dissoc param :schema)
+                                     (keep-own-required)
                                      (merge (resolve-ref-object schema ref-lookup)))
                       backend))
 
        :else
        (let [base-schema (cond
                            (= "array" type)
-                           (sb/seq-schema backend (schema-type ref-lookup (assoc items :required true) backend))
+                           (sb/seq-schema backend (schema-type ref-lookup (assoc items :required? true) backend))
 
                            (= "array" (:type schema))
-                           (sb/seq-schema backend (schema-type ref-lookup (assoc (:items schema) :required true) backend))
+                           (sb/seq-schema backend (schema-type ref-lookup (assoc (:items schema) :required? true) backend))
 
                            (= "object" type)
                            (make-object-schema ref-lookup param backend)
@@ -167,8 +181,9 @@
 
                            :else
                            (schema-type ref-lookup param backend))
-             maybe-wrapped (if (and (not required)
-                                    (not required?)
+             maybe-wrapped (if (and (if (contains? param :required?)
+                                      (not required?)
+                                      (not (required-flag? required)))
                                     (not= "array" type)
                                     (not= "array" (:type schema)))
                              (sb/maybe-schema backend base-schema)

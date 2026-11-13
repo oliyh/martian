@@ -307,6 +307,20 @@
                                              :required false
                                              :type "integer"}])))
 
+  (is (= {(s/optional-key :id) (s/maybe s/Int)}
+         (schema/schemas-for-parameters {} [{:name "id"
+                                             :in "path"
+                                             :required "false"
+                                             :type "integer"}])))
+
+  (is (= {(s/optional-key :id) (s/maybe s/Int)}
+         (schema/make-schema {} {:name "body"
+                                 :in "body"
+                                 :required true
+                                 :schema {:type "object"
+                                          :properties {:id {:type "integer"
+                                                            :required "false"}}}})))
+
   (let [body-param {:name "pet"
                     :in "body"
                     :required false
@@ -324,7 +338,24 @@
             (s/maybe {(s/optional-key :id) (s/maybe s/Int)
                       :name s/Str
                       (s/optional-key :tags) [s/Str]})}
-           (schema/schemas-for-parameters {:definitions definitions} [body-param])))))
+           (schema/schemas-for-parameters {:definitions definitions} [body-param]))))
+
+  (let [definitions {:Owner {:type "object"
+                             :required ["name"]
+                             :properties {:name {:type "string"}}}}
+        owner-param (fn [required]
+                      {:name "owner"
+                       :in "body"
+                       :required required
+                       :schema {:$ref "#/definitions/Owner"}})]
+    (is (= {(s/optional-key :owner) (s/maybe {:name s/Str})}
+           (schema/schemas-for-parameters {:definitions definitions} [(owner-param false)])))
+    (is (= {:owner {:name s/Str}}
+           (schema/schemas-for-parameters {:definitions definitions} [(owner-param true)])))
+    (testing "a parameter without its own `required` is optional, whatever its $ref target requires"
+      (is (= {(s/optional-key :owner) (s/maybe {:name s/Str})}
+             (schema/schemas-for-parameters {:definitions definitions}
+                                            [(dissoc (owner-param nil) :required)]))))))
 
 (deftest keys-test
   (testing "default params"
@@ -528,3 +559,22 @@
                                    (s/optional-key :pods) any?}
                         (s/optional-key :duration) any?}}
                 schema))))
+
+(deftest objects-with-own-required-keys-test
+  (let [object {:type "object"
+                :required ["x"]
+                :properties {:x {:type "string"}}}]
+    (is (= {:req {:x s/Str}
+            (s/optional-key :opt) (s/maybe {:x s/Str})
+            (s/optional-key :items) [{:x s/Str}]}
+           (schema/make-schema
+            {}
+            {:name "body"
+             :in "body"
+             :required true
+             :schema {:type "object"
+                      :required ["req"]
+                      :properties {:req object
+                                   :opt object
+                                   :items {:type "array"
+                                           :items object}}}})))))

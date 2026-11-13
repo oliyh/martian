@@ -16,17 +16,26 @@
    - Returns `nil` when there are no aliases at the given path."
   [backend schema cache interner path]
   (let [path' (if (vector? path) path (vec path))]
-    (or (get @cache path')
-        (let [m (sb/aliases-at backend schema path')
-              m' (when m
-                   (or (get @interner m)
-                       (-> interner
-                           (swap! #(if (contains? % m) % (assoc % m m)))
-                           (get m))))]
-          (swap! cache assoc path' m')
-          m'))))
+    (if-some [[_ m'] (find @cache path')]
+      m'
+      (let [m (sb/aliases-at backend schema path')
+            m' (when m
+                 (or (get @interner m)
+                     (-> interner
+                         (swap! #(if (contains? % m) % (assoc % m m)))
+                         (get m))))]
+        (swap! cache assoc path' m')
+        m'))))
 
-#?(:bb nil
+#?(:bb
+   ;; NB: On Babashka, `deftype` implements protocols only and `reify` takes
+   ;;     a single interface, so its registry is a bare `ILookup` instance.
+   (defn ->LazyRegistry [backend schema cache interner]
+     (reify clojure.lang.ILookup
+       (valAt [_ k]
+         (aliases-at backend schema cache interner k))
+       (valAt [_ k not-found]
+         (or (aliases-at backend schema cache interner k) not-found))))
 
    :clj
    (deftype LazyRegistry [backend schema cache interner]
@@ -49,52 +58,24 @@
      (-pr-writer [_ writer _opts]
        (-write writer (str "#LazyRegistry (cached " (count @cache) ")")))))
 
-(defn aliases-hash-map
-  "Eagerly computes the registry as a data structure for the given `schema`.
-
-   Produces a plain hash map with idiomatic keys (aliases) mappings per path
-   in a (possibly, deeply nested) `schema` for all its unqualified keys.
-
-   The result is then used with `alias-schema` and `unalias-data` functions."
-  ([schema]
-   (aliases-hash-map plumatic/backend schema))
-  ([backend schema]
-   ;; `key-paths` yields plain keys for every backend, so the backend-neutral
-   ;; `parameter-keys` helpers apply directly — no need to unwrap Plumatic's
-   ;; optional/required key wrappers here.
-   (reduce (fn [acc path]
-             (let [leaf (peek path)
-                   idiomatic-key (some-> leaf (parameter-keys/->idiomatic))]
-               (if (and idiomatic-key (not= leaf idiomatic-key))
-                 (update acc (parameter-keys/idiomatic-path (pop path)) assoc idiomatic-key leaf)
-                 acc)))
-           {}
-           (sb/key-paths backend schema))))
-
 (defn registry
   "Builds a lookupable registry of parameter alias maps for the given `schema`.
 
-  - On JVM/CLJS:
-    Returns an instance of a lazy registry.
+   Returns an instance of a lazy registry.
 
-    Aliases are computed on demand (via the backend's `aliases-at`), so
-    materializing massive alias maps upfront is avoided. Per-path results are
-    memoized within the registry. Identical alias maps are shared to cut
-    memory usage.
+   Aliases are computed on demand (via the backend's `aliases-at`), so
+   materializing massive alias maps upfront is avoided. Per-path results are
+   memoized within the registry. Identical alias maps are shared to cut memory
+   usage.
 
-    A returned value implements `ILookup` and is indexed by \"idiomatic paths\".
-    Looking up a path gives an alias map for that level, mapping idiomatic keys
-    (kebab-case, unqualified) to their original schema keys.
-
-  - On Babashka:
-    Returns a plain hash map registry that is computed eagerly via the
-    backend's `key-paths`."
+   A returned value implements `ILookup` and is indexed by \"idiomatic paths\".
+   Looking up a path gives an alias map for that level, mapping idiomatic keys
+   (kebab-case, unqualified) to their original schema keys."
   ([schema]
    (registry plumatic/backend schema))
   ([backend schema]
    (when schema
-     #?(:bb      (aliases-hash-map backend schema)
-        :default (new LazyRegistry backend schema (atom {}) (atom {}))))))
+     (->LazyRegistry backend schema (atom {}) (atom {})))))
 
 ;; TODO: An alias for backward compatibility. Remove later on.
 (def parameter-aliases registry)

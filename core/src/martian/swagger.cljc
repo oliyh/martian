@@ -38,7 +38,7 @@
                                 (= "default" (name status)) 'default
                                 :else (parse-long (name status)))]]
     {:status (sb/eq-schema backend status-code)
-     :body   (schema/make-schema ref-lookup (assoc (:schema response) :required true) backend)}))
+     :body   (schema/make-schema ref-lookup (assoc (:schema response) :required? true) backend)}))
 
 (defn swagger->handlers
   "Converts a Swagger JSON spec into a sequence of handler maps.

@@ -132,7 +132,7 @@
                         :content-map {:binary (binary-content tmp-file "binary")}}}
                 (martian/response-for m :upload-data {:binary tmp-file-is})))))
       (testing "byte array"
-        (let [byte-arr (String/.getBytes "Clojure!")]
+        (let [byte-arr (.getBytes "Clojure!")]
           (is (match?
                 {:multipart [{:name "binary" :content byte-arr}]
                  :headers without-content-type?}
@@ -233,7 +233,7 @@
                         :content-map {:custom (binary-content tmp-file "input-stream")}}}
                 (martian/response-for m :upload-data {:custom is-body})))))
       (testing "ContentBody > ByteArrayBody"
-        (let [byte-arr (String/.getBytes "Clojure!")
+        (let [byte-arr (.getBytes "Clojure!")
               byte-arr-body (ByteArrayBody. byte-arr "byte-array")]
           (is (match?
                 {:multipart [{:name "custom" :content byte-arr-body}]

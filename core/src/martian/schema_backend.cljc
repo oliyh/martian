@@ -56,9 +56,6 @@
   ;; An 'idiomatic' key is the kebab-case form of a renamable key (an unqualified
   ;; keyword or string); other keys are left untouched. See
   ;; `martian.parameter-keys/->idiomatic`.
-  (key-paths [backend schema]
-    "Returns a sequence of key paths (vectors of plain keys) covering the
-     schema itself (the [] path) and every map entry reachable within it.")
   (aliases-at [backend schema idiomatic-path]
     "Returns a map of idiomatic keys to original keys for the map level at
      idiomatic-path within schema, or nil when there are none.")

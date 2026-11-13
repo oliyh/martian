@@ -1,4 +1,4 @@
-version: 2
+version: 2.1
 jobs:
   build:
     docker:
@@ -19,3 +19,8 @@ jobs:
       - run: |
           cd core
           bb test:bb
+
+workflows:
+  test:
+    jobs:
+      - build

@@ -12,14 +12,14 @@
 (def input-stream? #(instance? InputStream %))
 
 (defn create-temp-file ^File []
-  (let [tmp-file (Path/.toFile
+  (let [tmp-file (.toFile
                    (Files/createTempFile "martian" nil (make-array FileAttribute 0)))]
     (spit tmp-file (str "Random content: " (random-uuid)))
     tmp-file))
 
 (defn binary-content
   ([file]
-   (binary-content file (File/.getName file)))
+   (binary-content file (.getName ^File file)))
   ([file filename]
    (let [content (slurp file)]
      {:filename filename
@@ -35,9 +35,9 @@
       (assoc
         io/default-streams-impl
         :make-input-stream (fn [^Path path opts]
-                             (io/make-input-stream (Path/.toFile path) opts))
+                             (io/make-input-stream (.toFile ^Path path) opts))
         :make-output-stream (fn [^Path path opts]
-                              (io/make-output-stream (Path/.toFile path) opts))))))
+                              (io/make-output-stream (.toFile ^Path path) opts))))))
 
 (defn without-content-type? [headers]
   (not (contains? headers "Content-Type")))
