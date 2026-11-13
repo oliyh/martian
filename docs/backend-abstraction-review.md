@@ -112,22 +112,13 @@ key is supplied as `nil`.
 
 ## MEDIUM
 
-### M1 — `aliases-hash-map` is backend-generic but reaches into Plumatic's `schema-tools` (decomplection leak) — ✅ Done
-
-`parameter_aliases.cljc` (the Babashka registry path) takes a `backend`, calls
-`sb/key-paths backend`, but then idiomatizes with `schema-tools/->idiomatic` and
-`schema-tools/idiomatic-path` — Plumatic-specific helpers that unwrap `s/optional-key`
-wrappers. For Malli on Babashka this happens to work only because Malli's key-paths are
-already plain keys (the unwrap is a no-op). That's exactly the coupling this branch set out
-to remove: a generic function silently depending on one backend's representation. Use the
-neutral `parameter-keys/->idiomatic` / `idiomatic-path` here (they operate on plain keys),
-so the babashka path is truly backend-agnostic.
+### M1 — superseded
 
 ### M2 — The `SchemaBackend` protocol conflates four concerns (design / simplicity)
 
-21 methods spanning construction (`leaf/any/int/map/seq/maybe/eq/constrained/with-default/
+18 methods spanning construction (`leaf/any/int/map/seq/maybe/eq/constrained/with-default/
 wrap-collection-format`), introspection (`map-schema-keys/merge-map-schemas/eq-schema-value`),
-aliasing (`key-paths/aliases-at/alias-schema`), and runtime (`coerce/check/validate`). It's
+aliasing (`aliases-at/alias-schema`), and runtime (`coerce/check/validate`). It's
 cohesive ("everything about one schema library") and beautifully documented, so this is a
 judgement call, not a defect — but from a decomplection standpoint these are four
 independent capabilities braided into one interface. A partial implementer (e.g. someone who
