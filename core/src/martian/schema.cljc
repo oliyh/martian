@@ -52,12 +52,21 @@
     (stc/or-matcher stc/default-matcher coercion-matcher)
     coercion-matcher))
 
+(defn- map-filter-matcher
+  "Like `stc/map-filter-matcher`, but an empty map schema, which allows no keys,
+   drops all of them too, as any other map schema drops the keys it doesn't
+   allow, instead of failing coercion."
+  [schema]
+  (if (and (map? schema) (not (record? schema)) (empty? schema))
+    (fn [x] (if (map? x) {} x))
+    (stc/map-filter-matcher schema)))
+
 (defn ->map-matcher
   "Builds a version of `stc/map-filter-matcher` that is optional and takes
    into account a custom `coercion-matcher` that may/not happen afterwards."
   [coercion-matcher]
   (fn [schema]
-    (let [f (stc/map-filter-matcher schema)
+    (let [f (map-filter-matcher schema)
           g (coercion-matcher schema)]
       (fn [x]
         (cond-> x
@@ -188,14 +197,21 @@
                                     (contains? (set required) (name parameter-name))))))
        properties))
 
+(defn free-form-object?
+  "Whether Martian reads the object `schema` as free-form, allowing any key: it
+   lists no properties, and either says nothing about others or defines them
+   with `allOf`, `anyOf`, `oneOf` or `patternProperties`, which Martian doesn't
+   translate."
+  [schema]
+  (not (or (contains? schema :properties)
+           (and (contains? schema :additionalProperties)
+                (not-any? #(contains? schema %) [:allOf :anyOf :oneOf :patternProperties])))))
+
 (defn- make-object-schema [ref-lookup {:keys [additionalProperties] :as schema}]
-  ;; It's possible for an 'object' to omit properties and
-  ;; additionalProperties. If this is the case - anything is allowed.
-  (if (or (contains? schema :properties)
-          (contains? schema :additionalProperties))
+  (if (free-form-object? schema)
+    {s/Any s/Any}
     (cond-> (schemas-for-parameters ref-lookup (denormalise-object-properties schema))
-      additionalProperties (assoc s/Any s/Any))
-    {s/Any s/Any}))
+      additionalProperties (assoc s/Any s/Any))))
 
 (defn- wrap-collection-format [array-schema collection-format]
   (if (and collection-format (not= "multi" collection-format) (= [s/Str] array-schema))
