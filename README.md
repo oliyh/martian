@@ -49,6 +49,7 @@ same way, ensuring that your response handling code is also correct. Examples ar
 5. [No Swagger, no problem](#no-swagger-no-problem)
 6. [Handlers validation](#handlers-validation)
 7. [Idiomatic parameters](#idiomatic-parameters)
+   - [Body parameters](#body-parameters)
 8. [Parameter defaults](#parameter-defaults)
 9. [Route name sources](#route-name-sources)
 10. [Built-in media types](#built-in-media-types)
@@ -288,16 +289,31 @@ code looks neater but preserves the mapping so that the API is passed the correc
   ;;              :LastName  "McDogFace"}}
 ```
 
-**Body parameters** may be supplied in three ways: with an alias, destructured or as an explicit value.
+### Body parameters
+
+A body may be supplied in 3 ways: under its name, flat or as an explicit value.
 
 ```clojure
 (require '[martian.core :as martian])
 
 ;; the following three forms are equivalent
-(request-for m :create-pet {:pet {:pet-id 1 :first-name "Doggy" :last-name "McDogFace"}})           ;; the :pet alias
-(request-for m :create-pet {:pet-id 1 :first-name "Doggy" :last-name "McDogFace"})                  ;; destructured
+(request-for m :create-pet {:pet {:pet-id 1 :first-name "Doggy" :last-name "McDogFace"}})           ;; under its name
+(request-for m :create-pet {:pet-id 1 :first-name "Doggy" :last-name "McDogFace"})                  ;; flat
 (request-for m :create-pet {::martian/body {:pet-id 1 :first-name "Doggy" :last-name "McDogFace"}}) ;; explicit value
 ```
+
+- **Under its name.** The body's name is the key of the route's `:body-schema`, here `:pet`: the `name` of a Swagger
+  body parameter, or `:body` for an OpenAPI request body. Its idiomatic alias works too, e.g. `:pet` for `Pet`.
+- **Flat.** The body's fields are given among the other params, and Martian builds the body from them: from all the
+  params but Martian's own, such as `::martian/request`, and the ones that only another part of the request declares,
+  such as a path or query param. A param that the body declares too, such as an `id` in both the path and the body,
+  goes to both. When Martian can't tell which keys the body declares, e.g. for a body defined with `allOf`, which it
+  doesn't translate, the body takes the other parts' params too. A body that isn't an object, such as an array, can't
+  be given flat.
+- **Explicit value.** `::martian/body` holds the body whatever its name, so the caller doesn't need to know it.
+
+Martian takes `::martian/body` first, then the body's name, and builds a flat body only when neither is given.
+Either way, the body is then coerced against its schema, like any other param.
 
 ## Parameter defaults
 

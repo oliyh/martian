@@ -6,6 +6,7 @@
             [martian.encoders :as encoders]
             [martian.encoding :as encoding]
             [martian.schema :as schema]
+            [martian.schema-tools :as schema-tools]
             [martian.utils :as utils]
             [schema.core :as s]
             [tripod.context :as tc]))
@@ -70,15 +71,57 @@
    :enter (fn [{:keys [params handler opts] :as ctx}]
             (set-params ctx :query-params (coerce-data handler :query-schema params opts)))})
 
+(defn- map-schema
+  "Returns the map schema that `schema` is, or that it wraps, e.g. in
+   `s/maybe`, `st/default`, `s/named` or `s/constrained`, if any."
+  [schema]
+  (cond
+    (and (map? schema) (not (record? schema))) schema
+    (and (record? schema) (contains? schema :schema)) (recur (:schema schema))))
+
+(defn- declared-params
+  "Returns the keys that map `schema` declares, in both forms a param can be
+   given in: its own key and its idiomatic alias. Returns nil when Martian
+   can't tell them, as `schema` isn't a map or has only generic keys, such as
+   `s/Any`."
+  [schema]
+  (when-some [schema (map-schema schema)]
+    (let [ks (filter #(or (keyword? %) (string? %) (s/specific-key? %))
+                     (keys schema))]
+      (when (or (seq ks) (empty? schema))
+        (into #{}
+              (comp (mapcat (fn [k]
+                              [(schema-tools/explicit-key k)
+                               (schema-tools/->idiomatic k)]))
+                    (remove nil?))
+              ks)))))
+
+(defn- martian-params
+  "Returns Martian's own params, such as `:martian.core/request`."
+  [params]
+  (filter #(and (keyword? %) (= "martian.core" (namespace %))) (keys params)))
+
+(defn- flat-body-params
+  "Returns the `params` given flat for the body: all of them but Martian's own
+   and, when Martian can tell which keys the body declares, the ones that only
+   other destinations declare."
+  [handler params body-schema]
+  (let [own (declared-params body-schema)
+        others (when own
+                 (into #{}
+                       (mapcat #(declared-params (get handler %)))
+                       [:path-schema :query-schema :form-schema :headers-schema]))]
+    (apply dissoc params (concat (remove own others) (martian-params params)))))
+
 (def set-body-params
   {:name ::body-params
    :enter (fn [{:keys [params handler opts] :as ctx}]
-            (if-let [[body-key] (first (:body-schema handler))]
+            (if-let [[body-key body-schema] (first (:body-schema handler))]
               (let [body-key (s/explicit-schema-key body-key)
                     body-params (or (:martian.core/body params)
                                     (get params body-key)
                                     (get params (->kebab-case-keyword body-key))
-                                    params)]
+                                    (flat-body-params handler params body-schema))]
                 (set-params ctx :body (get (coerce-data handler :body-schema {body-key body-params} opts) body-key)))
               ctx))})
 
