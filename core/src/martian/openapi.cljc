@@ -98,8 +98,7 @@
              "array"   [(openapi->schema (:items schema) components seen-set)]
              "object"  (let [required? (set (:required schema))
                              {:keys [additionalProperties properties]} schema]
-                         (if (or (contains? schema :properties)
-                                 additionalProperties)
+                         (if-not (schema/free-form-object? schema)
                            (into (if additionalProperties
                                    {s/Any s/Any}
                                    {})

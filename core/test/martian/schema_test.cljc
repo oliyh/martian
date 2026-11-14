@@ -399,6 +399,13 @@
               :schema {:$ref "#/definitions/Pet"}}])))))
 
 (deftest coerce-data-test
+  (testing "a map that allows no keys drops them all,
+            as any map drops the keys it doesn't allow"
+    (is (= {} (schema/coerce-data {} {:a 1})))
+    (is (= {:m {} :n {:a "x"}}
+           (schema/coerce-data {:m {} :n {:a s/Str}}
+                               {:m {:x 1} :n {:a "x" :b 1}}))))
+
   (testing "maps"
     (let [data {:a "1" :b ["1" "2"] :c 3}]
       (is (= {:a 1

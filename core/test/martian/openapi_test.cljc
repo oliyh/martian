@@ -1,6 +1,7 @@
 (ns martian.openapi-test
   (:require [clojure.test :refer [deftest is testing]]
             [martian.openapi :refer [base-url openapi->handlers]]
+            [martian.schema :as schema]
             [martian.test-helpers #?@(:clj  [:refer [json-resource yaml-resource]]
                                       :cljs [:refer-macros [json-resource yaml-resource]])]
             [schema-tools.core :as st]
@@ -100,11 +101,18 @@
                (dissoc :openapi-definition))))))
 
 (deftest jira-openapi-v3-test
-  (is (= 410
-         (-> jira-openapi-v3-json
-             (openapi->handlers {:encodes ["application/json"]
-                                 :decodes ["application/json"]})
-             count))))
+  (let [handlers (openapi->handlers jira-openapi-v3-json {:encodes ["application/json"]
+                                                          :decodes ["application/json"]})]
+    (is (= 410 (count handlers)))
+
+    (testing "an object with `oneOf` and `additionalProperties: false` stays open"
+      (is (= {(s/optional-key :defaultValues) [{s/Any s/Any}]}
+             (->> handlers
+                  (filter #(= :set-default-values (:route-name %)))
+                  first
+                  :body-schema
+                  vals
+                  first))))))
 
 (deftest reffed-params-test
   (let [openapi-json
@@ -272,6 +280,54 @@
                             :required ["name"]
                             :properties {:name {:type "string"}
                                          :age {:type "integer"}}}))))))
+
+(deftest additional-properties-both-translators-test
+  (let [openapi (fn [schema]
+                  (let [[handler] (openapi->handlers
+                                   {:paths {(keyword "/things")
+                                            {:post {:operationId "create-thing"
+                                                    :requestBody {:required true
+                                                                  :content {:application/json {:schema schema}}}}}}
+                                    :components {:schemas {:Empty {:type "object" :additionalProperties false}}}}
+                                   {:encodes ["application/json"]
+                                    :decodes ["application/json"]})]
+                    (get-in handler [:body-schema :body])))
+        swagger (fn [schema]
+                  (schema/make-schema {:definitions {:Empty {:type "object" :additionalProperties false}}}
+                                      {:in "body" :name "body" :required true :schema schema}))
+        listing (fn [& kvs] (apply assoc {:type "object" :required ["name"] :properties {:name {:type "string"}}} kvs))
+        composed (fn [k] {:type "object" :additionalProperties false k [{:type "object" :properties {:a {:type "string"}}}]})]
+    (doseq [[description schema expected]
+            [["`false` and no properties allows no keys"
+              {:type "object" :additionalProperties false} {}]
+             ["`false` and properties allows only those"
+              (listing :additionalProperties false) {:name s/Str}]
+             ["empty properties allow no keys, whatever `additionalProperties` says"
+              {:type "object" :properties {}} {}]
+             ["" {:type "object" :properties {} :additionalProperties false} {}]
+             ["nothing said and no properties allows any keys"
+              {:type "object"} {s/Any s/Any}]
+             ["`true` and no properties allows any keys"
+              {:type "object" :additionalProperties true} {s/Any s/Any}]
+             ["a schema and no properties allows any keys"
+              {:type "object" :additionalProperties {:type "string"}} {s/Any s/Any}]
+             ["" {:type "object" :additionalProperties {}} {s/Any s/Any}]
+             ["`true` and properties allows those and any other keys"
+              (listing :additionalProperties true) {:name s/Str s/Any s/Any}]
+             ["`allOf`, `anyOf`, `oneOf` and `patternProperties`, which aren't translated, keep it open"
+              (composed :allOf) {s/Any s/Any}]
+             ["" (composed :anyOf) {s/Any s/Any}]
+             ["" (composed :oneOf) {s/Any s/Any}]
+             ["" {:type "object" :additionalProperties false :patternProperties {:x {:type "string"}}} {s/Any s/Any}]
+             ["a nested object that allows no keys"
+              {:type "object" :required ["m"] :properties {:m {:type "object" :additionalProperties false}}} {:m {}}]]
+            [translator-name translate] [["OpenAPI" openapi] ["Swagger" swagger]]]
+      (testing (str translator-name ": " description)
+        (is (= expected (translate schema)) (pr-str schema))))
+
+    (testing "a `$ref` to an object that allows no keys"
+      (is (= {} (openapi {:$ref "#/components/schemas/Empty"})))
+      (is (= {} (swagger {:$ref "#/definitions/Empty"}))))))
 
 (deftest status-nXX-test
   (let [oas-for (fn oas-for [n]
