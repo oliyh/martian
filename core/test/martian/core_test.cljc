@@ -684,3 +684,188 @@
            (martian/response-for dev-mode-martian :load-pet {:id 123})
            (martian/response-for (constantly dev-mode-martian) :load-pet {:id 123})
            (martian/response-for #'dev-mode-martian :load-pet {:id 123})))))
+
+(def flat-body-definition
+  (let [any-content-type (keyword "*/*")]
+    {:openapi "3.0.0"
+     :paths {(keyword "/open/{id}")   {:put {:operationId "update-open"
+                                             :parameters [{:name "id" :in "path" :required true
+                                                           :schema {:type "integer"}}
+                                                          {:name "q" :in "query" :schema {:type "string"}}
+                                                          {:name "X-Request-Id" :in "header" :schema {:type "string"}}]
+                                             :requestBody {:required true
+                                                           :content {any-content-type {:schema {:type "object"
+                                                                                                :additionalProperties true
+                                                                                                :properties {:name {:type "string"}}}}}}
+                                             :responses {:200 {}}}}
+             (keyword "/shared/{id}") {:put {:operationId "update-shared"
+                                             :parameters [{:name "id" :in "path" :required true
+                                                           :schema {:type "integer"}}]
+                                             :requestBody {:required true
+                                                           :content {any-content-type {:schema {:type "object"
+                                                                                                :properties {:id {:type "integer"}
+                                                                                                             :name {:type "string"}}}}}}
+                                             :responses {:200 {}}}}
+             (keyword "/closed/{id}") {:put {:operationId "update-closed"
+                                             :parameters [{:name "id" :in "path" :required true
+                                                           :schema {:type "integer"}}]
+                                             :requestBody {:required true
+                                                           :content {any-content-type {:schema {:type "object"
+                                                                                                :properties {:name {:type "string"}}}}}}
+                                             :responses {:200 {}}}}}}))
+
+(deftest flat-body-params-test
+  (let [m (martian/bootstrap-openapi "https://api.org" flat-body-definition)]
+    (testing "an open body takes no param that another destination declares"
+      (is (= {:method :put
+              :url "https://api.org/open/1"
+              :query-params {:q "x"}
+              :headers {"X-Request-Id" "r-1" "X-Extra" "1"}
+              :body {:name "n" :extra 1}}
+             (martian/request-for m :update-open
+                                  {:id 1 :q "x" :x-request-id "r-1" :name "n" :extra 1
+                                   ::martian/request {:headers {"X-Extra" "1"}}}))))
+
+    (testing "a param that the body declares too goes to both"
+      (is (= {:method :put
+              :url "https://api.org/shared/1"
+              :body {:id 1 :name "n"}}
+             (martian/request-for m :update-shared {:id 1 :name "n"}))))
+
+    (testing "a closed body takes only the params it declares"
+      (is (= {:name "n"}
+             (:body (martian/request-for m :update-closed {:id 1 :name "n" :extra 1})))))))
+
+(def flat-body-cases-definition
+  (let [route (fn [operation-id params body]
+                {:put {:operationId operation-id
+                       :parameters params
+                       :requestBody {:required true :content {(keyword "*/*") {:schema body}}}
+                       :responses {:200 {}}}})
+        path (fn [n] {:name n :in "path" :required true :schema {:type "integer"}})
+        object (fn [& kvs] (apply assoc {:type "object"} kvs))]
+    {:openapi "3.0.0"
+     :paths {(keyword "/a/{petId}") (route "open-alias"
+                                           [(path "petId")
+                                            {:name "q" :in "query" :schema {:type "string"}}
+                                            {:name "X-Request-Id" :in "header" :schema {:type "string"}}]
+                                           (object :properties {:name {:type "string"}} :additionalProperties true))
+             (keyword "/b/{id}") (route "open-shared" [(path "id")]
+                                        (object :properties {:id {:type "integer"} :name {:type "string"}}
+                                                :additionalProperties true))
+             (keyword "/c/{petId}") (route "closed-shared-alias" [(path "petId")]
+                                           (object :properties {:petId {:type "integer"} :name {:type "string"}}))
+             (keyword "/d/{petId}") (route "open-shared-alias" [(path "petId")]
+                                           (object :properties {:petId {:type "integer"} :name {:type "string"}}
+                                                   :additionalProperties true))
+             (keyword "/e/{id}") (route "nullable" [(path "id") {:name "q" :in "query" :schema {:type "string"}}]
+                                        (object :nullable true :additionalProperties true
+                                                :properties {:id {:type "integer"} :name {:type "string"}}))
+             (keyword "/f/{id}") (route "defaulted" [(path "id") {:name "q" :in "query" :schema {:type "string"}}]
+                                        (object :additionalProperties true
+                                                :properties {:id {:type "integer"} :name {:type "string"}}
+                                                :default {:name "dflt"}))
+             (keyword "/g/{id}") (route "all-of" [(path "id")]
+                                        {:allOf [(object :required ["id"]
+                                                         :properties {:id {:type "integer"} :name {:type "string"}})
+                                                 (object :properties {:tag {:type "string"}})]})
+             (keyword "/h/{id}") (route "schemaless"
+                                        [(path "id") {:name "q" :in "query" :schema {:type "string"}}]
+                                        {})}}))
+
+(def flat-body-cases-swagger-definition
+  {:paths {(keyword "/s/{id}") {:put {:operationId "optional-body"
+                                      :parameters [{:name "id" :in "path" :type "integer" :required true}
+                                                   {:name "Thing" :in "body"
+                                                    :schema {:type "object"
+                                                             :properties {:id {:type "integer"}
+                                                                          :name {:type "string"}}
+                                                             :additionalProperties true}}
+                                                   {:name "q" :in "query" :type "string"}]
+                                      :responses {:200 {}}}}}})
+
+(deftest flat-body-params-cases-test
+  (let [m (martian/bootstrap-openapi "https://api.org" flat-body-cases-definition)
+        request (fn [route-name params] (martian/request-for m route-name params))]
+    (testing "a param given in its own key form or as its idiomatic alias stays out of an open body"
+      (doseq [params [{:pet-id 1 :q "x" :x-request-id "r" :name "n" :extra 1}
+                      {:petId 1 :q "x" :X-Request-Id "r" :name "n" :extra 1}
+                      {"petId" 1 "q" "x" "X-Request-Id" "r" "name" "n" "extra" 1}]]
+        (is (= {:method :put
+                :url "https://api.org/a/1"
+                :query-params {:q "x"}
+                :headers {"X-Request-Id" "r"}
+                :body {:name "n" :extra 1}}
+               (request :open-alias params))
+            (pr-str params))))
+
+    (testing "a param that an open body declares too goes to both"
+      (is (= {:method :put :url "https://api.org/b/1" :body {:id 1 :name "n" :extra 1}}
+             (request :open-shared {:id 1 :name "n" :extra 1}))))
+
+    (testing "a shared param given as its idiomatic alias goes to both"
+      (is (= {:method :put :url "https://api.org/c/1" :body {:petId 1 :name "n"}}
+             (request :closed-shared-alias {:pet-id 1 :name "n"})))
+      (is (= {:method :put :url "https://api.org/d/1" :body {:petId 1 :name "n" :extra 1}}
+             (request :open-shared-alias {:pet-id 1 :name "n" :extra 1}))))
+
+    (testing "a body wrapped as nullable or with a default still declares its keys"
+      (doseq [route-name [:nullable :defaulted]]
+        (is (= {:query-params {:q "x"} :body {:id 1 :name "n" :extra 1}}
+               (select-keys (request route-name {:id 1 :q "x" :name "n" :extra 1}) [:query-params :body]))
+            (name route-name))))
+
+    (testing "a body whose keys Martian can't tell takes every param but Martian's own"
+      (is (= {:id 1 :name "n" :tag "t"} (:body (request :all-of {:id 1 :name "n" :tag "t"}))))
+      (is (= {:method :put
+              :url "https://api.org/h/1"
+              :query-params {:q "x"}
+              :headers {"X" "1"}
+              :body {:id 1 :q "x" :name "n"}}
+             (request :schemaless {:id 1 :q "x" :name "n" ::martian/request {:headers {"X" "1"}}}))))
+
+    (testing "`::martian/body` wins over the flat params, and a nil one leaves the body flat"
+      (is (= {:method :put
+              :url "https://api.org/a/1"
+              :query-params {:q "x"}
+              :body {:name "n" :extra 1 :q "inbody"}}
+             (request :open-alias {:pet-id 1 :q "x" :name "flat"
+                                   ::martian/body {:name "n" :extra 1 :q "inbody"}})))
+      (is (= {:name "n"} (:body (request :open-alias {:pet-id 1 :name "n" ::martian/body nil})))))))
+
+(deftest flat-body-params-wrappers-test
+  (testing "an optional Swagger body, which is `s/maybe`, still declares its keys"
+    (let [m (martian/bootstrap-swagger "https://api.org" flat-body-cases-swagger-definition)]
+      (is (= {:query-params {:q "x"} :body {:id 1 :name "n" :extra 1}}
+             (select-keys (martian/request-for m :optional-body {:id 1 :q "x" :name "n" :extra 1})
+                          [:query-params :body])))))
+
+  (testing "a hand-written body in any wrapper still declares its keys"
+    (doseq [:let [thing {:id s/Int :name s/Str s/Keyword s/Any}]
+            [wrapper body-schema] [["st/default" (st/default thing {:id 0 :name "dflt"})]
+                                   ["s/named" (s/named thing "Thing")]
+                                   ["s/constrained" (s/constrained thing map?)]
+                                   ["nested s/maybe" (s/maybe (s/maybe thing))]]]
+      (let [m (martian/bootstrap "https://api.org" [{:route-name :put-thing
+                                                     :path-parts ["/things/" :id]
+                                                     :method :put
+                                                     :path-schema {:id s/Int}
+                                                     :query-schema {(s/optional-key :q) s/Str}
+                                                     :body-schema {:thing body-schema}}])]
+        (is (= {:query-params {:q "x"} :body {:id 1 :name "n" :extra 1}}
+               (select-keys (martian/request-for m :put-thing {:id 1 :q "x" :name "n" :extra 1})
+                            [:query-params :body]))
+            wrapper))))
+
+  (testing "form params stay out of a flat body"
+    (let [m (martian/bootstrap "https://api.org" [{:route-name :upload
+                                                   :path-parts ["/things/" :id]
+                                                   :method :put
+                                                   :path-schema {:id s/Int}
+                                                   :form-schema {(s/optional-key :upload) s/Str}
+                                                   :body-schema {:thing {:name s/Str s/Keyword s/Any}}}])]
+      (is (= {:method :put
+              :url "https://api.org/things/1"
+              :form-params {:upload "u"}
+              :body {:name "n" :extra 1}}
+             (martian/request-for m :upload {:id 1 :upload "u" :name "n" :extra 1}))))))
