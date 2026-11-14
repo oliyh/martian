@@ -1,27 +1,86 @@
 (ns martian.test
   (:require [martian.core :as martian]
             [martian.interceptors :as interceptors]
+            #?(:clj  [schema.core :as s]
+               :cljs [schema.core :as s :refer [EqSchema]])
             [schema-generators.generators :as g]
             [clojure.test.check.generators :as tcg]
             #?(:clj [tripod.context :as tc])
-            #?(:cljs [cljs.core.async :as a])))
+            #?(:cljs [cljs.core.async :as a]))
+  #?(:clj (:import [schema.core EqSchema])))
 
-(defn- status-range [from to]
-  (fn [{:keys [status]}]
-    (<= from (g/generate status) to)))
+(defn- exact-status
+  "Returns the status code that the `status` schema allows, if it's only one."
+  [status]
+  (when (instance? EqSchema status)
+    (let [code (:v status)]
+      (when (int? code) code))))
 
-(defn- filter-response-schema [response-type response-schemas]
-  (let [filter-fn (get {:random (constantly true)
-                        :success (status-range 200 399)
-                        :error (status-range 400 599)}
-                       response-type)]
-    (filter filter-fn response-schemas)))
+(defn- default-status?
+  "Whether the `status` schema is that of a `default` response: any value for
+   OpenAPI, or the symbol `default` for Swagger."
+  [status]
+  (or (= s/Any status)
+      (and (instance? EqSchema status) (= 'default (:v status)))))
 
-(defn- make-generator [response-type response-schemas]
-  (some->> response-schemas
-           (filter-response-schema response-type)
-           (map g/generator)
-           (tcg/one-of)))
+(defn- response-codes
+  "Returns the status codes that each of `response-schemas` covers, in order:
+   its exact code; the codes that its range, like `2XX`, or any other status
+   schema allows, but for the exact codes of other responses, which win over
+   a range; or, for `default`, the codes from 200 to 599 that no other response
+   covers."
+  [response-schemas]
+  (let [statuses (map :status response-schemas)
+        allowed  (map (fn [status]
+                        (cond
+                          (exact-status status)    [(exact-status status)]
+                          (default-status? status) nil
+                          :else                    (filter #(nil? (s/check status %)) (range 100 600))))
+                      statuses)
+        exact    (set (keep exact-status statuses))
+        covered  (set (apply concat allowed))]
+    (map (fn [status codes]
+           (cond
+             (exact-status status)    codes
+             (default-status? status) (remove covered (range 200 600))
+             :else                    (remove exact codes)))
+         statuses
+         allowed)))
+
+(defn- response-generator*
+  "Returns a generator of responses for a response schema, whose status is one
+   of `codes`, and whose body is nil if it has no body schema."
+  [codes {:keys [body] :as response-schema}]
+  (tcg/fmap (fn [[response status body']]
+              (cond-> (assoc response :status status)
+                (contains? response-schema :body) (assoc :body body')))
+            (tcg/tuple (g/generator (dissoc response-schema :status :body))
+                       (tcg/elements codes)
+                       (if (some? body) (g/generator body) (tcg/return nil)))))
+
+(def ^:private response-type-statuses
+  {:success [200 399]
+   :error   [400 599]})
+
+(defn- make-generator
+  "Returns a generator of the responses of `response-schemas` whose status can
+   be of `response-type`: `:success` (200-399), `:error` (400-599) or `:random`
+   (any). Throws if there are response schemas but none of them can."
+  [response-type response-schemas]
+  (let [[from to] (get response-type-statuses response-type)
+        generators (keep (fn [[response-schema codes]]
+                           (when-some [codes (seq (cond->> codes
+                                                    from (filter #(<= from % to))))]
+                             (response-generator* codes response-schema)))
+                         (map vector response-schemas (response-codes response-schemas)))]
+    (cond
+      (seq generators)
+      (tcg/one-of generators)
+
+      (seq response-schemas)
+      (throw (ex-info (str "No response can be generated with a " (name response-type) " status")
+                      {:response-type response-type
+                       :statuses (map :status response-schemas)})))))
 
 (defn- make-response [response-type response-schemas]
   (some-> (make-generator response-type response-schemas)
