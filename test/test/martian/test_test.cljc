@@ -329,7 +329,14 @@
 (deftest generated-bodies-test
   (testing "a response without a body gets a nil body"
     (is (= {:status 204 :body nil}
-           (first (generate (openapi-responses {:204 nil}) :success 1))))))
+           (first (generate (openapi-responses {:204 nil}) :success 1))))
+    (is (= {:status 204 :body nil}
+           (-> (martian/bootstrap-swagger "https://api.com"
+                                          {:paths {(keyword "/thing")
+                                                   {:get {:operationId "get-thing"
+                                                          :responses {:204 {:description "No body"}}}}}})
+               (generate :success 1)
+               first)))))
 
 (deftest generated-non-status-keys-test
   (testing "a response key that isn't a status, such as an extension, is never generated"
