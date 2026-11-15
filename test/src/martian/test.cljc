@@ -28,7 +28,8 @@
    its exact code; the codes that its range, like `2XX`, or any other status
    schema allows, but for the exact codes of other responses, which win over
    a range; or, for `default`, the codes from 200 to 599 that no other response
-   covers."
+   covers, with the success ones (200-399) only when no other response covers
+   any, as a `default` response usually describes errors."
   [response-schemas]
   (let [statuses (map :status response-schemas)
         allowed  (map (fn [status]
@@ -38,11 +39,13 @@
                           :else                    (filter #(nil? (s/check status %)) (range 100 600))))
                       statuses)
         exact    (set (keep exact-status statuses))
-        covered  (set (apply concat allowed))]
+        covered  (set (apply concat allowed))
+        success? #(<= 200 % 399)]
     (map (fn [status codes]
            (cond
              (exact-status status)    codes
-             (default-status? status) (remove covered (range 200 600))
+             (default-status? status) (cond->> (remove covered (range 200 600))
+                                        (some success? covered) (remove success?))
              :else                    (remove exact codes)))
          statuses
          allowed)))
