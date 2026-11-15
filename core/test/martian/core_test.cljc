@@ -421,7 +421,34 @@
                   :url          "http://example.com/some/id"
                   :query-params {:version 100}}
                  (martian/request-for m :test-route {:id      "id"
-                                                     :version 100}))))))))
+                                                     :version 100})))))))
+
+  (testing "an optional key"
+    (let [m (martian/bootstrap
+              "http://example.com"
+              [{:query-schema {(s/optional-key :version) (st/default s/Int 70)}
+                :route-name   :test-route
+                :method       :get
+                :path-parts   ["/some"]}]
+              {:use-defaults? true})]
+
+      (testing "gets its default when missing"
+        (is (= {:method       :get
+                :url          "http://example.com/some"
+                :query-params {:version 70}}
+               (martian/request-for m :test-route {}))))
+
+      (testing "gets its default when nil"
+        (is (= {:method       :get
+                :url          "http://example.com/some"
+                :query-params {:version 70}}
+               (martian/request-for m :test-route {:version nil}))))
+
+      (testing "keeps a value that is present"
+        (is (= {:method       :get
+                :url          "http://example.com/some"
+                :query-params {:version 100}}
+               (martian/request-for m :test-route {:version 100})))))))
 
 (deftest kebab-mapping-test
   (let [m (martian/bootstrap "https://camels.org"

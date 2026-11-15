@@ -5,6 +5,7 @@
             [schema.coerce :as sc]
             [schema-tools.core :as st]
             [schema-tools.coerce :as stc]
+            [schema-tools.impl :as sti]
             [clojure.string :as string]
             [martian.parameter-aliases :refer [unalias-data]])
   #?(:clj (:import [schema.core AnythingSchema Maybe EnumSchema EqSchema OptionalKey])))
@@ -43,13 +44,32 @@
                   +extra-string-coercions+
                   string-enum-matcher))
 
+(defn- default-key-matcher
+  "Like `stc/default-key-matcher`, but fills a missing key's default under the
+   key itself. The stock matcher uses the schema key, so an optional key went
+   in as its `(s/optional-key k)` wrapper, which coercion rejected."
+  [schema]
+  (when (and (map? schema) (not (record? schema)))
+    (let [defaults (reduce-kv (fn [acc k v]
+                                (if (and (s/specific-key? k) (sti/default? v))
+                                  (assoc acc (s/explicit-schema-key k) (:value v))
+                                  acc))
+                              {}
+                              schema)]
+      (when (seq defaults)
+        (fn [x] (merge defaults x))))))
+
+(defn- default-matcher [schema]
+  (or (default-key-matcher schema)
+      (stc/default-value-matcher schema)))
+
 (defn build-coercion-matcher
   [{:keys [coercion-matcher use-defaults?]
     :or   {coercion-matcher default-coercion-matcher}}]
   (when (nil? coercion-matcher)
     (throw (ex-info "Coercion matcher must be a unary fn of schema" {})))
   (if use-defaults?
-    (stc/or-matcher stc/default-matcher coercion-matcher)
+    (stc/or-matcher default-matcher coercion-matcher)
     coercion-matcher))
 
 (defn ->map-matcher
