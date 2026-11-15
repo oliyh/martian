@@ -6,6 +6,17 @@
             [martian.test-helpers #?@(:clj [:refer [json-resource]]
                                       :cljs [:refer-macros [json-resource]])]))
 
+(deftest response-schemas-test
+  (let [[handler] (swagger/swagger->handlers
+                   {:paths {(keyword "/pets/{id}")
+                            {:delete {:operationId "delete-pet"
+                                      :responses {:200 {:description "The deleted pet"
+                                                        :schema {:type "string"}}
+                                                  :204 {:description "Deleted, no body"}}}}}})]
+    (is (= [{:status (s/eq 200) :body s/Str}
+            {:status (s/eq 204) :body nil}]
+           (:response-schemas handler)))))
+
 (deftest parameter-schemas-test
   (let [[get-handler]
         (swagger/swagger->handlers {"paths" {"/pets/{id}"
@@ -160,7 +171,7 @@
             (s/maybe {:operation (st/default (s/enum "=" "contains" "like" "startswith") "=")
                       :value s/Str})}},
           :route-name :phones,
-          :response-schemas [{:status (s/eq 'default), :body s/Any}]}
+          :response-schemas [{:status (s/eq 'default), :body nil}]}
 
          (->> (json-resource "swagger-issue-111.json")
               (swagger/swagger->handlers)
