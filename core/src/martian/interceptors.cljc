@@ -217,22 +217,26 @@
 
 (def default-coerce-response (coerce-response (encoders/default-encoders)))
 
+(defn- empty-body? [body]
+  (or (nil? body) (and (string? body) (str/blank? body))))
+
 (defn validate-response-body
   "Validate responses against the appropriate response schema.
-   Optional strict mode throws an error if it is invalid"
+   Optional strict mode throws an error if it is invalid: when no response
+   schema matches the status, or when the response has a body but the schema
+   of its status describes none."
   ([] (validate-response-body {:strict? false}))
   ([{:keys [strict?]}]
    {:name ::validate-response
     :leave (fn [{:keys [handler response] :as ctx}]
-             (if-let [body-schema (some (fn [schema]
-                                          (when-not (s/check (:status schema) (:status response))
-                                            (:body schema)))
-                                        (:response-schemas handler))]
-               (s/validate body-schema (:body response))
-               (when strict?
-                 (throw (ex-info (str "No response body schema found for status " (:status response))
-                                 {:response response
-                                  :response-schemas (:response-schemas handler)}))))
+             (let [matching (filter #(nil? (s/check (:status %) (:status response)))
+                                    (:response-schemas handler))]
+               (if-let [body-schema (some :body matching)]
+                 (s/validate body-schema (:body response))
+                 (when (and strict? (or (empty? matching) (not (empty-body? (:body response)))))
+                   (throw (ex-info (str "No response body schema found for status " (:status response))
+                                   {:response response
+                                    :response-schemas (:response-schemas handler)})))))
              ctx)}))
 
 (def prepare-content-types

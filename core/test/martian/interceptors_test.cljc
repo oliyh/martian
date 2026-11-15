@@ -356,4 +356,19 @@
     (testing "allows responses that aren't defined in non-strict mode"
       (is (happy? {:status 500
                    :body {:message "That did not go well"}}
-                  false)))))
+                  false))))
+
+  (let [handler {:response-schemas [{:status (s/eq 200) :body s/Str}
+                                    {:status (s/eq 204) :body nil}]}
+        happy? (fn [response strict?]
+                 (let [ctx {:response response :handler handler}]
+                   (= ctx ((:leave (i/validate-response-body {:strict? strict?})) ctx))))]
+    (testing "a response whose schema describes no body expects none, even in strict mode"
+      (doseq [strict? [false true]
+              body [nil ""]]
+        (is (happy? {:status 204 :body body} strict?) (pr-str [strict? body]))))
+
+    (testing "a body where the schema describes none is an error in strict mode only"
+      (is (happy? {:status 204 :body "unexpected"} false))
+      (is (thrown-with-msg? Throwable #"No response body schema found for status 204"
+                            (happy? {:status 204 :body "unexpected"} true))))))
