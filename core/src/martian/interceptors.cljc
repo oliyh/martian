@@ -8,8 +8,10 @@
             [martian.schema :as schema]
             [martian.schema-tools :as schema-tools]
             [martian.utils :as utils]
-            [schema.core :as s]
-            [tripod.context :as tc]))
+            #?(:clj  [schema.core :as s]
+               :cljs [schema.core :as s :refer [EqSchema]])
+            [tripod.context :as tc])
+  #?(:clj (:import [schema.core EqSchema])))
 
 #?(:bb
    ;; reflection issue in babashka -- TODO, submit patch upstream?
@@ -220,21 +222,38 @@
 (defn- empty-body? [body]
   (or (nil? body) (and (string? body) (str/blank? body))))
 
+(defn- response-schema-for
+  "Returns the one of `response-schemas` that `status` belongs to: the one with
+   that exact code, else one whose range covers it, else `default`, as OpenAPI
+   ranks them."
+  [response-schemas status]
+  (->> response-schemas
+       (filter #(nil? (s/check (:status %) status)))
+       (sort-by #(cond
+                   (instance? EqSchema (:status %)) 0
+                   (= s/Any (:status %))            2
+                   :else                            1))
+       (first)))
+
 (defn validate-response-body
-  "Validate responses against the appropriate response schema.
-   Optional strict mode throws an error if it is invalid: when no response
+  "Validate responses against the appropriate response schema, the one of
+   the response's status, which expects no body if it describes none.
+
+   Optional 'strict mode' throws an error if it is invalid: when no response
    schema matches the status, or when the response has a body but the schema
    of its status describes none."
   ([] (validate-response-body {:strict? false}))
   ([{:keys [strict?]}]
    {:name ::validate-response
     :leave (fn [{:keys [handler response] :as ctx}]
-             (let [matching (filter #(nil? (s/check (:status %) (:status response)))
-                                    (:response-schemas handler))]
-               (if-let [body-schema (some :body matching)]
+             (let [response-schema (response-schema-for (:response-schemas handler)
+                                                        (:status response))]
+               (if-let [body-schema (:body response-schema)]
                  (s/validate body-schema (:body response))
-                 (when (and strict? (or (empty? matching) (not (empty-body? (:body response)))))
-                   (throw (ex-info (str "No response body schema found for status " (:status response))
+                 (when (and strict? (or (nil? response-schema)
+                                        (not (empty-body? (:body response)))))
+                   (throw (ex-info (str "No response body schema found for status "
+                                        (:status response))
                                    {:response response
                                     :response-schemas (:response-schemas handler)})))))
              ctx)}))

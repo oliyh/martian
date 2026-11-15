@@ -371,4 +371,22 @@
     (testing "a body where the schema describes none is an error in strict mode only"
       (is (happy? {:status 204 :body "unexpected"} false))
       (is (thrown-with-msg? Throwable #"No response body schema found for status 204"
-                            (happy? {:status 204 :body "unexpected"} true))))))
+                            (happy? {:status 204 :body "unexpected"} true)))))
+
+  (let [happy? (fn [response-schemas response strict?]
+                 (let [ctx {:response response :handler {:response-schemas response-schemas}}]
+                   (= ctx ((:leave (i/validate-response-body {:strict? strict?})) ctx))))
+        default {:status s/Any :body {:message s/Str}}
+        range-2XX {:status (s/constrained s/Int #(<= 200 % 299)) :body s/Str}]
+    (testing "a status uses its own response, not a `default` with a body"
+      (doseq [strict? [false true]]
+        (is (happy? [{:status (s/eq 204) :body nil} default] {:status 204 :body nil} strict?))
+        (is (happy? [default {:status (s/eq 200) :body {:name s/Str}}] {:status 200 :body {:name "n"}} strict?)
+            "whatever their order")
+        (is (happy? [{:status (s/eq 204) :body nil} default] {:status 500 :body {:message "m"}} strict?))
+        (is (thrown-with-msg? Throwable #"Value does not match schema"
+                              (happy? [{:status (s/eq 204) :body nil} default] {:status 500 :body "oops"} strict?)))))
+
+    (testing "an exact code wins over the range that covers it"
+      (is (happy? [range-2XX {:status (s/eq 200) :body {:name s/Str}}] {:status 200 :body {:name "n"}} true))
+      (is (happy? [range-2XX {:status (s/eq 200) :body {:name s/Str}}] {:status 201 :body "created"} true)))))
