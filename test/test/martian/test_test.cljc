@@ -277,6 +277,17 @@
                 (filter (comp boolean? :body)
                         (generate (openapi-responses {:4XX "string" :default "boolean"}) :error 200)))))
 
+  (testing "`default` gives success codes only when no other response does"
+    (let [m (openapi-responses {:200 "integer" :default "boolean"})]
+      (is (every? #(and (= 200 (:status %)) (integer? (:body %))) (generate m :success 50)))
+      (is (every? #(<= 400 (:status %) 599)
+                  (filter (comp boolean? :body) (generate m :random 100)))))
+    (is (every? #(<= 400 (:status %) 599)
+                (filter (comp boolean? :body)
+                        (generate (openapi-responses {:2XX "string" :default "boolean"}) :random 100))))
+    (is (every? #(<= 200 % 399) (statuses (openapi-responses {:404 "string" :default "boolean"}) :success 50))
+        "With only error responses declared, `default` gives the success codes"))
+
   (testing "`default` alone stands for every response, success or error"
     (doseq [m [(openapi-responses {:default "string"})
                (martian/bootstrap-swagger "https://api.com"
@@ -331,5 +342,5 @@
                  (cond
                    (string? body)  (<= 200 status 299)
                    (integer? body) (= 404 status)
-                   (boolean? body) (and (<= 300 status 599) (not= 404 status)))))]
+                   (boolean? body) (and (<= 400 status 599) (not= 404 status)))))]
     (tct/assert-check (tc/quick-check 100 p))))
