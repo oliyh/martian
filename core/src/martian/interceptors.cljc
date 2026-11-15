@@ -241,21 +241,25 @@
 
    Optional 'strict mode' throws an error if it is invalid: when no response
    schema matches the status, or when the response has a body but the schema
-   of its status describes none."
+   of its status describes none.
+
+   A response without a status isn't validated, as it's no HTTP response, e.g.
+   the `{:error ...}` that an HTTP client gives for a failed connection."
   ([] (validate-response-body {:strict? false}))
   ([{:keys [strict?]}]
    {:name ::validate-response
     :leave (fn [{:keys [handler response] :as ctx}]
-             (let [response-schema (response-schema-for (:response-schemas handler)
-                                                        (:status response))]
-               (if-let [body-schema (:body response-schema)]
-                 (s/validate body-schema (:body response))
-                 (when (and strict? (or (nil? response-schema)
-                                        (not (empty-body? (:body response)))))
-                   (throw (ex-info (str "No response body schema found for status "
-                                        (:status response))
-                                   {:response response
-                                    :response-schemas (:response-schemas handler)})))))
+             (when (int? (:status response))
+               (let [response-schema (response-schema-for (:response-schemas handler)
+                                                          (:status response))]
+                 (if-let [body-schema (:body response-schema)]
+                   (s/validate body-schema (:body response))
+                   (when (and strict? (or (nil? response-schema)
+                                          (not (empty-body? (:body response)))))
+                     (throw (ex-info (str "No response body schema found for status "
+                                          (:status response))
+                                     {:response response
+                                      :response-schemas (:response-schemas handler)}))))))
              ctx)}))
 
 (def prepare-content-types

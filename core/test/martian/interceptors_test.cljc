@@ -389,4 +389,11 @@
 
     (testing "an exact code wins over the range that covers it"
       (is (happy? [range-2XX {:status (s/eq 200) :body {:name s/Str}}] {:status 200 :body {:name "n"}} true))
-      (is (happy? [range-2XX {:status (s/eq 200) :body {:name s/Str}}] {:status 201 :body "created"} true)))))
+      (is (happy? [range-2XX {:status (s/eq 200) :body {:name s/Str}}] {:status 201 :body "created"} true)))
+
+    (testing "a response without a status, e.g. an HTTP client's error, isn't validated"
+      (doseq [strict? [false true]
+              response [{:error (ex-info "Connection refused" {})}
+                        {:body "oops"}
+                        {:status nil :body {:message 1}}]]
+        (is (happy? [range-2XX default] response strict?) (pr-str [strict? (keys response)]))))))
