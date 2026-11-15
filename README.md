@@ -395,12 +395,16 @@ It is not included in the default interceptor stack, but you can include it your
  "https://example-api.com"
  {:interceptors (i/inject martian-http/default-interceptors
                           (i/validate-response-body {:strict? true})
-                          :before ::martian/coerce-response)})
+                          :before ::i/coerce-response)})
 ```
 
 The `strict?` argument defines whether any response with an undefined schema is allowed. For example, if a response
 schema is defined for a `200` status code only, but the server returns a response with status code `500`, strict mode
 will throw an error, while non-strict mode will allow it. The strict mode defaults to `false`.
+
+A response without a status isn't validated in either mode, as it's no HTTP response. That's what an HTTP client such
+as `http-kit` returns when the request itself fails, e.g. `{:error ...}` for a refused connection, so the original error
+reaches you untouched.
 
 ## Testing with `martian-test`
 
@@ -715,8 +719,8 @@ can be added independently for request and response encoders. Here's how it can 
   (martian-http/bootstrap-openapi
     "https://example-api.com"
     {:interceptors (-> martian-http/default-interceptors
-                       (i/inject my-encode-request :replace ::martian/encode-request)
-                       (i/inject my-coerce-response :replace ::martian/coerce-response))}))
+                       (i/inject my-encode-request :replace ::i/encode-request)
+                       (i/inject my-coerce-response :replace ::i/coerce-response))}))
 ```
 
 ### HTTP client-specific options
