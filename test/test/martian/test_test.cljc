@@ -4,6 +4,7 @@
             [clojure.test.check :as tc]
             [clojure.test.check.properties :as prop #?@(:cljs [:include-macros true])]
             [clojure.test.check.clojure-test :as tct]
+            [clojure.test.check.generators :as tcg]
             [schema.core :as s]
             #?(:clj [martian.httpkit :as martian-http])
             #?(:clj [clojure.test :refer [deftest testing is]]
@@ -243,6 +244,13 @@
 (defn- statuses [m response-type n]
   (map :status (generate m response-type n)))
 
+(defn- sample
+  "Returns `n` responses drawn from the generator of the route `:get-thing` of
+   `m`, built once. That is how to draw many of them: `generate` makes a call
+   per response, and every call builds the generator of its route anew."
+  [m n]
+  (tcg/sample (martian-test/response-generator m :get-thing) n))
+
 (defn- picked
   "Returns the `responses` that satisfy `pred`, having asserted that there
    are some, so that a check on them can't pass by checking nothing."
@@ -265,20 +273,20 @@
 
 (deftest generated-exact-codes-and-ranges-test
   (testing "an exact code wins over the range that covers it"
-    (doseq [[range-key exact-codes left response-type] [[:4XX (range 400 490) #(<= 490 % 499) :error]
-                                                        [:2XX (range 200 290) #(<= 290 % 299) :success]]]
+    (doseq [[range-key exact-codes left] [[:4XX (range 400 490) #(<= 490 % 499)]
+                                          [:2XX (range 200 290) #(<= 290 % 299)]]]
       (let [exact (into {} (map (fn [code] [(keyword (str code)) "integer"])) exact-codes)
             m (openapi-responses (assoc exact range-key "string"))]
         (is (every? (comp left :status)
-                    (picked (comp string? :body) (generate m response-type 2000)))
+                    (picked (comp string? :body) (sample m 2000)))
             (name range-key))))))
 
 (deftest generated-default-test
   (testing "`default` generates codes that no exact code declares"
     (let [exact (into {} (map (fn [code] [(keyword (str code)) "integer"])) (range 400 450))
           m (openapi-responses (assoc exact :default "boolean"))]
-      (is (every? #(<= 450 (:status %) 599)
-                  (picked (comp boolean? :body) (generate m :error 1000))))))
+      (is (not-any? #(<= 400 (:status %) 449)
+                    (picked (comp boolean? :body) (sample m 1000))))))
 
   (testing "`default` generates codes that no range covers"
     (is (every? #(<= 500 (:status %) 599)
