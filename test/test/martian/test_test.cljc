@@ -243,6 +243,14 @@
 (defn- statuses [m response-type n]
   (map :status (generate m response-type n)))
 
+(defn- picked
+  "Returns the `responses` that satisfy `pred`, having asserted that there
+   are some, so that a check on them can't pass by checking nothing."
+  [pred responses]
+  (let [picked (filter pred responses)]
+    (is (seq picked) "No generated response to check")
+    picked))
+
 (deftest generated-status-ranges-test
   (testing "a range generates statuses in it"
     (is (every? #(<= 200 % 299) (statuses (openapi-responses {:2XX "string"}) :success 50)))
@@ -262,7 +270,7 @@
       (let [exact (into {} (map (fn [code] [(keyword (str code)) "integer"])) exact-codes)
             m (openapi-responses (assoc exact range-key "string"))]
         (is (every? (comp left :status)
-                    (filter (comp string? :body) (generate m response-type 200)))
+                    (picked (comp string? :body) (generate m response-type 2000)))
             (name range-key))))))
 
 (deftest generated-default-test
@@ -270,20 +278,20 @@
     (let [exact (into {} (map (fn [code] [(keyword (str code)) "integer"])) (range 400 450))
           m (openapi-responses (assoc exact :default "boolean"))]
       (is (every? #(<= 450 (:status %) 599)
-                  (filter (comp boolean? :body) (generate m :error 200))))))
+                  (picked (comp boolean? :body) (generate m :error 1000))))))
 
   (testing "`default` generates codes that no range covers"
     (is (every? #(<= 500 (:status %) 599)
-                (filter (comp boolean? :body)
+                (picked (comp boolean? :body)
                         (generate (openapi-responses {:4XX "string" :default "boolean"}) :error 200)))))
 
   (testing "`default` gives success codes only when no other response does"
     (let [m (openapi-responses {:200 "integer" :default "boolean"})]
       (is (every? #(and (= 200 (:status %)) (integer? (:body %))) (generate m :success 50)))
       (is (every? #(<= 400 (:status %) 599)
-                  (filter (comp boolean? :body) (generate m :random 100)))))
+                  (picked (comp boolean? :body) (generate m :random 100)))))
     (is (every? #(<= 400 (:status %) 599)
-                (filter (comp boolean? :body)
+                (picked (comp boolean? :body)
                         (generate (openapi-responses {:2XX "string" :default "boolean"}) :random 100))))
     (is (every? #(<= 200 % 399) (statuses (openapi-responses {:404 "string" :default "boolean"}) :success 50))
         "With only error responses declared, `default` gives the success codes"))
