@@ -448,7 +448,52 @@
         (is (= {:method       :get
                 :url          "http://example.com/some"
                 :query-params {:version 100}}
-               (martian/request-for m :test-route {:version 100})))))))
+               (martian/request-for m :test-route {:version 100}))))))
+
+  (testing "a default behind a schema wrapper"
+    (let [query-params (fn [schema params]
+                         (-> (martian/bootstrap
+                               "http://example.com"
+                               [{:query-schema {(s/optional-key :version) schema}
+                                 :route-name   :test-route
+                                 :method       :get
+                                 :path-parts   ["/some"]}]
+                               {:use-defaults? true})
+                             (martian/request-for :test-route params)
+                             :query-params))]
+      (testing "fills a missing key"
+        (doseq [schema [(s/maybe (st/default s/Int 70))
+                        (s/named (st/default s/Int 70) "version")
+                        (s/constrained (st/default s/Int 70) pos?)
+                        (s/maybe (s/named (st/default s/Int 70) "version"))]]
+          (is (= {:version 70} (query-params schema {})) (pr-str schema))))
+
+      (testing "leaves a nil given for a nullable key, where nil is a value"
+        (is (= {:version nil} (query-params (s/maybe (st/default s/Int 70)) {:version nil}))))
+
+      (testing "keeps a value that is present"
+        (is (= {:version 100} (query-params (s/maybe (st/default s/Int 70)) {:version 100}))))))
+
+  (testing "an optional Swagger param and a nullable OpenAPI one get their defaults"
+    (let [swagger (martian/bootstrap-swagger
+                    "https://api.org"
+                    {:paths {(keyword "/items") {:get {:operationId "list-items"
+                                                       :parameters [{:name "limit" :in "query"
+                                                                     :type "integer" :default 10}]
+                                                       :responses {:200 {}}}}}}
+                    {:use-defaults? true})
+          openapi (martian/bootstrap-openapi
+                    "https://api.org"
+                    {:openapi "3.0.0"
+                     :paths {(keyword "/items") {:get {:operationId "list-items"
+                                                       :parameters [{:name "limit" :in "query"
+                                                                     :schema {:type "integer" :default 10
+                                                                              :nullable true}}]
+                                                       :responses {:200 {}}}}}}
+                    {:use-defaults? true})]
+      (is (= {:limit 10}
+             (:query-params (martian/request-for swagger :list-items {}))
+             (:query-params (martian/request-for openapi :list-items {})))))))
 
 (deftest kebab-mapping-test
   (let [m (martian/bootstrap "https://camels.org"

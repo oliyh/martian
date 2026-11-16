@@ -44,15 +44,25 @@
                   +extra-string-coercions+
                   string-enum-matcher))
 
+(defn- default-of
+  "Returns the `st/default` schema that `schema` is, or that it wraps, e.g. in
+   `s/maybe`, `s/named` or `s/constrained`, if any."
+  [schema]
+  (cond
+    (sti/default? schema) schema
+    (and (record? schema) (contains? schema :schema)) (recur (:schema schema))))
+
 (defn- default-key-matcher
   "Like `stc/default-key-matcher`, but fills a missing key's default under the
    key itself. The stock matcher uses the schema key, so an optional key went
-   in as its `(s/optional-key k)` wrapper, which coercion rejected."
+   in as its `(s/optional-key k)` wrapper, which coercion rejected. It also
+   finds a default that a wrapper hides from the stock matcher, such as the
+   `s/maybe` of an optional Swagger param."
   [schema]
   (when (and (map? schema) (not (record? schema)))
     (let [defaults (reduce-kv (fn [acc k v]
-                                (if (and (s/specific-key? k) (sti/default? v))
-                                  (assoc acc (s/explicit-schema-key k) (:value v))
+                                (if-some [default (when (s/specific-key? k) (default-of v))]
+                                  (assoc acc (s/explicit-schema-key k) (:value default))
                                   acc))
                               {}
                               schema)]
