@@ -387,6 +387,16 @@
         (is (thrown-with-msg? Throwable #"Value does not match schema"
                               (happy? [{:status (s/eq 204) :body nil} default] {:status 500 :body "oops"} strict?)))))
 
+    (testing "a Swagger `default` response, whose status is the symbol `default`, covers the other statuses"
+      (let [swagger-default {:status (s/eq 'default) :body {:message s/Str}}]
+        (doseq [strict? [false true]]
+          (is (happy? [{:status (s/eq 204) :body nil} swagger-default] {:status 204 :body nil} strict?))
+          (is (happy? [swagger-default {:status (s/eq 200) :body {:name s/Str}}] {:status 200 :body {:name "n"}} strict?)
+              "whatever their order")
+          (is (happy? [{:status (s/eq 200) :body s/Str} swagger-default] {:status 500 :body {:message "m"}} strict?))
+          (is (thrown-with-msg? Throwable #"Value does not match schema"
+                                (happy? [{:status (s/eq 200) :body s/Str} swagger-default] {:status 500 :body "oops"} strict?))))))
+
     (testing "an exact code wins over the range that covers it"
       (is (happy? [range-2XX {:status (s/eq 200) :body {:name s/Str}}] {:status 200 :body {:name "n"}} true))
       (is (happy? [range-2XX {:status (s/eq 200) :body {:name s/Str}}] {:status 201 :body "created"} true)))

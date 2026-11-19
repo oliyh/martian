@@ -222,16 +222,24 @@
 (defn- empty-body? [body]
   (or (nil? body) (and (string? body) (str/blank? body))))
 
+(defn- default-status?
+  "Whether the `status` schema is that of a `default` response: any value for
+   OpenAPI, or the symbol `default` for Swagger."
+  [status]
+  (or (= s/Any status)
+      (and (instance? EqSchema status) (= 'default (:v status)))))
+
 (defn- response-schema-for
   "Returns the one of `response-schemas` that `status` belongs to: the one with
    that exact code, else one whose range covers it, else `default`, as OpenAPI
    ranks them."
   [response-schemas status]
   (->> response-schemas
-       (filter #(nil? (s/check (:status %) status)))
+       (filter #(or (default-status? (:status %))
+                    (nil? (s/check (:status %) status))))
        (sort-by #(cond
+                   (default-status? (:status %))    2
                    (instance? EqSchema (:status %)) 0
-                   (= s/Any (:status %))            2
                    :else                            1))
        (first)))
 
